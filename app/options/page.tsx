@@ -4,7 +4,7 @@ export default function Options() {
   return (
     <div>
       <div>امکانات</div>
-      <Link href="/home">برو خونه</Link>
+      <Link href="/">برو خونه</Link>
     </div>
   );
 }

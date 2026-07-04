@@ -1,36 +1,92 @@
 "use client";
 
-import { getAccountsList } from "@/features/accounts/services";
-import { useEffect } from "react";
+import AccountCard from "@/components/AccountCard";
+import Chart from "@/components/Chart";
+import QuickAccess from "@/components/QuickAccess";
+import Title from "@/components/Title";
+import useAccounts from "@/features/store/useAccounts";
+import Receive from "@/icons/Receive";
+import Setting from "@/icons/Setting";
+import ThreeDots from "@/icons/ThreeDots";
+import { log } from "console";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { accountsStore } from "@/features/store/accountsStore";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
-export default function Splash() {
+export default function Home() {
   const router = useRouter();
+  const accounts = useAccounts();
+  const [ready, setReady]: [boolean, Dispatch<SetStateAction<boolean>>] =
+    useState(false);
+
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  };
 
   useEffect(() => {
-    async function load() {
-      const data = await getAccountsList();
-      accountsStore.setAccounts(data);
+    if (accounts.length === 0 || !sessionStorage.getItem("splashShown"))
+      router.replace("/splash");
+    else setReady(true);
+  }, [router]);
 
-      await new Promise((r) => setTimeout(r, 2000));
+  if (ready)
+    return (
+      <div className="flex flex-col gap-15 p-7.5">
+        <header className="flex justify-between p-2.5">
+          <div className="flex w-7.5"></div>
+          <h3 className="text-secondary text-center">
+            {new Date().toLocaleDateString("fa-IR", dateOptions)}
+          </h3>
+          <Link href="/options">
+            <ThreeDots className="fill-primary" height={30} width={30} />
+          </Link>
+        </header>
 
-      router.replace("/home");
-    }
+        <div className="grid gap-7.5">
+          <Title>
+            <div className="flex gap-0.5 items-center">
+              <div>حساب‌ها</div>
+              <Setting height={25} className="fill-primary" />
+            </div>
+          </Title>
+          <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
+            {accounts.map((item) => {
+              return (
+                <AccountCard
+                  key={item.id}
+                  id={item.id}
+                  name={item.name}
+                  color={item.color}
+                  lastBalance={item.lastBalance}
+                  type={item.type}
+                />
+              );
+            })}
+          </div>
+        </div>
 
-    load();
-  }, []);
+        <div className="flex gap-16 w-full content-around justify-center">
+          <QuickAccess Icon={Receive} link="/newtransaction?type=receive">
+            دریافت
+          </QuickAccess>
+          <QuickAccess Icon={Receive} link="/newtransaction?type=pay">
+            پرداخت
+          </QuickAccess>
+          <QuickAccess Icon={Receive} link="/newtransaction?type=transform">
+            انتقال
+          </QuickAccess>
+        </div>
 
-  return (
-    <div className="flex flex-col place-content-center items-center h-screen relative">
-      <Image src="/logo.svg" alt="Logo" height={50} width={50} />
-      <br />
-      <p className="font-extralight">مدیریت مالی شخصی جیب</p>
-
-      <span className="text-secondary absolute bottom-10 left-1/2 -translate-x-1/2 text-xs">
-        درحال بارگذاری ...
-      </span>
-    </div>
-  );
+        <Chart
+          title={"روند موجودی"}
+          data={[]}
+          timeSelector
+          link="/analyze"
+          linkTitle="تحلیل و بررسی پیشرفته"
+          value={100000000}
+        />
+      </div>
+    );
 }

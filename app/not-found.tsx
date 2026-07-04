@@ -16,7 +16,7 @@ export default function Notfound() {
     <div className="flex flex-col place-content-center items-center h-screen relative p-7.5">
       <h1 className="text-lg">صفحه پیدا نشد!</h1>
       <br />
-      <Button link="/home">بریم خونه</Button>
+      <Button link="/">بریم خونه</Button>
     </div>
   );
 }
