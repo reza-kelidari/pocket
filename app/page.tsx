@@ -6,8 +6,10 @@ import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/Title";
 import useAccounts from "@/features/store/useAccounts";
 import Receive from "@/icons/Receive";
+import Send from "@/icons/Send";
 import Setting from "@/icons/Setting";
 import ThreeDots from "@/icons/ThreeDots";
+import Transfer from "@/icons/Transfer";
 import { log } from "console";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -71,10 +73,10 @@ export default function Home() {
           <QuickAccess Icon={Receive} link="/newtransaction?type=receive">
             دریافت
           </QuickAccess>
-          <QuickAccess Icon={Receive} link="/newtransaction?type=pay">
+          <QuickAccess Icon={Send} link="/newtransaction?type=pay">
             پرداخت
           </QuickAccess>
-          <QuickAccess Icon={Receive} link="/newtransaction?type=transform">
+          <QuickAccess Icon={Transfer} link="/newtransaction?type=transfer">
             انتقال
           </QuickAccess>
         </div>
