@@ -1,14 +1,15 @@
 import { useState } from "react";
 import Button from "../Button";
+import { AccountBalance } from "@/features/balance/types";
 
 type ChartParamsType = {
   title: string;
   titlePrimary?: boolean;
-  data: [];
+  data: AccountBalance;
   timeSelector?: boolean;
   link?: string;
   linkTitle?: string;
-  value: number;
+  balance: number;
 };
 
 export default function Chart({
@@ -18,7 +19,7 @@ export default function Chart({
   timeSelector,
   link,
   linkTitle,
-  value,
+  balance: value,
 }: ChartParamsType) {
   const filters = [
     { id: 0, name: "۷", range: 0 },
@@ -29,7 +30,7 @@ export default function Chart({
   const [activeFilter, setActiveFilter] = useState(1);
 
   return (
-    <div className="w-full min-h-50 bg-elements-background border border-elements-border rounded-4xl p-5 flex flex-col gap-2.5">
+    <div className="w-full min-h-50 bg-elements-background border border-elements-border rounded-4xl p-5 flex flex-col gap-2.5 shadow-xl shadow-zinc-100">
       <div className="flex items-center justify-between">
         <h3
           className={`${titlePrimary ? "forground" : "text-secondary"} text-xs`}

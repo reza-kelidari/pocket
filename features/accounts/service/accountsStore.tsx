@@ -4,8 +4,6 @@ import { AccountType } from "@/features/accounts/types";
 
 let accounts: Array<AccountType> = [];
 
-console.log("Store Created")
-
 const listeners = new Set<() => void>();
 
 export const accountsStore = {

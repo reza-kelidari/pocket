@@ -1,22 +1,46 @@
 "use client";
 
-import { getAccountsList } from "@/features/accounts/services";
+import getAccountsList from "@/features/accounts/service/initializer";
+import getTransactionsList from "@/features/transactions/service/initializer";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { accountsStore } from "@/features/store/accountsStore";
+import { accountsStore } from "@/features/accounts/service/accountsStore";
+import { transactionsStore } from "@/features/transactions/service/transactionsStore";
+import { calculateAccountBalance } from "@/features/balance/calculateBalance";
+import { AccountBalance } from "@/features/balance/types";
+import { balancesStore } from "@/features/balance/service/balanceStore";
 
 export default function Splash() {
   const router = useRouter();
 
   useEffect(() => {
     async function load() {
-      const data = await getAccountsList();
-      accountsStore.setAccounts(data);
+      const accounts = await getAccountsList();
+      const transactions = await getTransactionsList();
 
-      await new Promise((r) => setTimeout(r, 2000));
+      accountsStore.setAccounts(accounts);
+      transactionsStore.setTransactions(transactions);
 
-      sessionStorage.setItem("splashShown", "1")
+      let balances: AccountBalance = [];
+
+      accounts.forEach(
+        async (account) =>
+          await calculateAccountBalance(
+            transactions.filter(
+              (item) => item.debit === account.id || item.credit === account.id,
+            ),
+            account.id,
+          ).then((result) => {
+            balances.push({ id: account.id, history: result });
+          }),
+      );
+
+      balancesStore.setBalances(balances)
+
+      // await new Promise((r) => setTimeout(r, 2000));
+
+      sessionStorage.setItem("splashShown", "1");
 
       router.replace("/");
     }

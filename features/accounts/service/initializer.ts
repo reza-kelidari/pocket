@@ -1,8 +1,6 @@
-import { AccountType } from "./types";
+import { AccountType } from "../types";
 
-export async function getAccountsList(): Promise<AccountType[]> {
-  await new Promise((r) => setTimeout(r, 2000));
-
+export default async function getAccountsList(): Promise<AccountType[]> {
   return [
     {
       id: 100,
