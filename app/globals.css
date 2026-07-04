@@ -2,12 +2,49 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
+  --text-secondary: #7b7b7b;
+
+  --primary: #4394B3;
+  --primary-border: #4394B359;
+  --primary-background: #4394B31a;
+
+  --elements-border: #7b7b7b33;
+  --elements-background: #7b7b7b0d;
+
+  --account-black-primary: #444444;
+  --account-black-border: #44444459;
+  --account-black-background: #4444441a;
+  --account-blue1-primary: #2889d2;
+  --account-blue1-border: #2889d259;
+  --account-blue1-background: #2889d21a;
+  --account-blue2-primary: #455ee3;
+  --account-blue2-border: #455ee359;
+  --account-blue2-background: #455ee31a;
+  --account-green1-primary: #20b07a;
+  --account-green1-border: #20b07a59;
+  --account-green1-background: #20b07a1a;
+  --account-green2-primary: #3eb818;
+  --account-green2-border: #3eb81859;
+  --account-green2-background: #3eb8181a;
+  --account-orange-primary: #b3752f;
+  --account-orange-border: #b3752f59;
+  --account-orange-background: #b3752f1a;
+  --account-magenta-primary: #dc2f76;
+  --account-magenta-border: #dc2f7659;
+  --account-magenta-background: #dc2f761a;
+  --account-red-primary: #d33131;
+  --account-red-border: #d3313159;
+  --account-red-background: #d331311a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --font-sans: var(--font-vazirmatn);
+  --color-primary: var(--primary);
+  --color-text-secondary: var(--text-secondary);
+  --fill-primary: var(--primary);
+  --border-primary: var(--primary-border);
+  --background-primary: var(--primary-background);
 }
 
 body {
