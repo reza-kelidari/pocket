@@ -6,9 +6,12 @@ import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/Title";
 import TransactionItem from "@/components/TransactionItem";
 import useAccounts from "@/features/accounts/service/useAccounts";
+import { getBalancesMap, getTotalBalances } from "@/features/balance/selector";
 import useBalances from "@/features/balance/service/useBalances";
+import { BalancesMapType } from "@/features/balance/types";
+import { getLatestTransaction } from "@/features/transactions/selector";
 import useTransactions from "@/features/transactions/service/useTransactions";
-import Receive from "@/icons/Receive";
+import Receive, { IconComponent } from "@/icons/Receive";
 import Send from "@/icons/Send";
 import Setting from "@/icons/Setting";
 import ThreeDots from "@/icons/ThreeDots";
@@ -36,14 +39,15 @@ export default function Home() {
     day: "numeric",
   };
 
-  const balancesMap = new Map(
-    balances.map((item) => [item.id, item.history?.at(-1)?.balance]),
-  );
+  const balancesMap: BalancesMapType = getBalancesMap(balances);
+  const totalBalance: number = getTotalBalances(balancesMap);
 
-  let totalBalance = 0;
-  balancesMap.forEach((item) => (totalBalance += item ?? 0));
-
-  const accountIds = new Set(accounts.map((a) => a.id));
+  const quickAccessList: { name: string; link: string; icon: IconComponent }[] =
+    [
+      { name: "دریافت", link: "/newtransaction?type=debit", icon: Receive },
+      { name: "پرداخت", link: "/newtransaction?type=credit", icon: Send },
+      { name: "انتقال", link: "/newtransaction?type=transfer", icon: Transfer },
+    ];
 
   if (splashGuard) return null;
 
@@ -85,15 +89,15 @@ export default function Home() {
       </div>
 
       <div className="flex gap-16 w-full content-around justify-center">
-        <QuickAccess Icon={Receive} link="/newtransaction?type=receive">
-          دریافت
-        </QuickAccess>
-        <QuickAccess Icon={Send} link="/newtransaction?type=pay">
-          پرداخت
-        </QuickAccess>
-        <QuickAccess Icon={Transfer} link="/newtransaction?type=transfer">
-          انتقال
-        </QuickAccess>
+        {quickAccessList.map((item) => (
+          <QuickAccess
+            key={quickAccessList.indexOf(item)}
+            Icon={item.icon}
+            link={item.link}
+          >
+            {item.name}
+          </QuickAccess>
+        ))}
       </div>
 
       <Chart
@@ -113,32 +117,30 @@ export default function Home() {
         </Title>
 
         <div className="flex flex-col w-full gap-2.5">
-          {[...transactions]
-            .sort((a, b) => b.time - a.time)
-            .slice(0, 5)
-            .map((transaction) => {
-              let transactionAccountID: number;
-              let transactionName: string;
+          {getLatestTransaction(transactions, 5).map((transaction) => {
+            let transactionAccountID: number;
+            let transactionName: string;
 
-              if(transaction.type === "credit") transactionAccountID = transaction.credit;
-              else transactionAccountID = transaction.debit;
+            if (transaction.type === "credit")
+              transactionAccountID = transaction.credit;
+            else transactionAccountID = transaction.debit;
 
-              transactionName =
-                transaction.type === "initial"
-                  ? "موجودی اولیه"
-                  : transaction.name;
+            transactionName =
+              transaction.type === "initial"
+                ? "موجودی اولیه"
+                : transaction.name;
 
-              return (
-                <TransactionItem
-                  key={transaction.id}
-                  name={transactionName}
-                  account={transactionAccountID}
-                  time={transaction.time}
-                  value={transaction.value}
-                  type={transaction.type}
-                />
-              );
-            })}
+            return (
+              <TransactionItem
+                key={transaction.id}
+                name={transactionName}
+                account={transactionAccountID}
+                time={transaction.time}
+                value={transaction.value}
+                type={transaction.type}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

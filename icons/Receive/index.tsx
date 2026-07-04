@@ -1,4 +1,9 @@
-export default function Receive(props: React.SVGProps<SVGSVGElement>) {
+import type { SVGProps } from "react";
+
+export type IconProps = SVGProps<SVGSVGElement>;
+export type IconComponent = (props: IconProps) => React.JSX.Element;
+
+export default function Receive(props: IconProps) {
   return (
     <svg
       viewBox="0 0 30 30"

@@ -1,7 +1,7 @@
 import { TransactionType } from "../transactions/types";
 import { BalanceType } from "./types";
 
-export async function calculateAccountBalance(
+export function calculateAccountBalance(
   transactions: TransactionType[],
   accID: number,
 ) {
@@ -9,9 +9,7 @@ export async function calculateAccountBalance(
 
   let balance = 0;
 
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => a.time - b.time,
-  );
+  const sortedTransactions = [...transactions].sort((a, b) => a.time - b.time);
 
   sortedTransactions.forEach((transaction) => {
     if (transaction.debit === accID) {

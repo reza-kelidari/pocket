@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { accountsStore } from "@/features/accounts/service/accountsStore";
 import { transactionsStore } from "@/features/transactions/service/transactionsStore";
-import { calculateAccountBalance } from "@/features/balance/calculateBalance";
+import { calculateAccountBalance } from "@/features/balance/methods";
 import { AccountBalance } from "@/features/balance/types";
 import { balancesStore } from "@/features/balance/service/balanceStore";
 
@@ -24,19 +24,17 @@ export default function Splash() {
 
       let balances: AccountBalance = [];
 
-      accounts.forEach(
-        async (account) =>
-          await calculateAccountBalance(
-            transactions.filter(
-              (item) => item.debit === account.id || item.credit === account.id,
-            ),
-            account.id,
-          ).then((result) => {
-            balances.push({ id: account.id, history: result });
-          }),
-      );
+      accounts.forEach((account) => {
+        const calculatedbalances = calculateAccountBalance(
+          transactions.filter(
+            (item) => item.debit === account.id || item.credit === account.id,
+          ),
+          account.id,
+        );
+        balances.push({ id: account.id, history: calculatedbalances });
+      });
 
-      balancesStore.setBalances(balances)
+      balancesStore.setBalances(balances);
 
       // await new Promise((r) => setTimeout(r, 2000));
 
