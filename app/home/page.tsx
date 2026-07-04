@@ -1,6 +1,7 @@
 "use client";
 
 import AccountCard from "@/components/AccountCard";
+import Chart from "@/components/Chart";
 import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/Title";
 import { accountsStore } from "@/features/store/accountsStore";
@@ -32,7 +33,7 @@ export default function Home() {
     <div className="flex flex-col gap-15 p-7.5">
       <header className="flex justify-between p-2.5">
         <div className="flex w-7.5"></div>
-        <h3 className="text-text-secondary text-center">
+        <h3 className="text-secondary text-center">
           {new Date().toLocaleDateString("fa-IR", dateOptions)}
         </h3>
         <ThreeDots className="fill-primary" height={30} width={30} />
@@ -62,10 +63,12 @@ export default function Home() {
       </div>
 
       <div className="flex gap-16 w-full content-around justify-center">
-        <QuickAccess Icon={Receive}>دریافت</QuickAccess>
-        <QuickAccess Icon={Receive}>پرداخت</QuickAccess>
-        <QuickAccess Icon={Receive}>انتقال</QuickAccess>
+        <QuickAccess Icon={Receive} link="/newtransaction?type=receive">دریافت</QuickAccess>
+        <QuickAccess Icon={Receive} link="/newtransaction?type=pay">پرداخت</QuickAccess>
+        <QuickAccess Icon={Receive} link="/newtransaction?type=transform">انتقال</QuickAccess>
       </div>
+
+      <Chart title={"روند موجودی"} data={[]} timeSelector link="/analyze" linkTitle="تحلیل و بررسی پیشرفته" value={100000000} />
     </div>
   );
 }

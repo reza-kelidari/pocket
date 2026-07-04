@@ -3,22 +3,34 @@
 :root {
   --background: #ffffff;
   --foreground: #000000;
-  --text-secondary: #7b7b7b;
 
-  --primary: #4394B3;
-  --primary-border: #4394B359;
-  --primary-background: #4394B31a;
+  --primary: #4394b3;
+  --primary-border: #4394b359;
+  --primary-background: #4394b31a;
 
+  --secondary: #7b7b7b;
   --elements-border: #7b7b7b33;
   --elements-background: #7b7b7b0d;
+
+  --red: #a40000;
+  --red-border: #a4000033;
+  --red-background: #a400000d;
 }
 
 @theme inline {
   --font-sans: var(--font-vazirmatn);
+
   --color-primary: var(--primary);
-  --color-text-secondary: var(--text-secondary);
   --color-primary-border: var(--primary-border);
   --color-primary-background: var(--primary-background);
+
+  --color-secondary: var(--secondary);
+  --color-elements-border: var(--elements-border);
+  --color-elements-background: var(--elements-background);
+
+  --color-red: var(--red);
+  --color-red-border: var(--red-border);
+  --color-red-background: var(--red-background);
 }
 
 body {

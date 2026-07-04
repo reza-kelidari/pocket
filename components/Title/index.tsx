@@ -1,6 +1,6 @@
-import React from "react";
+type TitleParamsType = { children: React.ReactNode };
 
-export default function Title({ children }: { children: React.ReactNode }) {
+export default function Title({ children }: TitleParamsType) {
   return (
     <div>
       <h1 className="text-lg font-bold">{children}</h1>
