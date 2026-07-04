@@ -9,7 +9,7 @@ import useAccounts from "@/features/store/useAccounts";
 import Receive from "@/icons/Receive";
 import Setting from "@/icons/Setting";
 import ThreeDots from "@/icons/ThreeDots";
-import Wallet from "@/icons/Wallet";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -24,10 +24,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (accountsStore.getAccounts().length === 0) {
+    if (accounts.length === 0) {
       router.replace("/");
     }
-  }, []);
+  }, [router]);
 
   return (
     <div className="flex flex-col gap-15 p-7.5">
@@ -36,7 +36,9 @@ export default function Home() {
         <h3 className="text-secondary text-center">
           {new Date().toLocaleDateString("fa-IR", dateOptions)}
         </h3>
-        <ThreeDots className="fill-primary" height={30} width={30} />
+        <Link href="/options">
+          <ThreeDots className="fill-primary" height={30} width={30} />
+        </Link>
       </header>
 
       <div className="grid gap-7.5">
@@ -63,12 +65,25 @@ export default function Home() {
       </div>
 
       <div className="flex gap-16 w-full content-around justify-center">
-        <QuickAccess Icon={Receive} link="/newtransaction?type=receive">دریافت</QuickAccess>
-        <QuickAccess Icon={Receive} link="/newtransaction?type=pay">پرداخت</QuickAccess>
-        <QuickAccess Icon={Receive} link="/newtransaction?type=transform">انتقال</QuickAccess>
+        <QuickAccess Icon={Receive} link="/newtransaction?type=receive">
+          دریافت
+        </QuickAccess>
+        <QuickAccess Icon={Receive} link="/newtransaction?type=pay">
+          پرداخت
+        </QuickAccess>
+        <QuickAccess Icon={Receive} link="/newtransaction?type=transform">
+          انتقال
+        </QuickAccess>
       </div>
 
-      <Chart title={"روند موجودی"} data={[]} timeSelector link="/analyze" linkTitle="تحلیل و بررسی پیشرفته" value={100000000} />
+      <Chart
+        title={"روند موجودی"}
+        data={[]}
+        timeSelector
+        link="/analyze"
+        linkTitle="تحلیل و بررسی پیشرفته"
+        value={100000000}
+      />
     </div>
   );
 }

@@ -23,13 +23,14 @@ export default function Splash() {
   }, []);
 
   return (
-    <div className="grid place-content-center h-screen">
-      <div className="flex gap-3 items-center">
-        <Image src="/logo.svg" alt="Logo" height={50} width={50} />
-        <h1 className="text-xl">جیب</h1>
-      </div>
+    <div className="flex flex-col place-content-center items-center h-screen relative">
+      <Image src="/logo.svg" alt="Logo" height={50} width={50} />
       <br />
-      <p>مدیریت مالی شخصی</p>
+      <p className="font-extralight">مدیریت مالی شخصی جیب</p>
+
+      <span className="text-secondary absolute bottom-10 left-1/2 -translate-x-1/2 text-xs">
+        درحال بارگذاری ...
+      </span>
     </div>
   );
 }
