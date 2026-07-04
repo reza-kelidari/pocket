@@ -15,6 +15,22 @@
   --red: #a40000;
   --red-border: #a4000033;
   --red-background: #a400000d;
+
+  --income-primary: #009764;
+  --income-border: #00976433;
+  --income-background: #0097640d;
+  --income-second: #19af7c;
+  --income-third: #55c28b;
+  --income-forth: #79d99e;
+  --income-fifth: #97e3ba;
+
+  --expense-primary: #a40000;
+  --expense-border: #a4000033;
+  --expense-background: #a400000d;
+  --expense-second: #b42a2a;
+  --expense-third: #c25555;
+  --expense-forth: #d97979;
+  --expense-fifth: #e39797;
 }
 
 @theme inline {
@@ -31,6 +47,22 @@
   --color-red: var(--red);
   --color-red-border: var(--red-border);
   --color-red-background: var(--red-background);
+
+  --color-income-primary: var(--income-primary);
+  --color-income-border: var(--income-border);
+  --color-income-background: var(--income-background);
+  --color-income-second: var(--income-second);
+  --color-income-third: var(--income-third);
+  --color-income-forth: var(--income-forth);
+  --color-income-fifth: var(--income-fifth);
+
+  --color-expense-primary: var(--expense-primary);
+  --color-expense-border: var(--expense-border);
+  --color-expense-background: var(--expense-background);
+  --color-expense-second: var(--expense-second);
+  --color-expense-third: var(--expense-third);
+  --color-expense-forth: var(--expense-forth);
+  --color-expense-fifth: var(--expense-fifth);
 }
 
 body {
