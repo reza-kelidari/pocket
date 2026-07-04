@@ -7,5 +7,6 @@ export default function useAccounts() {
   return useSyncExternalStore(
     accountsStore.subscribe,
     accountsStore.getAccounts,
+    accountsStore.getAccounts,
   );
 }

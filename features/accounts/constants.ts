@@ -1,6 +1,5 @@
 import Bank from "@/icons/Bank";
 import Wallet from "@/icons/Wallet";
-import { AccountColorType, AccountTypesType } from "./types";
 
 export const AccountColors = {
   black: {

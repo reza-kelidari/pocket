@@ -1,4 +1,5 @@
-import { AccountColors, AccountType, AccountTypes } from "@/features/accounts/constants";
+import { AccountColors, AccountTypes } from "@/features/accounts/constants";
+import { AccountType } from "@/features/accounts/types";
 
 export default function AccountCard({
   color,

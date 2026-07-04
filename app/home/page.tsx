@@ -1,17 +1,20 @@
 "use client";
 
 import AccountCard from "@/components/AccountCard";
+import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/Title";
 import { accountsStore } from "@/features/store/accountsStore";
 import useAccounts from "@/features/store/useAccounts";
+import Receive from "@/icons/Receive";
 import Setting from "@/icons/Setting";
 import ThreeDots from "@/icons/ThreeDots";
+import Wallet from "@/icons/Wallet";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
-  const accounts = useAccounts()
+  const accounts = useAccounts();
 
   const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: "long",
@@ -32,7 +35,7 @@ export default function Home() {
         <h3 className="text-text-secondary text-center">
           {new Date().toLocaleDateString("fa-IR", dateOptions)}
         </h3>
-        <ThreeDots className="fill-primary" />
+        <ThreeDots className="fill-primary" height={30} width={30} />
       </header>
 
       <div className="grid gap-7.5">
@@ -42,7 +45,7 @@ export default function Home() {
             <Setting height={25} className="fill-primary" />
           </div>
         </Title>
-        <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 py-7.5">
+        <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
           {accounts.map((item) => {
             return (
               <AccountCard
@@ -56,6 +59,12 @@ export default function Home() {
             );
           })}
         </div>
+      </div>
+
+      <div className="flex gap-16 w-full content-around justify-center">
+        <QuickAccess Icon={Receive}>دریافت</QuickAccess>
+        <QuickAccess Icon={Receive}>پرداخت</QuickAccess>
+        <QuickAccess Icon={Receive}>انتقال</QuickAccess>
       </div>
     </div>
   );
