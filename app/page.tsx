@@ -1,6 +1,7 @@
 "use client";
 
 import AccountCard from "@/components/AccountCard";
+import Button from "@/components/Button";
 import Chart from "@/components/Chart";
 import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/Title";
@@ -142,6 +143,7 @@ export default function Home() {
             );
           })}
         </div>
+        <Button link="/transactions">مشاهده همه تراکنش‌ها</Button>
       </div>
     </div>
   );
