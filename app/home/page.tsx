@@ -1,32 +1,29 @@
+"use client";
+
 import AccountCard from "@/components/AccountCard";
 import Title from "@/components/Title";
+import { accountsStore } from "@/features/store/accountsStore";
+import useAccounts from "@/features/store/useAccounts";
 import Setting from "@/icons/Setting";
 import ThreeDots from "@/icons/ThreeDots";
-import { AccountType } from "@/utility/accounts";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
+  const router = useRouter();
+  const accounts = useAccounts()
+
   const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: "long",
     month: "long",
     day: "numeric",
   };
 
-  const accounts: Array<AccountType> = [
-    {
-      id: 100,
-      name: "کیف پول نقدی",
-      color: "orange",
-      lastBalance: 10000000,
-      type: "Wallet",
-    },
-    {
-      id: 101,
-      name: "سامان",
-      color: "blue1",
-      lastBalance: 10000000,
-      type: "Bank",
-    },
-  ];
+  useEffect(() => {
+    if (accountsStore.getAccounts().length === 0) {
+      router.replace("/");
+    }
+  }, []);
 
   return (
     <div className="flex flex-col gap-15 p-7.5">

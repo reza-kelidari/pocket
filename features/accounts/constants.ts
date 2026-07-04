@@ -1,5 +1,6 @@
 import Bank from "@/icons/Bank";
 import Wallet from "@/icons/Wallet";
+import { AccountColorType, AccountTypesType } from "./types";
 
 export const AccountColors = {
   black: {
@@ -59,8 +60,6 @@ export const AccountColors = {
   },
 } as const;
 
-export type AccountColorType = keyof typeof AccountColors;
-
 export const AccountTypes = {
   Bank: {
     name: "حساب بانکی",
@@ -72,13 +71,3 @@ export const AccountTypes = {
     icon: Wallet,
   },
 } as const;
-
-export type AccountTypesType = keyof typeof AccountTypes;
-
-export type AccountType = {
-  id: number;
-  name: string;
-  color: AccountColorType;
-  lastBalance: number;
-  type: AccountTypesType;
-};
