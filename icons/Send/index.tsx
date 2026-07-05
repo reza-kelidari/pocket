@@ -1,4 +1,6 @@
-export default function Send(props: React.SVGProps<SVGSVGElement>) {
+import { IconProps } from "../types";
+
+export default function Send(props: IconProps) {
   return (
     <svg
       viewBox="0 0 30 30"

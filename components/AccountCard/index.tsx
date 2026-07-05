@@ -1,5 +1,6 @@
 import { AccountColors, AccountTypes } from "@/features/accounts/constants";
 import { AccountType } from "@/features/accounts/types";
+import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 
 export default function AccountCard({
@@ -10,7 +11,7 @@ export default function AccountCard({
   type,
 }: AccountType) {
   const cardColors = AccountColors[color];
-  const CardIcon = AccountTypes[type].icon;
+  const CardIcon: IconComponent = AccountTypes[type].icon;
 
   return (
     <Link href={`/viewaccount?id=${id}`}>
