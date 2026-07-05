@@ -4,6 +4,27 @@ import { AccountColors } from "@/features/colors";
 import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 
+/**
+ * Displays an account as a clickable card.
+ *
+ * The card shows:
+ * - Account icon based on its type.
+ * - Current account balance.
+ * - Account name.
+ * - Color theme based on the selected account color.
+ *
+ * Clicking the card navigates to the account details page.
+ *
+ * @param props Account information.
+ * @param props.id Unique account identifier. Used to generate the details page URL.
+ * @param props.name Display name of the account.
+ * @param props.color Theme color key used to style the card.
+ * @param props.lastBalance Current account balance displayed on the card.
+ * @param props.type Account type used to determine the displayed icon.
+ *
+ * @returns A clickable account card component.
+ */
+
 export default function AccountCard({
   id,
   name,
