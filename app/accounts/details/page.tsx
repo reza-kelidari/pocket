@@ -1,0 +1,90 @@
+"use client";
+
+import Button from "@/components/Button";
+import ChartView from "@/components/ChartView";
+import NavbarTitle from "@/components/NavbarTitle";
+import SectionTitle from "@/components/SectionTitle";
+import TransactionItem from "@/components/TransactionItem";
+import useAccounts from "@/features/accounts/service/useAccounts";
+import useBalances from "@/features/balance/service/useBalances";
+import { getLatestTransactions } from "@/features/transactions/selector";
+import useTransactions from "@/features/transactions/service/useTransactions";
+import Pen from "@/icons/Pen";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+
+export default function AccountsDetails() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const accountsList = useAccounts();
+  const transactions = useTransactions() ?? [];
+  const accountsBalances = useBalances() ?? [];
+  const accountID = Number(searchParams.get("id"));
+  const account = accountsList.find((item) => item.id === accountID);
+  const accountTransactions = transactions.filter((item) =>
+    [item.debit, item.credit].includes(accountID),
+  );
+
+  useEffect(() => {
+    if (isNaN(accountID)) router.replace("/");
+    if (accountsList.length === 0)
+      router.replace(`/splash?redirect=/accounts/details?id=${accountID}`);
+  }, []);
+
+  if (accountsList.length === 0) return null;
+
+  return (
+    <div className="p-7.5 grid gap-15">
+      <div className="grid gap-7.5">
+        <NavbarTitle
+          title={account?.name ?? "حساب"}
+          redirect="/"
+          option={{Icon: Pen, link: `/accounts/edit?id=${accountID}`}}
+        />
+      </div>
+
+      <ChartView
+        title={`موجودی ${account?.name ?? ""}`}
+        color={account?.color}
+        timeSelector
+        account={account?.id}
+        transactions={transactions}
+        balances={accountsBalances}
+      />
+
+      <div className="grid gap-7.5">
+        <SectionTitle>{`تراکنش‌های اخیر ${account?.name ?? ""}`}</SectionTitle>
+
+        <div className="flex flex-col w-full gap-2.5">
+          {getLatestTransactions(accountTransactions, 5).map((transaction) => {
+            let transactionAccountID: number;
+            let transactionName: string;
+
+            if (transaction.type === "credit")
+              transactionAccountID = transaction.credit;
+            else transactionAccountID = transaction.debit;
+
+            transactionName =
+              transaction.type === "initial"
+                ? "موجودی اولیه"
+                : transaction.name;
+
+            return (
+              <TransactionItem
+                key={transaction.id}
+                name={transactionName}
+                account={transactionAccountID}
+                time={transaction.time}
+                value={transaction.value}
+                type={transaction.type}
+              />
+            );
+          })}
+        </div>
+        <Button link={`/transactions?account=${accountID}`}>
+          مشاهده همه تراکنش‌ها
+        </Button>
+      </div>
+    </div>
+  );
+}
