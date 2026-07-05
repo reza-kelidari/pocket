@@ -1,3 +1,4 @@
+import Button from "@/components/Button";
 import NavbarTitle from "@/components/NavbarTitle";
 
 type OptionsParamsType = { searchParams: Promise<{ redirect: string }> };
@@ -8,7 +9,7 @@ export default async function Options({ searchParams }: OptionsParamsType) {
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle redirect={redirect}>امکانات</NavbarTitle>
+        <NavbarTitle title="امکانات" redirect={redirect}/>
       </div>
     </div>
   );
