@@ -1,10 +1,15 @@
-import Link from "next/link";
+import NavbarTitle from "@/components/NavbarTitle";
 
-export default function Options() {
+type OptionsParamsType = { searchParams: Promise<{ redirect: string }> };
+
+export default async function Options({ searchParams }: OptionsParamsType) {
+  const { redirect } = await searchParams;
+
   return (
-    <div>
-      <div>امکانات</div>
-      <Link href="/">برو خونه</Link>
+    <div className="p-7.5 grid gap-15">
+      <div className="grid gap-7.5">
+        <NavbarTitle redirect={redirect}>امکانات</NavbarTitle>
+      </div>
     </div>
   );
 }

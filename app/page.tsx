@@ -11,8 +11,9 @@ import { getBalancesMap, getTotalBalances } from "@/features/balance/selector";
 import useBalances from "@/features/balance/service/useBalances";
 import { BalancesMapType } from "@/features/balance/types";
 import { getLatestTransaction } from "@/features/transactions/selector";
+import { IconComponent } from "@/icons/types";
 import useTransactions from "@/features/transactions/service/useTransactions";
-import Receive, { IconComponent } from "@/icons/Receive";
+import Receive from "@/icons/Receive";
 import Send from "@/icons/Send";
 import Setting from "@/icons/Setting";
 import ThreeDots from "@/icons/ThreeDots";
@@ -59,7 +60,7 @@ export default function Home() {
         <h3 className="text-secondary text-center">
           {new Date().toLocaleDateString("fa-IR", dateOptions)}
         </h3>
-        <Link href="/options">
+        <Link href="/options?redirect=/">
           <ThreeDots className="fill-primary" height={30} width={30} />
         </Link>
       </header>
