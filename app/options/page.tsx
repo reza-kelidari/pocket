@@ -1,5 +1,6 @@
 import ListElement from "@/components/ListElement";
 import NavbarTitle from "@/components/NavbarTitle";
+import Reload from "@/components/Reload";
 import { PrimaryColors } from "@/features/colors";
 import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
@@ -25,12 +26,6 @@ export default async function Options({ searchParams }: OptionsParamsType) {
       Icon: Forbidden,
       link: "/",
     },
-    {
-      name: "بارگذاری مجدد",
-      color: PrimaryColors.primary,
-      Icon: Restart,
-      link: "/",
-    },
   ];
 
   return (
@@ -46,9 +41,9 @@ export default async function Options({ searchParams }: OptionsParamsType) {
           return (
             <ListElement
               key={items.indexOf(item)}
-              color={color}
-              Icon={Icon}
-              link={link}
+              iconColor={color}
+              Icon={<Icon height={17} width={17} fill="#fff" />}
+              href={link}
             >
               {name}
             </ListElement>
