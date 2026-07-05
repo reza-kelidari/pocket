@@ -31,7 +31,9 @@ export default async function Options({ searchParams }: OptionsParamsType) {
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle title="امکانات" redirect={redirect} />
+        <NavbarTitle title="امکانات" redirect={redirect}>
+          <Reload />
+        </NavbarTitle>
       </div>
 
       <div className="grid gap-4">
