@@ -1,33 +1,50 @@
 import { useState } from "react";
 import Button from "../Button";
-import { BalanceType } from "@/features/balance/types";
+import { AccountBalanceType, BalanceType } from "@/features/balance/types";
 import { AccountColorType } from "@/features/accounts/types";
 import { AccountColors, PrimaryColors } from "@/features/colors";
 import ChartBox from "./ChartBox";
+import {
+  getAccountBalanceHistory,
+  getTotalBalanceHistory,
+} from "@/features/balance/methods";
+import useTransactions from "@/features/transactions/service/useTransactions";
+import { TransactionType } from "@/features/transactions/types";
 
 type ChartParamsType = {
   title: string;
   titlePrimary?: boolean;
-  data: BalanceType[];
+  accountID?: number;
   timeSelector?: boolean;
   link?: string;
   linkTitle?: string;
-  balance: number;
+  balances: AccountBalanceType[];
   color?: AccountColorType;
+  transactions: TransactionType[];
 };
 
 export default function Chart({
   title,
   titlePrimary,
-  data,
+  accountID,
   timeSelector,
   link,
   linkTitle,
-  balance,
+  balances,
   color,
+  transactions,
 }: ChartParamsType) {
-  const filters = [7, 30, 90];
+  const totalHistory = getTotalBalanceHistory(transactions);
+  const totalBalance = totalHistory.at(-1)?.balance ?? 0;
 
+  let chartHistory: BalanceType[] = accountID
+    ? (getAccountBalanceHistory(transactions, accountID).history ?? [])
+    : totalHistory;
+  let chartBalance: number = accountID
+    ? (chartHistory.at(-1)?.balance ?? 0)
+    : totalBalance;
+
+  const filters = [7, 30, 90];
   const [activeFilter, setActiveFilter] = useState(filters[1]);
 
   return (
@@ -36,7 +53,9 @@ export default function Chart({
         <h3
           className={`${titlePrimary ? "forground" : "text-secondary"} text-xs`}
         >
-          {title} {timeSelector && `(${activeFilter.toLocaleString("fa-ir")} روز گذشته)`}
+          {title}{" "}
+          {timeSelector &&
+            `(${activeFilter.toLocaleString("fa-ir")} روز گذشته)`}
         </h3>
         {timeSelector ? (
           <div
@@ -57,10 +76,15 @@ export default function Chart({
         )}
       </div>
 
-      <ChartBox data={data} daysFilter={activeFilter} color={color} lastBalance={balance} />
+      <ChartBox
+        data={chartHistory}
+        daysFilter={activeFilter}
+        color={color}
+        lastBalance={chartBalance}
+      />
 
       <div className="flex gap-1.5 mr-auto items-center">
-        <h1 className="font-bold">{balance.toLocaleString("fa-ir")}</h1>
+        <h1 className="font-bold">{chartBalance.toLocaleString("fa-ir")}</h1>
         <span className="text-xs">﷼</span>
       </div>
       {link ? <Button link={link}>{linkTitle || ""}</Button> : ""}

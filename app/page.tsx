@@ -21,15 +21,12 @@ import Transfer from "@/icons/Transfer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { getTotalBalanceHistory } from "@/features/balance/methods";
-import { PrimaryColors } from "@/features/colors";
 
 export default function Home() {
   const router = useRouter();
   const accounts = useAccounts() ?? [];
   const transactions = useTransactions() ?? [];
   const accountsBalances = useBalances() ?? [];
-  const totalBalanceHistory = getTotalBalanceHistory(transactions);
 
   const splashGuard =
     !accounts.length || !sessionStorage.getItem("splashShown");
@@ -109,11 +106,11 @@ export default function Home() {
 
       <Chart
         title={"روند موجودی"}
-        data={totalBalanceHistory}
+        transactions={transactions}
         timeSelector
         link="/analyze"
         linkTitle="تحلیل و بررسی پیشرفته"
-        balance={totalBalance}
+        balances={accountsBalances}
       />
 
       <div className="grid gap-7.5">

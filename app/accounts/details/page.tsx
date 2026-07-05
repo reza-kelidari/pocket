@@ -47,7 +47,7 @@ export default function AccountsDetails() {
         title={`موجودی ${account?.name ?? ""}`}
         color={account?.color}
         timeSelector
-        account={account?.id}
+        accountID={account?.id}
         transactions={transactions}
         balances={accountsBalances}
       />
