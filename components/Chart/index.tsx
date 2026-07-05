@@ -1,13 +1,13 @@
 import { useState } from "react";
 import Button from "../Button";
-import { AccountBalanceType } from "@/features/balance/types";
+import { BalanceType } from "@/features/balance/types";
 import { AccountColorType } from "@/features/accounts/types";
 import { AccountColors, PrimaryColors } from "@/features/colors";
 
 type ChartParamsType = {
   title: string;
   titlePrimary?: boolean;
-  data: AccountBalanceType;
+  data: BalanceType[];
   timeSelector?: boolean;
   link?: string;
   linkTitle?: string;

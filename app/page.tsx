@@ -7,10 +7,10 @@ import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
 import useAccounts from "@/features/accounts/service/useAccounts";
-import { getBalancesMap, getTotalBalances } from "@/features/balance/selector";
+import { getTotalBalances } from "@/features/balance/selector";
 import useBalances from "@/features/balance/service/useBalances";
-import { BalancesMapType } from "@/features/balance/types";
-import { getLatestTransaction } from "@/features/transactions/selector";
+import { AccountBalanceType, BalanceType } from "@/features/balance/types";
+import { getLatestTransactions } from "@/features/transactions/selector";
 import { IconComponent } from "@/icons/types";
 import useTransactions from "@/features/transactions/service/useTransactions";
 import Receive from "@/icons/Receive";
@@ -21,12 +21,14 @@ import Transfer from "@/icons/Transfer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { getTotalBalanceHistory } from "@/features/balance/methods";
 
 export default function Home() {
   const router = useRouter();
-  const accounts = useAccounts();
-  const transactions = useTransactions();
-  const balances = useBalances();
+  const accounts = useAccounts() ?? [];
+  const transactions = useTransactions() ?? [];
+  const accountsBalances = useBalances() ?? [];
+  const totalBalanceHistory = getTotalBalanceHistory(transactions);
 
   const splashGuard =
     !accounts.length || !sessionStorage.getItem("splashShown");
@@ -40,9 +42,7 @@ export default function Home() {
     month: "long",
     day: "numeric",
   };
-
-  const balancesMap: BalancesMapType = getBalancesMap(balances);
-  const totalBalance: number = getTotalBalances(balancesMap);
+  const totalBalance: number = getTotalBalances(accountsBalances);
 
   const quickAccessList: { name: string; link: string; icon: IconComponent }[] =
     [
@@ -75,15 +75,19 @@ export default function Home() {
           </Title>
         </Link>
         <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
-          {accounts.map((item) => {
+          {accounts.map((account) => {
             return (
               <AccountCard
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                color={item.color}
-                lastBalance={balancesMap.get(item.id) ?? 0}
-                type={item.type}
+                key={account.id}
+                id={account.id}
+                name={account.name}
+                color={account.color}
+                lastBalance={
+                  accountsBalances
+                    .find((item) => item.id === account.id)
+                    ?.history?.at(-1)?.balance ?? 0
+                }
+                type={account.type}
               />
             );
           })}
@@ -104,7 +108,7 @@ export default function Home() {
 
       <Chart
         title={"روند موجودی"}
-        data={balances}
+        data={totalBalanceHistory}
         timeSelector
         link="/analyze"
         linkTitle="تحلیل و بررسی پیشرفته"
@@ -119,7 +123,7 @@ export default function Home() {
         </Title>
 
         <div className="flex flex-col w-full gap-2.5">
-          {getLatestTransaction(transactions, 5).map((transaction) => {
+          {getLatestTransactions(transactions, 5).map((transaction) => {
             let transactionAccountID: number;
             let transactionName: string;
 

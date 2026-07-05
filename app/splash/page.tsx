@@ -7,13 +7,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { accountsStore } from "@/features/accounts/service/accountsStore";
 import { transactionsStore } from "@/features/transactions/service/transactionsStore";
-import { calculateAccountBalance } from "@/features/balance/methods";
+import { getAccountBalanceHistory } from "@/features/balance/methods";
 import { AccountBalanceType } from "@/features/balance/types";
 import { balancesStore } from "@/features/balance/service/balanceStore";
 
 export default function Splash() {
   const router = useRouter();
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     async function load() {
@@ -23,16 +23,16 @@ export default function Splash() {
       accountsStore.setAccounts(accounts);
       transactionsStore.setTransactions(transactions);
 
-      let balances: AccountBalanceType = [];
+      let balances: AccountBalanceType[] = [];
 
       accounts.forEach((account) => {
-        const calculatedbalances = calculateAccountBalance(
+        const calculatedbalances = getAccountBalanceHistory(
           transactions.filter(
             (item) => item.debit === account.id || item.credit === account.id,
           ),
           account.id,
         );
-        balances.push({ id: account.id, history: calculatedbalances });
+        balances.push(calculatedbalances);
       });
 
       balancesStore.setBalances(balances);

@@ -1,5 +1,5 @@
 import { TransactionType } from "../transactions/types";
-import { BalanceType } from "./types";
+import { AccountBalanceType, BalanceType } from "./types";
 
 /**
  * Calculates the balance history for a specific account.
@@ -16,10 +16,10 @@ import { BalanceType } from "./types";
  *
  * @returns An array of balance snapshots sorted by transaction time.
  */
-export function getAccountBalance(
+export function getAccountBalanceHistory(
   transactions: TransactionType[],
   accID: number,
-) {
+): AccountBalanceType {
   /**
    * Balance snapshots generated while processing transactions.
    */
@@ -43,5 +43,44 @@ export function getAccountBalance(
     });
   });
 
-  return balances;
+  return {
+    id: accID,
+    history: balances,
+  };
+}
+
+export function getTotalBalanceHistory(
+  transactions: TransactionType[],
+): BalanceType[] {
+  if (!transactions?.length) return [];
+
+  let balance: number = 0;
+  let historyDate: number;
+  let history: BalanceType[] = [];
+
+  transactions.forEach((transaction, index) => {
+    if (!["initial", "debit", "credit"].includes(transaction.type)) {
+      return;
+    }
+
+    const txDateLocale = new Date(transaction.time).toLocaleDateString("fa-ir");
+
+    if (!historyDate) historyDate = transaction.time;
+    const historyDateLocale = new Date(historyDate).toLocaleDateString("fa-ir");
+
+    if (historyDateLocale !== txDateLocale) {
+      history.push({ time: historyDate, balance: balance });
+    }
+
+    ["initial", "debit"].includes(transaction.type)
+      ? (balance += transaction.value)
+      : (balance -= transaction.value);
+
+    historyDate = transaction.time;
+
+    if (index === transactions.length - 1)
+      history.push({ time: historyDate, balance: balance });
+  });
+
+  return history;
 }

@@ -50,19 +50,4 @@ export type AccountBalanceType = {
    * balance history.
    */
   history?: BalanceType[];
-}[];
-
-/**
- * Maps an account ID to its latest calculated balance.
- *
- * This structure provides O(1) lookup time for retrieving the current
- * balance of any account without traversing its balance history.
- *
- * Key   → Account ID
- * Value → Latest account balance
- */
-export type BalancePointType = {
-  id?: number;
-  time: number;
-  balance: number;
 };

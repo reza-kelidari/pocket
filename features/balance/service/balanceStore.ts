@@ -8,7 +8,7 @@ import { AccountBalanceType } from "../types";
  * This variable acts as the single source of truth for the balance store
  * during the application's runtime.
  */
-let balances: AccountBalanceType = [];
+let balances: AccountBalanceType[] = [];
 
 /**
  * Registered listeners that are notified whenever the accounts data changes.
@@ -41,7 +41,7 @@ export const balancesStore = {
    *
    * @param data The new balances collection.
    */
-  setBalances(data: AccountBalanceType) {
+  setBalances(data: AccountBalanceType[]) {
     balances = data;
 
     listeners.forEach((listener) => listener());
