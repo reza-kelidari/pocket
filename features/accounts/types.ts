@@ -1,4 +1,5 @@
-import { AccountColors, AccountTypes } from "./constants";
+import { AccountColors } from "../colors";
+import { AccountTypes } from "./constants";
 
 export type AccountColorType = keyof typeof AccountColors;
 

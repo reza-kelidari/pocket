@@ -1,5 +1,5 @@
-import { AccountColors } from "@/features/accounts/constants";
 import { accountsStore } from "@/features/accounts/service/accountsStore";
+import { AccountColors } from "@/features/colors";
 import Wallet from "@/icons/Wallet";
 
 type TransactionItemParamsType = {
@@ -26,10 +26,7 @@ export default function TransactionItem({
   return (
     <div className="w-full flex items-cente gap-2.5">
       <div
-        className="w-10 h-10 rounded-2xl bg-primary grid place-content-center shrink-0"
-        style={{
-          background: AccountColors[accountData?.color ?? "black"].primary,
-        }}
+        className={`w-10 h-10 rounded-2xl grid place-content-center shrink-0 ${AccountColors[accountData?.color ?? "black"].primary}`}
       >
         <Wallet fill="#fff" height={25} width={25} />
       </div>

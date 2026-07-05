@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --account-black-primary: #444444;
+  --account-black-border: #44444459;
+  --account-black-background: #4444441a;
+
+  --account-blue1-primary: #2889d2;
+  --account-blue1-border: #2889d259;
+  --account-blue1-background: #2889d21a;
+
+  --account-blue2-primary: #455ee3;
+  --account-blue2-border: #455ee359;
+  --account-blue2-background: #455ee31a;
+
+  --account-green1-primary: #20b07a;
+  --account-green1-border: #20b07a59;
+  --account-green1-background: #20b07a1a;
+
+  --account-green2-primary: #3eb818;
+  --account-green2-border: #3eb81859;
+  --account-green2-background: #3eb8181a;
+
+  --account-orange-primary: #b3752f;
+  --account-orange-border: #b3752f59;
+  --account-orange-background: #b3752f1a;
+
+  --account-magenta-primary: #dc2f76;
+  --account-magenta-border: #dc2f7659;
+  --account-magenta-background: #dc2f761a;
+
+  --account-red-primary: #d33131;
+  --account-red-border: #d3313159;
+  --account-red-background: #d331311a;
+}
+
+@theme inline {
+  --color-account-black-primary: var(--account-black-primary);
+  --color-account-black-border: var(--account-black-border);
+  --color-account-black-background: var(--account-black-background);
+
+  --color-account-blue1-primary: var(--account-blue1-primary);
+  --color-account-blue1-border: var(--account-blue1-border);
+  --color-account-blue1-background: var(--account-blue1-background);
+
+  --color-account-blue2-primary: var(--account-blue2-primary);
+  --color-account-blue2-border: var(--account-blue2-border);
+  --color-account-blue2-background: var(--account-blue2-background);
+
+  --color-account-green1-primary: var(--account-green1-primary);
+  --color-account-green1-border: var(--account-green1-border);
+  --color-account-green1-background: var(--account-green1-background);
+
+  --color-account-green2-primary: var(--account-green2-primary);
+  --color-account-green2-border: var(--account-green2-border);
+  --color-account-green2-background: var(--account-green2-background);
+
+  --color-account-orange-primary: var(--account-orange-primary);
+  --color-account-orange-border: var(--account-orange-border);
+  --color-account-orange-background: var(--account-orange-background);
+
+  --color-account-magenta-primary: var(--account-magenta-primary);
+  --color-account-magenta-border: var(--account-magenta-border);
+  --color-account-magenta-background: var(--account-magenta-background);
+
+  --color-account-red-primary: var(--account-red-primary);
+  --color-account-red-border: var(--account-red-border);
+  --color-account-red-background: var(--account-red-background);
+}

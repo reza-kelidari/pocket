@@ -36,14 +36,12 @@ export default function Splash() {
 
       balancesStore.setBalances(balances);
 
-      // await new Promise((r) => setTimeout(r, 2000));
-
       sessionStorage.setItem("splashShown", "1");
 
       router.replace("/");
     }
 
-    load();
+    setTimeout(load, 500);
   }, []);
 
   return (

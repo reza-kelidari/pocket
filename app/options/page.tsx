@@ -4,7 +4,6 @@ import Reload from "@/components/Reload";
 import { PrimaryColors } from "@/features/colors";
 import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
-import Restart from "@/icons/Restart";
 import Tag from "@/icons/Tag";
 
 type OptionsParamsType = { searchParams: Promise<{ redirect: string }> };

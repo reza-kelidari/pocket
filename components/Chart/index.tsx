@@ -2,6 +2,7 @@ import { useState } from "react";
 import Button from "../Button";
 import { AccountBalanceType } from "@/features/balance/types";
 import { AccountColorType } from "@/features/accounts/types";
+import { AccountColors, PrimaryColors } from "@/features/colors";
 
 type ChartParamsType = {
   title: string;
@@ -11,7 +12,7 @@ type ChartParamsType = {
   link?: string;
   linkTitle?: string;
   balance: number;
-  color?: AccountColorType
+  color?: AccountColorType;
 };
 
 export default function Chart({
@@ -22,6 +23,7 @@ export default function Chart({
   link,
   linkTitle,
   balance: value,
+  color,
 }: ChartParamsType) {
   const filters = [
     { id: 0, name: "۷", range: 0 },
@@ -40,11 +42,13 @@ export default function Chart({
           {title} {timeSelector && `(${filters[activeFilter].name} روز گذشته)`}
         </h3>
         {timeSelector ? (
-          <div className="flex gap-2 items-center justify-between h-7 bg-primary-background rounded-4xl">
+          <div
+            className={`flex gap-2 items-center justify-between h-7 rounded-4xl ${color ? AccountColors[color].surface : PrimaryColors.primary.bg}`}
+          >
             {filters.map((item) => (
               <span
                 key={item.id}
-                className={`text-xs h-full w-7 grid place-items-center rounded-4xl ${item.id === activeFilter && "bg-primary text-white"}`}
+                className={`text-xs h-full w-7 grid place-items-center rounded-4xl ${item.id === activeFilter && `${color ? AccountColors[color].primary : "bg-primary"} text-white`}`}
                 onClick={() => setActiveFilter(item.id)}
               >
                 {item.name}
