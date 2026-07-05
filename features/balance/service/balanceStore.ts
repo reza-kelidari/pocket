@@ -1,8 +1,8 @@
 "use client";
 
-import { AccountBalance } from "../types";
+import { AccountBalanceType } from "../types";
 
-let balances: AccountBalance = [];
+let balances: AccountBalanceType = [];
 
 const listeners = new Set<() => void>();
 
@@ -11,7 +11,7 @@ export const balancesStore = {
     return balances;
   },
 
-  setBalances(data: AccountBalance) {
+  setBalances(data: AccountBalanceType) {
     balances = data;
 
     listeners.forEach((listener) => listener());

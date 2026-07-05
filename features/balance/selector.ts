@@ -1,6 +1,6 @@
-import { AccountBalance, BalancesMapType } from "./types";
+import { AccountBalanceType, BalancesMapType } from "./types";
 
-export function getBalancesMap(balances: AccountBalance): BalancesMapType {
+export function getBalancesMap(balances: AccountBalanceType): BalancesMapType {
   return new Map(
     balances.map((item) => [item.id, item.history?.at(-1)?.balance ?? 0]),
   );

@@ -4,7 +4,7 @@ import AccountCard from "@/components/AccountCard";
 import Button from "@/components/Button";
 import Chart from "@/components/Chart";
 import QuickAccess from "@/components/QuickAccess";
-import Title from "@/components/Title";
+import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
 import useAccounts from "@/features/accounts/service/useAccounts";
 import { getBalancesMap, getTotalBalances } from "@/features/balance/selector";

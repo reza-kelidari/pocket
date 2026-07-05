@@ -8,7 +8,7 @@ import Image from "next/image";
 import { accountsStore } from "@/features/accounts/service/accountsStore";
 import { transactionsStore } from "@/features/transactions/service/transactionsStore";
 import { calculateAccountBalance } from "@/features/balance/methods";
-import { AccountBalance } from "@/features/balance/types";
+import { AccountBalanceType } from "@/features/balance/types";
 import { balancesStore } from "@/features/balance/service/balanceStore";
 
 export default function Splash() {
@@ -22,7 +22,7 @@ export default function Splash() {
       accountsStore.setAccounts(accounts);
       transactionsStore.setTransactions(transactions);
 
-      let balances: AccountBalance = [];
+      let balances: AccountBalanceType = [];
 
       accounts.forEach((account) => {
         const calculatedbalances = calculateAccountBalance(

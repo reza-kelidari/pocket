@@ -1,6 +1,6 @@
 export type BalanceType = { time: number; balance: number };
 
-export type AccountBalance = {
+export type AccountBalanceType = {
   id: number;
   history?: BalanceType[];
 }[];
