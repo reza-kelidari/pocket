@@ -2,7 +2,7 @@
 
 import AccountCard from "@/components/AccountCard";
 import Button from "@/components/Button";
-import Chart from "@/components/Chart";
+import Chart from "@/components/ChartView";
 import QuickAccess from "@/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getTotalBalanceHistory } from "@/features/balance/methods";
+import { PrimaryColors } from "@/features/colors";
 
 export default function Home() {
   const router = useRouter();
@@ -54,7 +55,7 @@ export default function Home() {
   if (splashGuard) return null;
 
   return (
-    <div className="flex flex-col gap-15 p-7.5 pb-15">
+    <div className="flex flex-col gap-15 p-7.5 pb-15 overflow-x-hidden">
       <header className="flex justify-between p-2.5">
         <div className="flex w-7.5"></div>
         <h3 className="text-secondary text-center">

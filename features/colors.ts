@@ -1,6 +1,7 @@
 export const PrimaryColors = {
   primary: {
     primary: "bg-primary",
+    primaryValue: "#4394b3",
     bg: "bg-primary-background",
     text: "text-primary",
     box: "bg-primary-background border border-primary-border text-primary",

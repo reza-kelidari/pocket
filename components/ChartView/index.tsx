@@ -3,6 +3,7 @@ import Button from "../Button";
 import { BalanceType } from "@/features/balance/types";
 import { AccountColorType } from "@/features/accounts/types";
 import { AccountColors, PrimaryColors } from "@/features/colors";
+import ChartBox from "./ChartBox";
 
 type ChartParamsType = {
   title: string;
@@ -22,24 +23,20 @@ export default function Chart({
   timeSelector,
   link,
   linkTitle,
-  balance: value,
+  balance,
   color,
 }: ChartParamsType) {
-  const filters = [
-    { id: 0, name: "۷", range: 0 },
-    { id: 1, name: "۳۰", range: 0 },
-    { id: 2, name: "۹۰", range: 0 },
-  ];
+  const filters = [7, 30, 90];
 
-  const [activeFilter, setActiveFilter] = useState(1);
+  const [activeFilter, setActiveFilter] = useState(filters[1]);
 
   return (
-    <div className="w-full min-h-50 bg-elements-background border border-elements-border rounded-4xl p-5 flex flex-col gap-2.5 shadow-xl shadow-zinc-100">
+    <div className="w-full bg-elements-background border border-elements-border rounded-4xl p-5 flex flex-col gap-2.5 shadow-xl shadow-zinc-100">
       <div className="flex items-center justify-between">
         <h3
           className={`${titlePrimary ? "forground" : "text-secondary"} text-xs`}
         >
-          {title} {timeSelector && `(${filters[activeFilter].name} روز گذشته)`}
+          {title} {timeSelector && `(${activeFilter.toLocaleString("fa-ir")} روز گذشته)`}
         </h3>
         {timeSelector ? (
           <div
@@ -47,11 +44,11 @@ export default function Chart({
           >
             {filters.map((item) => (
               <span
-                key={item.id}
-                className={`text-xs h-full w-7 grid place-items-center rounded-4xl ${item.id === activeFilter && `${color ? AccountColors[color].primary : "bg-primary"} text-white`}`}
-                onClick={() => setActiveFilter(item.id)}
+                key={item}
+                className={`text-xs h-full w-7 grid place-items-center rounded-4xl ${item === activeFilter && `${color ? AccountColors[color].primary : "bg-primary"} text-white`}`}
+                onClick={() => setActiveFilter(item)}
               >
-                {item.name}
+                {item.toLocaleString("fa-ir")}
               </span>
             ))}
           </div>
@@ -60,10 +57,10 @@ export default function Chart({
         )}
       </div>
 
-      <div className="w-full h-30 bg-primary-background rounded-xl"></div>
+      <ChartBox data={data} daysFilter={activeFilter} color={color} lastBalance={balance} />
 
       <div className="flex gap-1.5 mr-auto items-center">
-        <h1 className="font-bold">{value.toLocaleString("fa-ir")}</h1>
+        <h1 className="font-bold">{balance.toLocaleString("fa-ir")}</h1>
         <span className="text-xs">﷼</span>
       </div>
       {link ? <Button link={link}>{linkTitle || ""}</Button> : ""}
