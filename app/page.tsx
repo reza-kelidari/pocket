@@ -60,13 +60,13 @@ export default function Home() {
         <h3 className="text-secondary text-center">
           {new Date().toLocaleDateString("fa-IR", dateOptions)}
         </h3>
-        <Link href="/options?redirect=/">
+        <Link href="/options">
           <ThreeDots className="fill-primary" height={30} width={30} />
         </Link>
       </header>
 
       <div className="grid gap-7.5">
-        <Link href="/accountsmanager" className="w-fit">
+        <Link href="/accounts" className="w-fit">
           <Title>
             <div className="flex gap-0.5 items-center">
               <div>حساب‌ها</div>

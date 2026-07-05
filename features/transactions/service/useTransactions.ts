@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { transactionsStore } from "./transactionsStore";
 
-export default function useAccounts() {
+export default function useTransactions() {
   return useSyncExternalStore(
     transactionsStore.subscribe,
     transactionsStore.getTransactions,

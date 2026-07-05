@@ -6,11 +6,7 @@ import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
 import Tag from "@/icons/Tag";
 
-type OptionsParamsType = { searchParams: Promise<{ redirect: string }> };
-
-export default async function Options({ searchParams }: OptionsParamsType) {
-  const { redirect } = await searchParams;
-
+export default async function Options() {
   const items = [
     { name: "برچسب‌ها", color: PrimaryColors.primary, Icon: Tag, link: "/" },
     {
@@ -30,7 +26,7 @@ export default async function Options({ searchParams }: OptionsParamsType) {
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle title="امکانات" redirect={redirect}>
+        <NavbarTitle title="امکانات" redirect="/">
           <Reload />
         </NavbarTitle>
       </div>
