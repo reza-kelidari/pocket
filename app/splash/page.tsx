@@ -3,7 +3,7 @@
 import getAccountsList from "@/features/accounts/service/initializer";
 import getTransactionsList from "@/features/transactions/service/initializer";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { accountsStore } from "@/features/accounts/service/accountsStore";
 import { transactionsStore } from "@/features/transactions/service/transactionsStore";
@@ -13,6 +13,7 @@ import { balancesStore } from "@/features/balance/service/balanceStore";
 
 export default function Splash() {
   const router = useRouter();
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     async function load() {
@@ -38,7 +39,7 @@ export default function Splash() {
 
       sessionStorage.setItem("splashShown", "1");
 
-      router.replace("/");
+      router.replace(searchParams.get("redirect") ?? "/");
     }
 
     setTimeout(load, 500);

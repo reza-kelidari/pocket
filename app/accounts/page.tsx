@@ -4,12 +4,19 @@ import AccountsListElement from "@/components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
 import { AccountTypes } from "@/features/accounts/constants";
 import useAccounts from "@/features/accounts/service/useAccounts";
-import { calculateAccountBalance } from "@/features/balance/methods";
-import useTransactions from "@/features/transactions/service/useTransactions";
+import useBalances from "@/features/balance/service/useBalances";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default function Page() {
+export default function Accounts() {
   const accounts = useAccounts();
-  const transaction = useTransactions();
+  const balances = useBalances();
+  const router = useRouter();
+
+  useEffect(() => {
+    if(accounts.length === 0)
+      router.replace(`/splash?redirect=/accounts`)
+  }, [])
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -19,9 +26,7 @@ export default function Page() {
 
       <div className="grid gap-5">
         {accounts.map((account) => {
-          const balance =
-            calculateAccountBalance(transaction, account.id).at(-1)?.balance ??
-            0;
+          const balance = balances.find(item => item.id == account.id)?.history?.at(-1)?.balance ?? 0;
           return (
             <AccountsListElement
               key={account.id}

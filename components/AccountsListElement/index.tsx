@@ -25,7 +25,7 @@ export default function AccountsListElement({
         ${AccountColors[color].surface}
         ${AccountColors[color].text}`}
     >
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <h3 className="text-lg">{name}</h3>
         <span className="text-secondary text-xs">{balance.toLocaleString("fa-ir")} ﷼</span>
       </div>
