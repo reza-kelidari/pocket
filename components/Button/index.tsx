@@ -1,3 +1,4 @@
+import { PrimaryColors } from "@/features/colors";
 import Link from "next/link";
 
 type ButtonParamsType = {
@@ -21,12 +22,12 @@ export default function Button({
         className={`border text-xs h-11.5 w-full grid place-content-center rounded-2xl
         ${
           !secondary && !red && !disabled
-            ? "border-primary-border bg-primary-background text-primary"
+            ? PrimaryColors.primary.box
             : secondary
-              ? "border-elements-border bg-elements-background text-black"
+              ? PrimaryColors.secondary.box
               : red
-                ? "border-red-border - bg-red-background text-red"
-                : "border-elements-border bg-elements-background text-secondary opacity-75"
+                ? PrimaryColors.red.box
+                : PrimaryColors.disabled.box
         }`}
       >
         {children}
