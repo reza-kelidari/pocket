@@ -1,6 +1,7 @@
 "use client";
 
-import { PrimaryColors } from "@/features/colors";
+import { AccountColorType } from "@/features/accounts/types";
+import { AccountColors, PrimaryColors } from "@/features/colors";
 import { useRef, useState, useEffect } from "react";
 
 type BalancePoint = {
@@ -11,9 +12,9 @@ type BalancePoint = {
 interface BalanceChartProps {
   data: BalancePoint[];
   daysFilter: number;
-  color?: string;
+  color?: AccountColorType;
   showTooltip?: boolean;
-  lastBalance: number
+  lastBalance: number;
 }
 
 export default function BalanceChart({
@@ -21,9 +22,15 @@ export default function BalanceChart({
   color,
   daysFilter,
   showTooltip = true,
-  lastBalance
+  lastBalance,
 }: BalanceChartProps) {
-  const chartColor = PrimaryColors.primary.primaryValue;
+  const chartColor = color
+    ? AccountColors[color].primaryValue
+    : PrimaryColors.primary.primaryValue;
+
+    const tooltipColors = color
+    ? {border: AccountColors[color].border, background: AccountColors[color].surface}
+    : {border: PrimaryColors.primary.box, background: ""}
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<{
@@ -210,7 +217,7 @@ export default function BalanceChart({
       </svg>
       {showTooltip && tooltip && (
         <div
-          className="absolute flex flex-col items-center gap-2 bg-primary-background border shadow-md border-primary-border text-black backdrop-blur-sm p-2 text-xs z-10 whitespace-nowrap pointer-events-none rounded-2xl"
+          className={`absolute flex flex-col items-center gap-2 ${tooltipColors.background} ${tooltipColors.border} border shadow-md text-black backdrop-blur-sm p-2 text-xs z-10 whitespace-nowrap pointer-events-none rounded-2xl`}
           style={{
             left: `${(tooltip.x / width) * 100}%`,
             top: `${(tooltip.y / height) * 100 - 45}%`,
