@@ -19,7 +19,7 @@ export default function Capsule({
   href,
   primary,
 }: CapsulePropsType) {
-  const className = `${primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-2 py-1 rounded-4xl text-xs flex items-center gap-1 text-nowrap`;
+  const className = `${primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap`;
 
   return (
     <Link href={href ?? "#"} className={className} onClick={onClick}>
