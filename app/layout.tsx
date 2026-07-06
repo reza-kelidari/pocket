@@ -37,6 +37,7 @@ export default async function RootLayout({
       dir="rtl"
       className={`${vazirMatn.variable} h-full antialiased`}
     >
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
       <body className="min-h-full flex flex-col">
         {/* {isMobile ? children : onlyMobile} */}
         {children}
