@@ -38,6 +38,10 @@ export type TransactionType = {
 
   /** Transaction kind. */
   type: TransactionKindType;
+
+  tag?: number;
+
+  note?: string;
 };
 
 /**

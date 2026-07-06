@@ -14,9 +14,10 @@ export default function Accounts() {
   const router = useRouter();
 
   useEffect(() => {
-    if(accounts.length === 0)
-      router.replace(`/splash?redirect=/accounts`)
-  }, [])
+    if (accounts.length === 0) router.replace(`/splash?redirect=/accounts`);
+  }, []);
+
+  if (accounts.length === 0) return;
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -26,7 +27,9 @@ export default function Accounts() {
 
       <div className="grid gap-5">
         {accounts.map((account) => {
-          const balance = balances.find(item => item.id == account.id)?.history?.at(-1)?.balance ?? 0;
+          const balance =
+            balances.find((item) => item.id == account.id)?.history?.at(-1)
+              ?.balance ?? 0;
           return (
             <AccountsListElement
               key={account.id}

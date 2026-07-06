@@ -31,7 +31,7 @@ export default function AccountsDetails() {
       router.replace(`/splash?redirect=/accounts/details?id=${accountID}`);
   }, []);
 
-  if (accountsList.length === 0) return null;
+  if (accountsList.length === 0) return;
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -39,7 +39,7 @@ export default function AccountsDetails() {
         <NavbarTitle
           title={account?.name ?? "حساب"}
           redirect="/"
-          option={{Icon: Pen, link: `/accounts/edit?id=${accountID}`}}
+          option={{ Icon: Pen, link: `/accounts/edit?id=${accountID}` }}
         />
       </div>
 
@@ -72,11 +72,8 @@ export default function AccountsDetails() {
             return (
               <TransactionItem
                 key={transaction.id}
-                name={transactionName}
-                account={transactionAccountID}
-                time={transaction.time}
-                value={transaction.value}
-                type={transaction.type}
+                transaction={transaction}
+                redirect={window.location.href + window.location.search}
               />
             );
           })}

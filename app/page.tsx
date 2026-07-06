@@ -9,7 +9,6 @@ import TransactionItem from "@/components/TransactionItem";
 import useAccounts from "@/features/accounts/service/useAccounts";
 import { getTotalBalances } from "@/features/balance/selector";
 import useBalances from "@/features/balance/service/useBalances";
-import { AccountBalanceType, BalanceType } from "@/features/balance/types";
 import { getLatestTransactions } from "@/features/transactions/selector";
 import { IconComponent } from "@/icons/types";
 import useTransactions from "@/features/transactions/service/useTransactions";
@@ -40,7 +39,6 @@ export default function Home() {
     month: "long",
     day: "numeric",
   };
-  const totalBalance: number = getTotalBalances(accountsBalances);
 
   const quickAccessList: { name: string; link: string; icon: IconComponent }[] =
     [
@@ -49,7 +47,7 @@ export default function Home() {
       { name: "انتقال", link: "/newtransaction?type=transfer", icon: Transfer },
     ];
 
-  if (splashGuard) return null;
+  if (splashGuard) return;
 
   return (
     <div className="flex flex-col gap-15 p-7.5 pb-15 overflow-x-hidden">

@@ -171,10 +171,12 @@ export default async function getTransactionsList(): Promise<
       id: 1782234000001,
       time: 1782234000001,
       name: "خرید لباس",
-      debit: 0x01060001,
+      debit: 0x02010001,
       credit: 0x01020001,
       value: 9600000,
       type: "credit",
+      tag: 0x04000000,
+      note: "این یه متن یادداشت هست"
     },
     {
       id: 1782406800001,
