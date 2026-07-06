@@ -46,11 +46,11 @@ export default function AccountFilter() {
     }
   }, [accounts.length, router, searchParams]);
 
-  useEffect(() => {
-    if (accountFilter.length === 0) {
-      setAccountFilter(accounts.map((item) => item.id));
-    }
-  }, [accountFilter]);
+  // useEffect(() => {
+  //   if (accountFilter.length === 0) {
+  //     setAccountFilter(accounts.map((item) => item.id));
+  //   }
+  // }, [accountFilter]);
 
   useEffect(() => {
     setAccountFilter(transactionsFilter.accounts);
@@ -97,7 +97,26 @@ export default function AccountFilter() {
           accounts:
             accountFilter.length !== accounts.length ? accountFilter : [],
         })}`}
-        onClick={back}
+        onClick={() => {
+          back();
+
+          const selectedAccounts =
+            accountFilter.length === 0
+              ? accounts.map((item) => item.id)
+              : accountFilter;
+
+          back();
+
+          router.replace(
+            `/transactions${filterToUrl({
+              ...transactionsFilter,
+              accounts:
+                selectedAccounts.length !== accounts.length
+                  ? selectedAccounts
+                  : [],
+            })}`,
+          );
+        }}
       >
         اعمال فیلتر‌ها
       </Button>

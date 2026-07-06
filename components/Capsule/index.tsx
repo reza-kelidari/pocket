@@ -1,15 +1,17 @@
 "use client";
 
-import { PrimaryColors } from "@/utility/colors";
+import { AccountColors, PrimaryColors } from "@/utility/colors";
 import { IconComponent } from "@/icons/types";
 import Link from "next/link";
+import { ComponentProps } from "react";
+import { AccountColorType } from "@/utility/accounts/types";
 
-type CapsulePropsType = {
-  onClick?: React.MouseEventHandler<HTMLAnchorElement | HTMLDivElement>;
+type CapsulePropsType = ComponentProps<"a"> & {
   Icon: IconComponent;
   children: React.ReactNode;
   href?: string;
   primary?: boolean;
+  accountColor?: AccountColorType;
 };
 
 export default function Capsule({
@@ -18,13 +20,19 @@ export default function Capsule({
   children,
   href,
   primary,
+  accountColor,
+  ...props
 }: CapsulePropsType) {
-  const className = `${primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap`;
-
+  const className = `${props.className ? props.className : primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap`;
   return (
-    <Link href={href ?? "#"} className={className} onClick={onClick}>
+    <Link {...props} href={href ?? "#"} className={className} onClick={onClick}>
       {children}
-      <Icon height={15} width={15} className={primary ? "fill-primary" : ""} />
+      <Icon
+        height={15}
+        width={15}
+        fill={accountColor ? AccountColors[accountColor].primaryValue : ""}
+        className={!props.className && primary ? "fill-primary" : ""}
+      />
     </Link>
   );
 }

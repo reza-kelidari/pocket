@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
 import { persianDateToEnglishNumber } from "@/utility/time/methods";
-import AccountFilter from "./account-filter/page";
+import { AccountColors } from "@/utility/colors";
 
 export type transactionsFilterType = {
   timeWindow: number;
@@ -111,10 +111,46 @@ export default function Transactions() {
             Icon={Left}
             href={`/transactions/account-filter${filterToUrl(transactionsFilter)}`}
             primary={transactionsFilter.accounts.length > 0}
+            accountColor={
+              transactionsFilter.accounts.length === 1
+                ? accounts.find(
+                    (item) => item.id === transactionsFilter.accounts[0],
+                  )?.color
+                : undefined
+            }
+            className={
+              transactionsFilter.accounts.length === 1
+                ? `${
+                    AccountColors[
+                      accounts.find(
+                        (item) => item.id === transactionsFilter.accounts[0],
+                      )?.color ?? "black"
+                    ].border
+                  }
+                  ${
+                    AccountColors[
+                      accounts.find(
+                        (item) => item.id === transactionsFilter.accounts[0],
+                      )?.color ?? "black"
+                    ].text
+                  }
+                  ${
+                    AccountColors[
+                      accounts.find(
+                        (item) => item.id === transactionsFilter.accounts[0],
+                      )?.color ?? "black"
+                    ].surface
+                  }`
+                : ""
+            }
           >
             {transactionsFilter.accounts.length === 0
               ? "همه حساب‌ها"
-              : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
+              : transactionsFilter.accounts.length === 1
+                ? accounts.find(
+                    (item) => item.id === transactionsFilter.accounts[0],
+                  )?.name
+                : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
           </Capsule>
         </div>
       </div>

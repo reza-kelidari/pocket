@@ -86,7 +86,7 @@ export default function AccountsDetails() {
               },
             )}
           </div>
-          <Button href={`/transactions?account=${accountID}`}>
+          <Button href={`/transactions?accounts=${accountID}`}>
             مشاهده همه تراکنش‌ها
           </Button>
         </div>
