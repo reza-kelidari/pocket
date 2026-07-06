@@ -1,6 +1,6 @@
 "use client";
 
-import AccountsListElement from "./components/AccountsListElement";
+import AccountsListElement from "../../components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
 import { AccountTypes } from "@/utility/accounts/constants";
 import useAccounts from "@/utility/accounts/service/useAccounts";
@@ -32,21 +32,13 @@ export default function Accounts() {
       </div>
 
       <div className="grid gap-5">
-        {accounts.map((account) => {
-          const balance =
-            balances.find((item) => item.id == account.id)?.history?.at(-1)
-              ?.balance ?? 0;
-          return (
-            <AccountsListElement
-              key={account.id}
-              name={account.name}
-              id={account.id}
-              color={account.color}
-              Icon={AccountTypes[account.type].icon}
-              balance={balance}
-            />
-          );
-        })}
+        {accounts.map((account) => (
+          <AccountsListElement
+            account={account}
+            balances={balances}
+            key={account.id}
+          />
+        ))}
       </div>
     </div>
   );

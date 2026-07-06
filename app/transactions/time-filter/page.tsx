@@ -32,11 +32,10 @@ export default function TimeFilter() {
     add(window.location.pathname);
   }, [add]);
 
-  console.log(transactionsFilter);
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
       <div className="grid gap-7.5">
-        <NavbarTitle title="بازه زمانی" />
+        <NavbarTitle title="بازه زمانی" disabled />
       </div>
 
       <div className="grid gap-4">

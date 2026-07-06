@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
 import { persianDateToEnglishNumber } from "@/utility/time/methods";
+import AccountFilter from "./account-filter/page";
 
 export type transactionsFilterType = {
   timeWindow: number;
@@ -42,35 +43,37 @@ export default function Transactions() {
     const now = Date.now();
     const timeLimit = now - transactionsFilter.timeWindow * 24 * 60 * 60 * 1000;
 
-    return [...transactions].filter((transaction) => {
-      if (transaction.time < timeLimit) return false;
+    return [...transactions]
+      .filter((transaction) => {
+        if (transaction.time < timeLimit) return false;
 
-      if (
-        transactionsFilter.accounts.length > 0 &&
-        !transactionsFilter.accounts.includes(transaction.credit) &&
-        !transactionsFilter.accounts.includes(transaction.debit)
-      ) {
-        return false;
-      }
+        if (
+          transactionsFilter.accounts.length > 0 &&
+          !transactionsFilter.accounts.includes(transaction.credit) &&
+          !transactionsFilter.accounts.includes(transaction.debit)
+        ) {
+          return false;
+        }
 
-      if (
-        transactionsFilter.categories.length > 0 &&
-        !transactionsFilter.categories.includes(transaction.debit) &&
-        !transactionsFilter.categories.includes(transaction.credit)
-      ) {
-        return false;
-      }
+        if (
+          transactionsFilter.categories.length > 0 &&
+          !transactionsFilter.categories.includes(transaction.debit) &&
+          !transactionsFilter.categories.includes(transaction.credit)
+        ) {
+          return false;
+        }
 
-      if (
-        transactionsFilter.tags.length > 0 &&
-        (transaction.tag === undefined ||
-          !transactionsFilter.tags.includes(transaction.tag))
-      ) {
-        return false;
-      }
+        if (
+          transactionsFilter.tags.length > 0 &&
+          (transaction.tag === undefined ||
+            !transactionsFilter.tags.includes(transaction.tag))
+        ) {
+          return false;
+        }
 
-      return true;
-    }).sort((a,b) => b.time - a.time);
+        return true;
+      })
+      .sort((a, b) => b.time - a.time);
   }, [transactions, transactionsFilter]);
 
   useEffect(() => {
@@ -103,6 +106,15 @@ export default function Transactions() {
                 (filter) => filter.time === transactionsFilter.timeWindow,
               )?.name
             }
+          </Capsule>
+          <Capsule
+            Icon={Left}
+            href={`/transactions/account-filter${filterToUrl(transactionsFilter)}`}
+            primary={transactionsFilter.accounts.length > 0}
+          >
+            {transactionsFilter.accounts.length === 0
+              ? "همه حساب‌ها"
+              : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
           </Capsule>
         </div>
       </div>

@@ -87,7 +87,7 @@ export default function Chart({
         <h1 className="font-bold">{chartBalance.toLocaleString("fa-ir")}</h1>
         <span className="text-xs">﷼</span>
       </div>
-      {link ? <Button link={link}>{linkTitle || ""}</Button> : ""}
+      {link ? <Button href={link}>{linkTitle || ""}</Button> : ""}
     </div>
   );
 }

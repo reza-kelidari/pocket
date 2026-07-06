@@ -135,7 +135,7 @@ export default function Home() {
             );
           })}
         </div>
-        <Button link="/transactions">مشاهده همه تراکنش‌ها</Button>
+        <Button href="/transactions">مشاهده همه تراکنش‌ها</Button>
       </div>
     </div>
   );

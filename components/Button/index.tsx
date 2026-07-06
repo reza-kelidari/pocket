@@ -1,12 +1,13 @@
 import { PrimaryColors } from "@/utility/colors";
 import Link from "next/link";
+import { ComponentProps } from "react";
 
-type ButtonParamsType = {
+type ButtonParamsType = ComponentProps<"a"> & {
   children: React.ReactNode;
   secondary?: boolean;
   red?: boolean;
   disabled?: boolean;
-  link?: string;
+  href?: string;
 };
 
 export default function Button({
@@ -14,10 +15,11 @@ export default function Button({
   secondary,
   red,
   disabled,
-  link,
+  href: link,
+  ...props
 }: ButtonParamsType) {
   return (
-    <Link href={!disabled ? link || "" : ""} className="w-full">
+    <Link href={!disabled ? link || "" : ""} className="w-full" {...props}>
       <div
         className={`border text-xs h-11.5 w-full grid place-content-center rounded-2xl
         ${

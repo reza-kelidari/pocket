@@ -9,11 +9,13 @@ type NavbarTitleType = {
   option?: { link: string; Icon: IconComponent };
   children?: React.ReactNode;
   title: string;
+  disabled?: boolean;
 };
 export default function NavbarTitle({
   option,
   children,
   title,
+  disabled,
 }: NavbarTitleType) {
   const { back } = useRedirect();
   const router = useRouter();
@@ -24,11 +26,13 @@ export default function NavbarTitle({
         <div
           className="cursor-pointer"
           onClick={() => {
-            router.replace(back());
+            !disabled && router.replace(back());
           }}
         >
           <div className="flex items-center gap-1">
-            <Right height={15} width={15} className="fill-primary" />
+            {!disabled && (
+              <Right height={15} width={15} className="fill-primary" />
+            )}
             <h2 className="text-lg font-medium">{title}</h2>
           </div>
         </div>
