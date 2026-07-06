@@ -28,9 +28,12 @@ export default function BalanceChart({
     ? AccountColors[color].primaryValue
     : PrimaryColors.primary.primaryValue;
 
-    const tooltipColors = color
-    ? {border: AccountColors[color].border, background: AccountColors[color].surface}
-    : {border: PrimaryColors.primary.box, background: ""}
+  const tooltipColors = color
+    ? {
+        border: AccountColors[color].border,
+        background: AccountColors[color].surface,
+      }
+    : { border: PrimaryColors.primary.box, background: "" };
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<{
@@ -169,6 +172,9 @@ export default function BalanceChart({
 
   const areaPath = path + ` L ${width},${height} L 0, ${height} Z`;
 
+  const handleTooltip = (p: any) =>
+    setTooltip({ x: p.x, y: p.y, value: p.balance, date: p.date });
+
   return (
     <div className="relative">
       <svg
@@ -196,19 +202,18 @@ export default function BalanceChart({
               cy={p.y}
               r={4}
               fill={chartColor}
-              stroke="#fff"
+              stroke="#ffffff"
               strokeWidth="2"
             />
-            <circle
-              cx={p.x}
-              cy={p.y}
-              width={12}
-              height={30}
-              r={15}
+            <rect
+              x={p.x - 8}
+              y={0}
+              width={16}
+              height={height}
               fill="transparent"
-              onMouseEnter={() =>
-                setTooltip({ x: p.x, y: p.y, value: p.balance, date: p.date })
-              }
+              onPointerEnter={() => handleTooltip(p)}
+              onPointerMove={() => handleTooltip(p)}
+              onMouseEnter={() => handleTooltip(p)}
               onMouseLeave={() => setTooltip(null)}
               style={{ cursor: "pointer" }}
             />

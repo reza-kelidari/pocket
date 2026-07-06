@@ -22,6 +22,7 @@ class RedirectStore {
       this.redirects.pop();
       this.notify();
     }
+    return this.last();
   }
 
   last(): string {

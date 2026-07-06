@@ -37,7 +37,7 @@ export default function AccountsDetails() {
 
   useEffect(() => {
     addRedirect(redirect);
-  }, [addRedirect]);
+  }, [addRedirect, redirect]);
 
   if (accountsList.length === 0) return;
   else

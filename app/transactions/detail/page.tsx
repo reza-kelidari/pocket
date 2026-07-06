@@ -16,8 +16,7 @@ export default function TransactionDetail() {
   const searchParams = useSearchParams();
   const accounts = useAccounts();
   const router = useRouter();
-  const { last: lastRedirect, add: addRedirect } = useRedirect();
-  const redirect = lastRedirect() ?? "/";
+  const { add: addRedirect } = useRedirect();
   const transaction = useTransactions().find(
     (item) => item.id === Number(searchParams.get("id") ?? 0),
   );
@@ -40,11 +39,11 @@ export default function TransactionDetail() {
     setForwardRedirect(window.location.pathname + window.location.search);
 
     if (accounts.length === 0)
-      router.replace(`/splash?redirect=${forwardRedirect}`);
+      router.replace(`/splash`);
   }, [forwardRedirect]);
 
   useEffect(() => {
-    forwardRedirect.length > 0 && addRedirect(forwardRedirect);
+    addRedirect(forwardRedirect);
   }, [forwardRedirect, addRedirect]);
 
   if (accounts.length === 0) return;

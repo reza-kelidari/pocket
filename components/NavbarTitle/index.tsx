@@ -1,7 +1,9 @@
+"use client";
+
 import Right from "@/icons/Right";
 import { IconComponent } from "@/icons/types";
 import { useRedirect } from "@/utility/redirect/service/useRedirect";
-import Link from "next/link";
+import { redirect, useRouter } from "next/navigation";
 
 type NavbarTitleType = {
   option?: { link: string; Icon: IconComponent };
@@ -13,24 +15,23 @@ export default function NavbarTitle({
   children,
   title,
 }: NavbarTitleType) {
-  const { back, last } = useRedirect();
+  const { back } = useRedirect();
+  const router = useRouter();
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-cente gap-4">
-        <Link
-          href={last()}
+        <div
+          className="cursor-pointer"
           onClick={() => {
-            last() === window.location.pathname + window.location.search &&
-              back();
-            back();
+            router.replace(back());
           }}
         >
           <div className="flex items-center gap-1">
             <Right height={15} width={15} className="fill-primary" />
             <h2 className="text-lg font-medium">{title}</h2>
           </div>
-        </Link>
+        </div>
       </div>
       {children}
     </div>
