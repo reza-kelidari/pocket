@@ -1,6 +1,7 @@
 "use client";
 
 import Box from "@/components/Box";
+import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import useAccounts from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
@@ -50,105 +51,105 @@ export default function TransactionDetail() {
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle title="مشاهده تراکنش" redirect={redirect} />
+        <NavbarTitle title="مشاهده تراکنش">
+          <Capsule
+            href={`/transactions/edit?id=${transaction?.id}&redirect=${forwardRedirect}`}
+            Icon={Pen}
+          >
+            ویرایش
+          </Capsule>
+        </NavbarTitle>
       </div>
 
       <Box>
         <h1 className="text-center">{txName}</h1>
         <br />
         <div className="grid gap-5">
-          <div className="flex items-center justify-between">
-            <h6 className="text-secondary text-[9px]">مبلغ</h6>
-            <h3
-              className={`text-xs ${transaction?.type === "debit" ? "text-income-primary" : transaction?.type === "credit" ? "text-expense-primary" : ""}`}
+          <InfoRow
+            name="مبلغ"
+              className={`text-xs ${isTxDebit ? "text-income-primary" : transaction?.type === "credit" ? "text-expense-primary" : ""}`}
             >
               {`${transaction?.value.toLocaleString("fa-ir")}
-              ${
-                transaction?.type === "debit"
-                  ? "+"
-                  : transaction?.type === "credit"
-                    ? "-"
-                    : ""
-              }
+              ${isTxDebit                   ? "+"                   : transaction?.type === "credit"                     ? "-"                     : ""              }
               ﷼`}
-            </h3>
-          </div>
+            </InfoRow>
 
-          {txCategory ? (
-            <div className="flex items-center justify-between">
-              <h6 className="text-secondary text-[9px]">دسته‌بندی</h6>
-              <h3 className="text-xs">{txCategory.name}</h3>
-            </div>
-          ) : (
-            ""
-          )}
+          {txCategory && <InfoRow name="دسته‌بندی">{txCategory.name}</InfoRow>}
 
           {["debit", "credit", "initial"].includes(transaction?.type ?? "") ? (
-            <div className="flex items-center justify-between">
-              <h6 className="text-secondary text-[9px]">حساب</h6>
-              <h3 className="text-xs flex items-center gap-1.5">
+            <InfoRow name="حساب" className="text-xs flex items-center gap-1.5">
                 {account?.name}{" "}
                 <span
                   className={`p-1 rounded-4xl ${AccountColors[account?.color ?? "blue1"].primary}`}
                 ></span>
-              </h3>
-            </div>
+              </InfoRow>
           ) : (
             <>
-              <div className="flex items-center justify-between">
-                <h6 className="text-secondary text-[9px]">حساب مقصد</h6>
-                <h3 className="text-xs flex items-center gap-1.5">
+              <InfoRow
+                name="حساب مقصد"
+className="text-xs flex items-center gap-1.5"
+>
                   {toAccount?.name}{" "}
                   <span
                     className={`p-1 rounded-4xl ${AccountColors[toAccount?.color ?? "blue1"].primary}`}
                   ></span>
-                </h3>
-              </div>
+                </InfoRow>
 
-              <div className="flex items-center justify-between">
-                <h6 className="text-secondary text-[9px]">حساب مبدا</h6>
-                <h3 className="text-xs flex items-center gap-1.5">
+              <InfoRow
+                name="حساب مبدا"
+className="text-xs flex items-center gap-1.5"
+>
                   {fromAccount?.name}{" "}
                   <span
                     className={`p-1 rounded-4xl ${AccountColors[fromAccount?.color ?? "blue1"].primary}`}
                   ></span>
-                </h3>
-              </div>
+                </InfoRow>
             </>
           )}
 
-          <div className="flex items-center justify-between">
-            <h6 className="text-secondary text-[9px]">برچسب</h6>
-            <h3 className="text-xs">
+          <InfoRow name="برچسب" className="text-xs flex items-center gap-1.5">
               {transaction?.tag ? transaction.tag : "بدون برچسب"}
-            </h3>
-          </div>
+            </InfoRow>
 
-          <div className="flex items-center justify-between">
-            <h6 className="text-secondary text-[9px]">تاریخ</h6>
-            <h3 className="text-xs">
-              {new Date(transaction?.time ?? 0).toLocaleDateString("fa-ir", {
+          <InfoRow name="تاریخ" className="text-xs flex items-center gap-1.5">
+              {txDate.toLocaleDateString("fa-ir", {
                 year: "numeric",
                 month: "2-digit",
                 day: "2-digit",
               })}
-            </h3>
-          </div>
+            </InfoRow>
 
-          <div className="flex items-center justify-between">
-            <h6 className="text-secondary text-[9px]">تاریخ</h6>
-            <h3 className="text-xs">
-              {new Date(transaction?.time ?? 0).toLocaleString("fa-ir", {
+          <InfoRow name="ساعت" className="text-xs flex items-center gap-1.5">
+              {txDate.toLocaleString("fa-ir", {
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",
               })}
-            </h3>
-          </div>
+            </InfoRow>
 
-          {transaction?.note ? <div className="p-4 min-h-25 bg-white rounded-2xl border-elements-border border text-[10px] text-justify">{transaction.note}</div> : ""}
+          {transaction?.note && (
+            <div className="p-4 min-h-25 bg-white rounded-2xl border-elements-border border text-[10px] text-justify">
+              {transaction.note}
+          </div>
+)}
         </div>
       </Box>
+    </div>
+  );
+}
+
+type InfoRowPropsType = ComponentProps<"h3"> & {
+  name: string;
+  children: React.ReactNode;
+};
+
+function InfoRow({ name, children, ...props }: InfoRowPropsType) {
+  return (
+    <div className="flex items-center justify-between">
+      <h6 className="text-secondary text-[9px]">{name}</h6>
+      <h3 className="text-xs" {...props}>
+        {children}
+      </h3>
     </div>
   );
 }
