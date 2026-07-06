@@ -35,17 +35,17 @@ export default function AccountsListElement({
       className={`flex items-center justify-between p-5 rounded-2xl border ${!disabled ? activeColors : disableColors}`}
       {...props}
     >
-      <div className="grid gap-2">
-        <h3 className="text-lg">{account.name}</h3>
+      <div className="grid gap-4">
+        <h3 className="text-md">{account.name}</h3>
         <span className="text-secondary text-xs">
           {balance.toLocaleString("fa-ir")} ﷼
         </span>
       </div>
 
       <div
-        className={`${AccountColors[account.color].primary} rounded-4xl grid place-content-center h-7.5 w-7.5`}
+        className={`${AccountColors[account.color].primary} rounded-4xl grid place-content-center h-10 w-10`}
       >
-        <Icon height={17} width={17} fill="#fff" />
+        <Icon height={24} width={24} fill="#fff" />
       </div>
     </Link>
   );

@@ -24,10 +24,10 @@ export const parseNumberArray = (param: string | null): number[] => {
 };
 
 export const timeFilters = (dateArray: number[]) => [
-  { name: "۷ روز گذشته", time: 7 },
-  { name: "۳۰ روز گذشته", time: 30 },
-  { name: "این ماه", time: dateArray[2] },
-  { name: "۹۰ روز گذشته", time: 90 },
-  { name: "۶ ماه گذشته", time: 180 },
-  { name: "امسال", time: pastDaysInYear(dateArray) },
+  { name: "۷ روز گذشته", time: 7 - 1 },
+  { name: "۳۰ روز گذشته", time: 30 - 1 },
+  { name: "این ماه", time: dateArray[2] - 1 },
+  { name: "۹۰ روز گذشته", time: 90 - 1 },
+  { name: "امسال", time: pastDaysInYear(dateArray) - 1 },
+  { name: "از ابتدا", time: 36500 },
 ];

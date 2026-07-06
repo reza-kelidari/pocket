@@ -30,7 +30,6 @@ class RedirectStore {
 
     this.redirects.push(url);
     this.notify();
-    console.log(this.redirects);
   }
 
   last(): string {

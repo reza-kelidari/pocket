@@ -30,7 +30,7 @@ export default function AccountFilter() {
   };
 
   let transactionsFilter = {
-    timeWindow: Number(searchParams.get("time") ?? 30),
+    timeWindow: Number(searchParams.get("time") ?? 29),
     accounts: parseNumberArray(searchParams.get("accounts")),
     categories: parseNumberArray(searchParams.get("categories")),
     tags: parseNumberArray(searchParams.get("tags")),
@@ -118,7 +118,7 @@ export default function AccountFilter() {
           );
         }}
       >
-        اعمال فیلتر‌ها
+        اعمال فیلتر
       </Button>
     </div>
   );

@@ -16,6 +16,16 @@ export default function TransactionItem({
   const accountID = type === "credit" ? credit : debit;
   const txName = type === "initial" ? "موجودی اولیه" : name;
 
+  const date = new Date(time);
+  const isSameYear =
+    new Date().toLocaleDateString("fa-ir", { year: "numeric" }) ===
+    date.toLocaleDateString("fa-ir", { year: "numeric" });
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "long",
+    year: !isSameYear ? "numeric" : undefined,
+  };
+
   const accountData = accountsStore
     .getAccounts()
     .find((item) => item.id === accountID);
@@ -34,7 +44,7 @@ export default function TransactionItem({
       <div className="flex flex-col gap-1.5 w-full">
         <h1 className="text-xs font-medium">{txName}</h1>
         <p className="text-xs text-secondary">
-          {new Date(time).toLocaleDateString("fa-ir")}
+          {date.toLocaleDateString("fa-ir", dateOptions)}
         </p>
       </div>
 

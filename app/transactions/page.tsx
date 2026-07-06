@@ -30,7 +30,7 @@ export default function Transactions() {
 
   const transactionsFilter: transactionsFilterType = useMemo(
     () => ({
-      timeWindow: Number(searchParams.get("time") ?? 30),
+      timeWindow: Number(searchParams.get("time") ?? 29),
       accounts: parseNumberArray(searchParams.get("accounts")),
       categories: parseNumberArray(searchParams.get("categories")),
       tags: parseNumberArray(searchParams.get("tags")),
@@ -97,12 +97,12 @@ export default function Transactions() {
           <Capsule
             Icon={Left}
             href={`/transactions/time-filter${filterToUrl(transactionsFilter)}`}
-            primary={transactionsFilter.timeWindow !== 30}
+            primary={transactionsFilter.timeWindow !== 29}
           >
             {
               timeFilter.find(
                 (filter) => filter.time === transactionsFilter.timeWindow,
-              )?.name
+              )?.name ?? "۳۰ روز گذشته"
             }
           </Capsule>
           <Capsule
