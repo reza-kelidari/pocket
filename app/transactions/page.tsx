@@ -9,14 +9,14 @@ import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
+import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
+import { persianDateToEnglishNumber } from "@/utility/time/methods";
 
-// تابع کمکی برای پارس ایمن پارامترها و جلوگیری از NaN
-const parseNumberArray = (param: string | null): number[] => {
-  if (!param) return [];
-  return param
-    .split(",")
-    .map(Number)
-    .filter((n) => !isNaN(n) && n !== 0); // فقط اعداد معتبر
+export type transactionsFilterType = {
+  timeWindow: number;
+  accounts: number[];
+  categories: number[];
+  tags: number[];
 };
 
 export default function Transactions() {
@@ -26,8 +26,9 @@ export default function Transactions() {
   const transactions = useTransactions();
   const [forwardRedirect, setForwardRedirect] = useState("");
   const { add: addRedirect, last } = useRedirect();
+  const timeFilter = timeFilters(persianDateToEnglishNumber(new Date()));
 
-  const transactionsFilter = useMemo(
+  const transactionsFilter: transactionsFilterType = useMemo(
     () => ({
       timeWindow: Number(searchParams.get("time") ?? 30),
       accounts: parseNumberArray(searchParams.get("accounts")),
@@ -39,17 +40,11 @@ export default function Transactions() {
 
   const filteredTransactions = useMemo(() => {
     const now = Date.now();
-
-    // محاسبه زمان مرز یک بار برای همه تراکنش‌ها
-    // نکته: اگر time شما در دیتابیس ثانیه است، Date.now() را باید تقسیم بر 1000 کنید!
-    // فرض کردم time بر اساس میلی‌ثانیه است.
     const timeLimit = now - transactionsFilter.timeWindow * 24 * 60 * 60 * 1000;
 
     return transactions.filter((transaction) => {
-      // 1. فیلتر زمان
       if (transaction.time < timeLimit) return false;
 
-      // 2. فیلتر حساب‌ها
       if (
         transactionsFilter.accounts.length > 0 &&
         !transactionsFilter.accounts.includes(transaction.credit) &&
@@ -57,8 +52,6 @@ export default function Transactions() {
       ) {
         return false;
       }
-
-      // 3. فیلتر دسته‌بندی‌ها
 
       if (
         transactionsFilter.categories.length > 0 &&
@@ -68,7 +61,6 @@ export default function Transactions() {
         return false;
       }
 
-      // 4. فیلتر تگ‌ها
       if (
         transactionsFilter.tags.length > 0 &&
         (transaction.tag === undefined ||
@@ -81,14 +73,13 @@ export default function Transactions() {
     });
   }, [transactions, transactionsFilter]);
 
-  // اصلاح وابستگی‌های useEffect برای جلوگیری از لوپ
   useEffect(() => {
     setForwardRedirect(window.location.pathname + window.location.search);
 
     if (accounts.length === 0) {
       router.replace(`/splash`);
     }
-  }, [accounts.length, router, searchParams]); // وابستگی به accounts و سرچ پارامز
+  }, [accounts.length, router, searchParams]);
 
   useEffect(() => {
     !last().includes(window.location.pathname) &&
@@ -104,26 +95,20 @@ export default function Transactions() {
         <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-fill scrollbar-none">
           <Capsule
             Icon={Left}
-            href="/transactions?time=365"
+            href={`/transactions/time-filter${filterToUrl(transactionsFilter)}`}
             primary={transactionsFilter.timeWindow !== 30}
           >
-            {transactionsFilter.timeWindow.toLocaleString("fa-ir")} روز گذشته
-          </Capsule>
-          <Capsule Icon={Left} href="/transactions?time=365">
-            {transactionsFilter.timeWindow.toLocaleString("fa-ir")} روز گذشته
-          </Capsule>
-          <Capsule Icon={Left} href="/transactions?time=365">
-            {transactionsFilter.timeWindow.toLocaleString("fa-ir")} روز گذشته
-          </Capsule>
-          <Capsule Icon={Left} href="/transactions?time=365">
-            {transactionsFilter.timeWindow.toLocaleString("fa-ir")} روز گذشته
+            {
+              timeFilter.find(
+                (filter) => filter.time === transactionsFilter.timeWindow,
+              )?.name
+            }
           </Capsule>
         </div>
       </div>
 
       <div className="grid gap-2.5">
         {filteredTransactions.map((item) => (
-          // استفاده از ID به جای Index برای Key
           <TransactionItem key={item.id} transaction={item} />
         ))}
       </div>

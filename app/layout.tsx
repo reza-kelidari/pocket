@@ -38,7 +38,8 @@ export default async function RootLayout({
       className={`${vazirMatn.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {isMobile ? children : onlyMobile}
+        {/* {isMobile ? children : onlyMobile} */}
+        {children}
       </body>
     </html>
   );
