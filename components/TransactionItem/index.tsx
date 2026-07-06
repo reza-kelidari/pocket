@@ -1,6 +1,6 @@
-import { accountsStore } from "@/features/accounts/service/accountsStore";
-import { AccountColors } from "@/features/colors";
-import { TransactionType } from "@/features/transactions/types";
+import { accountsStore } from "@/utility/accounts/service/accountsStore";
+import { AccountColors } from "@/utility/colors";
+import { TransactionType } from "@/utility/transactions/types";
 import Wallet from "@/icons/Wallet";
 import Link from "next/link";
 

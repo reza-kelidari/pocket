@@ -1,4 +1,4 @@
-import { PrimaryColors, PrimaryColorsItemType } from "@/features/colors";
+import { PrimaryColors, PrimaryColorsItemType } from "@/utility/colors";
 import Link from "next/link";
 import { ComponentProps } from "react";
 

@@ -1,6 +1,6 @@
-import { AccountTypes } from "@/features/accounts/constants";
-import { AccountType } from "@/features/accounts/types";
-import { AccountColors } from "@/features/colors";
+import { AccountTypes } from "@/utility/accounts/constants";
+import { AccountType } from "@/utility/accounts/types";
+import { AccountColors } from "@/utility/colors";
 import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 

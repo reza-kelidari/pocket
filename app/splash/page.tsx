@@ -1,15 +1,16 @@
 "use client";
 
-import getAccountsList from "@/features/accounts/service/initializer";
-import getTransactionsList from "@/features/transactions/service/initializer";
+import getAccountsList from "@/utility/accounts/service/initializer";
+import getTransactionsList from "@/utility/transactions/service/initializer";
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { accountsStore } from "@/features/accounts/service/accountsStore";
-import { transactionsStore } from "@/features/transactions/service/transactionsStore";
-import { getAccountBalanceHistory } from "@/features/balance/methods";
-import { AccountBalanceType } from "@/features/balance/types";
-import { balancesStore } from "@/features/balance/service/balanceStore";
+import { accountsStore } from "@/utility/accounts/service/accountsStore";
+import { transactionsStore } from "@/utility/transactions/service/transactionsStore";
+import { getAccountBalanceHistory } from "@/utility/balance/methods";
+import { AccountBalanceType } from "@/utility/balance/types";
+import { balancesStore } from "@/utility/balance/service/balanceStore";
+import { useRedirect } from "@/utility/redirect/service/useRedirect";
 
 export default function Splash() {
   const router = useRouter();

@@ -1,7 +1,7 @@
 "use client";
 
-import { AccountColorType } from "@/features/accounts/types";
-import { AccountColors, PrimaryColors } from "@/features/colors";
+import { AccountColorType } from "@/utility/accounts/types";
+import { AccountColors, PrimaryColors } from "@/utility/colors";
 import { useRef, useState, useEffect } from "react";
 
 type BalancePoint = {

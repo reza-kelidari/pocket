@@ -1,4 +1,4 @@
-import { PrimaryColors } from "@/features/colors";
+import { PrimaryColors } from "@/utility/colors";
 import Link from "next/link";
 
 type ButtonParamsType = {

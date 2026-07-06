@@ -1,6 +1,6 @@
 "use client";
 
-import { AccountType } from "@/features/accounts/types";
+import { AccountType } from "@/utility/accounts/types";
 
 /**
  * In-memory storage for all loaded accounts.

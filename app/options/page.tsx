@@ -1,7 +1,9 @@
+"use client";
+
 import ListElement from "@/components/ListElement";
 import NavbarTitle from "@/components/NavbarTitle";
 import Reload from "./components/Reload";
-import { PrimaryColors } from "@/features/colors";
+import { PrimaryColors } from "@/utility/colors";
 import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
 import Tag from "@/icons/Tag";

@@ -2,9 +2,10 @@
 
 import AccountsListElement from "./components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import { AccountTypes } from "@/features/accounts/constants";
-import useAccounts from "@/features/accounts/service/useAccounts";
-import useBalances from "@/features/balance/service/useBalances";
+import { AccountTypes } from "@/utility/accounts/constants";
+import useAccounts from "@/utility/accounts/service/useAccounts";
+import useBalances from "@/utility/balance/service/useBalances";
+import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

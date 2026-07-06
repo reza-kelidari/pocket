@@ -1,15 +1,15 @@
 import { useState } from "react";
 import Button from "../Button";
-import { AccountBalanceType, BalanceType } from "@/features/balance/types";
-import { AccountColorType } from "@/features/accounts/types";
-import { AccountColors, PrimaryColors } from "@/features/colors";
+import { AccountBalanceType, BalanceType } from "@/utility/balance/types";
+import { AccountColorType } from "@/utility/accounts/types";
+import { AccountColors, PrimaryColors } from "@/utility/colors";
 import ChartBox from "./ChartBox";
 import {
   getAccountBalanceHistory,
   getTotalBalanceHistory,
-} from "@/features/balance/methods";
-import useTransactions from "@/features/transactions/service/useTransactions";
-import { TransactionType } from "@/features/transactions/types";
+} from "@/utility/balance/methods";
+import useTransactions from "@/utility/transactions/service/useTransactions";
+import { TransactionType } from "@/utility/transactions/types";
 
 type ChartParamsType = {
   title: string;

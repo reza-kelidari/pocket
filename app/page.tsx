@@ -6,12 +6,11 @@ import Chart from "@/components/ChartView";
 import QuickAccess from "@/app/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
-import useAccounts from "@/features/accounts/service/useAccounts";
-import { getTotalBalances } from "@/features/balance/selector";
-import useBalances from "@/features/balance/service/useBalances";
-import { getLatestTransactions } from "@/features/transactions/selector";
+import useAccounts from "@/utility/accounts/service/useAccounts";
+import useBalances from "@/utility/balance/service/useBalances";
+import { getLatestTransactions } from "@/utility/transactions/selector";
 import { IconComponent } from "@/icons/types";
-import useTransactions from "@/features/transactions/service/useTransactions";
+import useTransactions from "@/utility/transactions/service/useTransactions";
 import Receive from "@/icons/Receive";
 import Send from "@/icons/Send";
 import Setting from "@/icons/Setting";
@@ -123,8 +122,6 @@ export default function Home() {
             let transactionAccountID: number;
             let transactionName: string;
 
-            
-
             transactionName =
               transaction.type === "initial"
                 ? "موجودی اولیه"
@@ -134,7 +131,6 @@ export default function Home() {
               <TransactionItem
                 key={transaction.id}
                 transaction={transaction}
-                redirect="/"
               />
             );
           })}

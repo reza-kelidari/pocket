@@ -2,10 +2,10 @@
 
 import Box from "@/components/Box";
 import NavbarTitle from "@/components/NavbarTitle";
-import useAccounts from "@/features/accounts/service/useAccounts";
-import { AccountColors } from "@/features/colors";
-import { getCategoryById } from "@/features/transactions/methods";
-import useTransactions from "@/features/transactions/service/useTransactions";
+import useAccounts from "@/utility/accounts/service/useAccounts";
+import { AccountColors } from "@/utility/colors";
+import { getCategoryById } from "@/utility/transactions/methods";
+import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
