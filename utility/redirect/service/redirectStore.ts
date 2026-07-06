@@ -25,6 +25,14 @@ class RedirectStore {
     return this.last();
   }
 
+  replaceLast(url: string) {
+    this.redirects.pop();
+
+    this.redirects.push(url);
+    this.notify();
+    console.log(this.redirects);
+  }
+
   last(): string {
     return this.redirects[this.redirects.length - 1] || "/";
   }

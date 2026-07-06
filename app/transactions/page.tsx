@@ -25,8 +25,7 @@ export default function Transactions() {
   const accounts = useAccounts();
   const router = useRouter();
   const transactions = useTransactions();
-  const [forwardRedirect, setForwardRedirect] = useState("");
-  const { add: addRedirect, last } = useRedirect();
+  const { add: addRedirect, last: lastRedirect, replaceLast } = useRedirect();
   const timeFilter = timeFilters(persianDateToEnglishNumber(new Date()));
 
   const transactionsFilter: transactionsFilterType = useMemo(
@@ -77,17 +76,16 @@ export default function Transactions() {
   }, [transactions, transactionsFilter]);
 
   useEffect(() => {
-    setForwardRedirect(window.location.pathname + window.location.search);
-
     if (accounts.length === 0) {
       router.replace(`/splash`);
     }
   }, [accounts.length, router, searchParams]);
 
   useEffect(() => {
-    !last().includes(window.location.pathname) &&
+    if (!lastRedirect().includes(window.location.pathname))
       addRedirect(window.location.pathname);
-  }, [forwardRedirect]);
+    else replaceLast(window.location.pathname + window.location.search);
+  }, [searchParams]);
 
   if (accounts.length === 0) return null;
 

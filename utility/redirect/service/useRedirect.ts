@@ -15,6 +15,7 @@ export function useRedirect() {
     last: redirectStore.last.bind(redirectStore),
     add: redirectStore.add.bind(redirectStore),
     back: redirectStore.back.bind(redirectStore),
+    replaceLast: redirectStore.replaceLast.bind(redirectStore),
     clear: redirectStore.clear.bind(redirectStore),
     getAll: redirectStore.getAll.bind(redirectStore),
   };
