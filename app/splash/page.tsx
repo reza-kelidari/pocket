@@ -14,7 +14,7 @@ import { useRedirect } from "@/utility/redirect/service/useRedirect";
 
 export default function Splash() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const {last:redirect} = useRedirect();
 
   useEffect(() => {
     async function load() {
@@ -40,7 +40,7 @@ export default function Splash() {
 
       sessionStorage.setItem("splashShown", "1");
 
-      router.replace(searchParams.get("redirect") ?? "/");
+      router.replace(redirect());
     }
 
     setTimeout(load, 500);

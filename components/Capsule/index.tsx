@@ -9,6 +9,7 @@ type CapsulePropsType = {
   Icon: IconComponent;
   children: React.ReactNode;
   href?: string;
+  primary?: boolean;
 };
 
 export default function Capsule({
@@ -16,13 +17,14 @@ export default function Capsule({
   Icon,
   children,
   href,
+  primary,
 }: CapsulePropsType) {
-  const className = `${PrimaryColors.secondary.box} px-2 py-1 rounded-4xl text-xs flex items-center gap-1`;
+  const className = `${primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-2 py-1 rounded-4xl text-xs flex items-center gap-1`;
 
   return (
     <Link href={href ?? "#"} className={className} onClick={onClick}>
       {children}
-      <Icon height={15} width={15} />
+      <Icon height={15} width={15} className={primary ? "fill-primary" : ""} />
     </Link>
   );
 }

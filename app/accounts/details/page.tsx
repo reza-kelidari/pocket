@@ -11,7 +11,8 @@ import { getLatestTransactions } from "@/utility/transactions/selector";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRedirect } from "@/utility/redirect/service/useRedirect";
 
 export default function AccountsDetails() {
   const searchParams = useSearchParams();
@@ -24,64 +25,71 @@ export default function AccountsDetails() {
   const accountTransactions = transactions.filter((item) =>
     [item.debit, item.credit].includes(accountID),
   );
+  let [redirect, setRedirect] = useState("");
+  const { add: addRedirect } = useRedirect();
 
   useEffect(() => {
+    setRedirect(window.location.pathname + window.location.search);
+
     if (isNaN(accountID)) router.replace("/");
-    if (accountsList.length === 0)
-      router.replace(`/splash?redirect=/accounts/details?id=${accountID}`);
+    if (accountsList.length === 0) router.replace(`/splash`);
   }, []);
 
+  useEffect(() => {
+    addRedirect(redirect);
+  }, [addRedirect]);
+
   if (accountsList.length === 0) return;
-
-  return (
-    <div className="p-7.5 grid gap-15">
-      <div className="grid gap-7.5">
-        <NavbarTitle
-          title={account?.name ?? "حساب"}
-          redirect="/"
-          option={{ Icon: Pen, link: `/accounts/edit?id=${accountID}` }}
-        />
-      </div>
-
-      <ChartView
-        title={`موجودی ${account?.name ?? ""}`}
-        color={account?.color}
-        timeSelector
-        accountID={account?.id}
-        transactions={transactions}
-        balances={accountsBalances}
-      />
-
-      <div className="grid gap-7.5">
-        <SectionTitle>{`تراکنش‌های اخیر ${account?.name ?? ""}`}</SectionTitle>
-
-        <div className="flex flex-col w-full gap-2.5">
-          {getLatestTransactions(accountTransactions, 5).map((transaction) => {
-            let transactionAccountID: number;
-            let transactionName: string;
-
-            if (transaction.type === "credit")
-              transactionAccountID = transaction.credit;
-            else transactionAccountID = transaction.debit;
-
-            transactionName =
-              transaction.type === "initial"
-                ? "موجودی اولیه"
-                : transaction.name;
-
-            return (
-              <TransactionItem
-                key={transaction.id}
-                transaction={transaction}
-                redirect={window.location.href + window.location.search}
-              />
-            );
-          })}
+  else
+    return (
+      <div className="p-7.5 grid gap-15">
+        <div className="grid gap-7.5">
+          <NavbarTitle
+            title={account?.name ?? "حساب"}
+            option={{ Icon: Pen, link: `/accounts/edit?id=${accountID}` }}
+          />
         </div>
-        <Button link={`/transactions?account=${accountID}`}>
-          مشاهده همه تراکنش‌ها
-        </Button>
+
+        <ChartView
+          title={`موجودی ${account?.name ?? ""}`}
+          color={account?.color}
+          timeSelector
+          accountID={account?.id}
+          transactions={transactions}
+          balances={accountsBalances}
+        />
+
+        <div className="grid gap-7.5">
+          <SectionTitle>{`تراکنش‌های اخیر ${account?.name ?? ""}`}</SectionTitle>
+
+          <div className="flex flex-col w-full gap-2.5">
+            {getLatestTransactions(accountTransactions, 5).map(
+              (transaction) => {
+                let transactionAccountID: number;
+                let transactionName: string;
+
+                if (transaction.type === "credit")
+                  transactionAccountID = transaction.credit;
+                else transactionAccountID = transaction.debit;
+
+                transactionName =
+                  transaction.type === "initial"
+                    ? "موجودی اولیه"
+                    : transaction.name;
+
+                return (
+                  <TransactionItem
+                    key={transaction.id}
+                    transaction={transaction}
+                  />
+                );
+              },
+            )}
+          </div>
+          <Button link={`/transactions?account=${accountID}`}>
+            مشاهده همه تراکنش‌ها
+          </Button>
+        </div>
       </div>
-    </div>
-  );
+    );
 }

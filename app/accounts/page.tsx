@@ -13,17 +13,22 @@ export default function Accounts() {
   const accounts = useAccounts();
   const balances = useBalances();
   const router = useRouter();
+  const { add } = useRedirect();
 
   useEffect(() => {
-    if (accounts.length === 0) router.replace(`/splash?redirect=/accounts`);
+    if (accounts.length === 0) router.replace(`/splash`);
   }, []);
+
+  useEffect(() => {
+    add(window.location.pathname + window.location.search);
+  }, [add]);
 
   if (accounts.length === 0) return;
 
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle title="حساب‌ها" redirect="/" />
+        <NavbarTitle title="حساب‌ها" />
       </div>
 
       <div className="grid gap-5">

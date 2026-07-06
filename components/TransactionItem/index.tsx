@@ -6,12 +6,10 @@ import Link from "next/link";
 
 type TransactionItemParamsType = {
   transaction: TransactionType;
-  redirect: string;
 };
 
 export default function TransactionItem({
   transaction,
-  redirect,
 }: TransactionItemParamsType) {
   const { id: txID, name, time, debit, credit, type, value } = transaction;
 
@@ -24,7 +22,7 @@ export default function TransactionItem({
 
   return (
     <Link
-      href={`/transactions/detail?id=${txID}&redirect=${redirect}`}
+      href={`/transactions/detail?id=${txID}`}
       className="w-full flex items-cente gap-2.5"
     >
       <div
