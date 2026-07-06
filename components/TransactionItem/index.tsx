@@ -1,30 +1,32 @@
 import { accountsStore } from "@/features/accounts/service/accountsStore";
 import { AccountColors } from "@/features/colors";
+import { TransactionType } from "@/features/transactions/types";
 import Wallet from "@/icons/Wallet";
+import Link from "next/link";
 
 type TransactionItemParamsType = {
-  name: string;
-  account: number;
-  category?: number;
-  time: number;
-  value: number;
-  type: "debit" | "credit" | "transfer" | "initial";
+  transaction: TransactionType;
+  redirect: string;
 };
 
 export default function TransactionItem({
-  name,
-  account,
-  category,
-  time,
-  value,
-  type,
+  transaction,
+  redirect,
 }: TransactionItemParamsType) {
+  const { id: txID, name, time, debit, credit, type, value } = transaction;
+
+  const accountID = type === "credit" ? credit : debit;
+  const txName = type === "initial" ? "موجودی اولیه" : name;
+
   const accountData = accountsStore
     .getAccounts()
-    .find((item) => item.id === account);
+    .find((item) => item.id === accountID);
 
   return (
-    <div className="w-full flex items-cente gap-2.5">
+    <Link
+      href={`/transactions/detail?id=${txID}&redirect=${redirect}`}
+      className="w-full flex items-cente gap-2.5"
+    >
       <div
         className={`w-10 h-10 rounded-2xl grid place-content-center shrink-0 ${AccountColors[accountData?.color ?? "black"].primary}`}
       >
@@ -32,7 +34,7 @@ export default function TransactionItem({
       </div>
 
       <div className="flex flex-col gap-1.5 w-full">
-        <h1 className="text-xs font-medium">{name}</h1>
+        <h1 className="text-xs font-medium">{txName}</h1>
         <p className="text-xs text-secondary">
           {new Date(time).toLocaleDateString("fa-ir")}
         </p>
@@ -55,6 +57,6 @@ export default function TransactionItem({
           {type === "debit" ? "+" : "-"}
         </span>
       </div>
-    </div>
+    </Link>
   );
 }

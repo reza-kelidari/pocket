@@ -3,7 +3,7 @@
 import AccountCard from "@/components/AccountCard";
 import Button from "@/components/Button";
 import Chart from "@/components/ChartView";
-import QuickAccess from "@/components/QuickAccess";
+import QuickAccess from "@/app/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
 import useAccounts from "@/features/accounts/service/useAccounts";
@@ -125,9 +125,7 @@ export default function Home() {
             let transactionAccountID: number;
             let transactionName: string;
 
-            if (transaction.type === "credit")
-              transactionAccountID = transaction.credit;
-            else transactionAccountID = transaction.debit;
+            
 
             transactionName =
               transaction.type === "initial"
@@ -137,11 +135,8 @@ export default function Home() {
             return (
               <TransactionItem
                 key={transaction.id}
-                name={transactionName}
-                account={transactionAccountID}
-                time={transaction.time}
-                value={transaction.value}
-                type={transaction.type}
+                transaction={transaction}
+                redirect="/"
               />
             );
           })}

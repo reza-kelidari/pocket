@@ -1,6 +1,6 @@
 "use client";
 
-import AccountsListElement from "@/components/AccountsListElement";
+import AccountsListElement from "./components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
 import { AccountTypes } from "@/features/accounts/constants";
 import useAccounts from "@/features/accounts/service/useAccounts";

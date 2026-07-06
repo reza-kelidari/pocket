@@ -31,7 +31,7 @@ export default function AccountCard({
   color,
   lastBalance,
   type,
-}: AccountType) {
+}: AccountType & {lastBalance: number}) {
   const cardColors = AccountColors[color];
   const CardIcon: IconComponent = AccountTypes[type].icon;
 

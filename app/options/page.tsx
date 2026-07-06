@@ -1,6 +1,6 @@
 import ListElement from "@/components/ListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import Reload from "@/components/Reload";
+import Reload from "./components/Reload";
 import { PrimaryColors } from "@/features/colors";
 import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
