@@ -42,7 +42,7 @@ export default function Transactions() {
     const now = Date.now();
     const timeLimit = now - transactionsFilter.timeWindow * 24 * 60 * 60 * 1000;
 
-    return transactions.filter((transaction) => {
+    return [...transactions].filter((transaction) => {
       if (transaction.time < timeLimit) return false;
 
       if (
@@ -70,7 +70,7 @@ export default function Transactions() {
       }
 
       return true;
-    });
+    }).sort((a,b) => b.time - a.time);
   }, [transactions, transactionsFilter]);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function Transactions() {
         </div>
       </div>
 
-      <div className="grid gap-2.5">
+      <div className="grid gap-4">
         {filteredTransactions.map((item) => (
           <TransactionItem key={item.id} transaction={item} />
         ))}

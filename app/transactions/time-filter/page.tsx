@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { filterToUrl, timeFilters } from "../methods";
+import { PrimaryColors } from "@/utility/colors";
 
 export default function TimeFilter() {
   const searchParams = useSearchParams();
@@ -48,6 +49,7 @@ export default function TimeFilter() {
                 timeWindow: item.time,
               })}`}
               onClick={back}
+              className={`${transactionsFilter.timeWindow === item.time ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-5 py-4 rounded-2xl text-sm`}
             >
               {item.name}
             </Link>
