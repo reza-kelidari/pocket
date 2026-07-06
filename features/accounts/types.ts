@@ -32,6 +32,5 @@ export type AccountType = {
   id: number;
   name: string;
   color: AccountColorType;
-  lastBalance: number;
   type: AccountTypesType;
 };
