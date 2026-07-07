@@ -19,20 +19,21 @@ export default function AccountsDetails() {
   const transactions = useTransactions() ?? [];
   const accountID = Number(searchParams.get("id"));
   const account = getAccounts().find((item) => item.id === accountID);
-  
+
   const accountTransactions = transactions.filter((item) =>
     [item.debit, item.credit].includes(accountID),
   );
 
   useEffect(() => {
-    // اگر آیدی وجود نداشت یا حسابی نبود، به اسپلش برگردان
-    if (isNaN(accountID) || getAccounts().length === 0) {
+    if (isNaN(accountID) || !account) router.replace("/accounts");
+
+    if (getAccounts().length === 0) {
       const currentPath = window.location.pathname + window.location.search;
-      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
+      router.replace(`/splash?from=${currentPath}`);
     }
   }, [accountID, getAccounts, router]);
 
-  if (getAccounts().length === 0 || !account) return null;
+  if (getAccounts().length === 0 || isNaN(accountID) || !account) return null;
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -56,10 +57,7 @@ export default function AccountsDetails() {
 
         <div className="flex flex-col w-full gap-2.5">
           {getLatestTransactions(accountTransactions, 5).map((transaction) => (
-            <TransactionItem
-              key={transaction.id}
-              transaction={transaction}
-            />
+            <TransactionItem key={transaction.id} transaction={transaction} />
           ))}
         </div>
         <Button href={`/transactions?accounts=${accountID}`}>

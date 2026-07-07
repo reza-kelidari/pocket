@@ -17,7 +17,7 @@ export default function Page() {
       CREATE_ACCOUNT_KEY,
       JSON.stringify({ ...data, type: item }),
     );
-    // برگشت به صفحه قبلی (همان فرم افزودن حساب)
+
     router.back();
   };
 
@@ -33,7 +33,7 @@ export default function Page() {
             href="/accounts/add"
             key={index}
             onClick={(e) => {
-              e.preventDefault(); // جلوگیری از رفتن مستقیم با لینک
+              e.preventDefault();
               handleSelectType(item);
             }}
             className={`${PrimaryColors.secondary.box} px-5 py-4 rounded-2xl text-sm flex items-center justify-between cursor-pointer`}
