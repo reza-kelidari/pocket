@@ -15,11 +15,11 @@ export default function TransactionDetail() {
   const searchParams = useSearchParams();
   const { getAccounts } = useAccounts();
   const router = useRouter();
-  
-  const transaction = useTransactions().find(
-    (item) => item.id === Number(searchParams.get("id") ?? 0),
-  );
-  
+
+  const transaction = useTransactions()
+    .getTransactions()
+    .find((item) => item.id === Number(searchParams.get("id") ?? 0));
+
   const isTxDebit = transaction?.type === "debit";
   const accountID = isTxDebit ? transaction?.debit : transaction?.credit;
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;

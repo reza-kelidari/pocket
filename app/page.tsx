@@ -22,9 +22,9 @@ import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
-  const { getAccounts } = useAccounts() ?? [];
-  const transactions = useTransactions() ?? [];
-  const accountsBalances = useBalances() ?? [];
+  const { getAccounts } = useAccounts();
+  const { getTransactions } = useTransactions();
+  const accountsBalances = useBalances();
 
   const splashGuard =
     !getAccounts().length || !sessionStorage.getItem("splashShown");
@@ -104,7 +104,7 @@ export default function Home() {
 
       <Chart
         title={"روند موجودی"}
-        transactions={transactions}
+        transactions={getTransactions()}
         timeSelector
         link="/analyze"
         linkTitle="تحلیل و بررسی پیشرفته"
@@ -118,7 +118,7 @@ export default function Home() {
         </Title>
 
         <div className="flex flex-col w-full gap-5">
-          {getLatestTransactions(transactions, 5).map((transaction) => {
+          {getLatestTransactions(getTransactions(), 5).map((transaction) => {
             return (
               <TransactionItem key={transaction.id} transaction={transaction} />
             );

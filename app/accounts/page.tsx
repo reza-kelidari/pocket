@@ -15,8 +15,8 @@ export default function Accounts() {
   const { getAccounts } = useAccounts();
   const balances = useBalances();
   const router = useRouter();
-
   const [showHint, setShowHint] = useState(true);
+  const [openItemId, setOpenItemId] = useState<number | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,8 +25,6 @@ export default function Accounts() {
 
     return () => clearTimeout(timer);
   }, []);
-
-  const [openItemId, setOpenItemId] = useState<number | null>(null);
 
   useEffect(() => {
     if (getAccounts().length === 0) {

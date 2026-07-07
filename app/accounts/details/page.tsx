@@ -16,11 +16,11 @@ export default function AccountsDetails() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { getAccounts } = useAccounts();
-  const transactions = useTransactions() ?? [];
+  const { getTransactions } = useTransactions() ?? [];
   const accountID = Number(searchParams.get("id"));
   const account = getAccounts().find((item) => item.id === accountID);
 
-  const accountTransactions = transactions.filter((item) =>
+  const accountTransactions = getTransactions().filter((item) =>
     [item.debit, item.credit].includes(accountID),
   );
 
@@ -49,7 +49,7 @@ export default function AccountsDetails() {
         color={account.color}
         timeSelector
         accountID={account.id}
-        transactions={transactions}
+        transactions={getTransactions()}
       />
 
       <div className="grid gap-7.5">

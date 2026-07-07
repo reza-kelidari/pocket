@@ -23,7 +23,7 @@ export default function Transactions() {
   const searchParams = useSearchParams();
   const { getAccounts } = useAccounts();
   const router = useRouter();
-  const transactions = useTransactions();
+  const { getTransactions } = useTransactions();
   const timeFilter = timeFilters(toJalaliDateArray(new Date()));
 
   const transactionsFilter: transactionsFilterType = useMemo(
@@ -40,7 +40,7 @@ export default function Transactions() {
     const now = Date.now();
     const timeLimit = now - transactionsFilter.timeWindow * 24 * 60 * 60 * 1000;
 
-    return [...transactions]
+    return getTransactions()
       .filter((transaction) => {
         if (transaction.time < timeLimit) return false;
 
@@ -71,7 +71,7 @@ export default function Transactions() {
         return true;
       })
       .sort((a, b) => b.time - a.time);
-  }, [transactions, transactionsFilter]);
+  }, [getTransactions, transactionsFilter]);
 
   useEffect(() => {
     if (getAccounts().length === 0) {
