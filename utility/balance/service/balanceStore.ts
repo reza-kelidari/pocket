@@ -2,60 +2,35 @@
 
 import { AccountBalanceType } from "../types";
 
-/**
- * In-memory storage for all loaded balances.
- *
- * This variable acts as the single source of truth for the balance store
- * during the application's runtime.
- */
-let balances: AccountBalanceType[] = [];
+class BalancesStore {
+  private balances: AccountBalanceType[] = [];
+  private listeners: Set<() => void> = new Set();
 
-/**
- * Registered listeners that are notified whenever the accounts data changes.
- */
-const listeners = new Set<() => void>();
+  private notify() {
+    this.listeners.forEach((listener) => listener());
+  }
 
-/**
- * A lightweight global store for managing accounts balances.
- *
- * Provides methods to:
- * - Read the current balances.
- * - Replace the balances collection.
- * - Subscribe to changes.
- *
- * This store follows a simple publish/subscribe (Pub/Sub) pattern and is
- * intended for client-side state sharing without an external state library.
- */
-export const balancesStore = {
-  /**
-   * Returns the current list of balances.
-   *
-   * @returns The current accounts collection.
-   */
-  getBalances() {
-    return balances;
-  },
+  getBalances(): AccountBalanceType[] {
+    return [...this.balances];
+  }
 
-  /**
-   * Replaces the current balances collection and notifies all subscribers.
-   *
-   * @param data The new balances collection.
-   */
   setBalances(data: AccountBalanceType[]) {
-    balances = data;
+    this.balances = [...data];
+    this.notify();
+  }
 
-    listeners.forEach((listener) => listener());
-  },
+  addBalance(balance: AccountBalanceType) {
+    this.balances.push(balance);
+    this.notify();
+  }
 
-  /**
-   * Registers a listener that will be called whenever the balances data changes.
-   *
-   * @param listener Callback invoked after {@link setAccounts} updates the store.
-   * @returns A function that unsubscribes the listener.
-   */
-  subscribe(listener: () => void) {
-    listeners.add(listener);
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
 
-    return () => listeners.delete(listener);
-  },
-};
+  getSnapshot = () => this.balances;
+}
+
+export const balancesStore = new BalancesStore();
+export default balancesStore;
