@@ -2,7 +2,7 @@
 
 import NavbarTitle from "@/components/NavbarTitle";
 import { useRedirect } from "@/utility/redirect/service/useRedirect";
-import { persianDateToEnglishNumber } from "@/utility/time/methods";
+import { toJalaliDateArray } from "@/utility/time/methods";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -24,7 +24,7 @@ export default function TimeFilter() {
     return param
       .split(",")
       .map(Number)
-      .filter((n) => !isNaN(n) && n !== 0); // فقط اعداد معتبر
+      .filter((n) => !isNaN(n) && n !== 0);
   };
 
   let transactionsFilter = {
@@ -51,7 +51,7 @@ export default function TimeFilter() {
       </div>
 
       <div className="grid gap-5">
-        {timeFilters(persianDateToEnglishNumber(date)).map((item, index) => {
+        {timeFilters(toJalaliDateArray(date)).map((item, index) => {
           const secondDay =
             item.time === 36500
               ? "بدون محدودیت زمانی"

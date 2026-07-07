@@ -1,6 +1,5 @@
-import { AccountColorType, AccountType } from "@/utility/accounts/types";
+import { AccountType } from "@/utility/accounts/types";
 import { AccountColors, PrimaryColors } from "@/utility/colors";
-import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 import { ComponentProps } from "react";
 import { AccountBalanceType, BalanceType } from "@/utility/balance/types";
@@ -30,20 +29,20 @@ export default function AccountsListElement({
   return (
     <Link
       href={props.href ?? "#"}
-      className={`flex items-center justify-between p-5 rounded-2xl border ${!disabled ? activeColors : disableColors}`}
+      className={`flex items-center justify-between p-4 rounded-2xl border ${!disabled ? activeColors : disableColors}`}
       {...props}
     >
-      <div className="grid gap-4">
-        <h3 className="text-md">{account.name}</h3>
+      <div className="grid gap-2.5">
+        <h3 className="text-sm">{account.name}</h3>
         <span className="text-secondary text-xs">
           {balance.toLocaleString("fa-ir")} ﷼
         </span>
       </div>
 
       <div
-        className={`${AccountColors[account.color].primary} rounded-4xl grid place-content-center h-10 w-10`}
+        className={`${AccountColors[account.color].primary} rounded-4xl grid place-content-center h-7.5 w-7.5`}
       >
-        <Icon height={24} width={24} fill="#fff" />
+        <Icon height={20} width={20} fill="#fff" />
       </div>
     </Link>
   );

@@ -3,25 +3,26 @@
 import getAccountsList from "@/utility/accounts/service/initializer";
 import getTransactionsList from "@/utility/transactions/service/initializer";
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { accountsStore } from "@/utility/accounts/service/accountsStore";
 import { transactionsStore } from "@/utility/transactions/service/transactionsStore";
 import { getAccountBalanceHistory } from "@/utility/balance/methods";
 import { AccountBalanceType } from "@/utility/balance/types";
 import { balancesStore } from "@/utility/balance/service/balanceStore";
 import { useRedirect } from "@/utility/redirect/service/useRedirect";
+import { useAccounts } from "@/utility/accounts/service/useAccounts";
 
 export default function Splash() {
   const router = useRouter();
-  const {last:redirect} = useRedirect();
+  const { last: redirect } = useRedirect();
+  const { setAccounts } = useAccounts();
 
   useEffect(() => {
     async function load() {
       const accounts = await getAccountsList();
       const transactions = await getTransactionsList();
 
-      accountsStore.setAccounts(accounts);
+      setAccounts(accounts);
       transactionsStore.setTransactions(transactions);
 
       let balances: AccountBalanceType[] = [];

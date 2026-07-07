@@ -17,7 +17,6 @@ type ChartParamsType = {
   timeSelector?: boolean;
   link?: string;
   linkTitle?: string;
-  balances: AccountBalanceType[];
   color?: AccountColorType;
   transactions: TransactionType[];
 };
@@ -29,7 +28,6 @@ export default function Chart({
   timeSelector,
   link,
   linkTitle,
-  balances,
   color,
   transactions,
 }: ChartParamsType) {

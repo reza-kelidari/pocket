@@ -5,8 +5,7 @@ import ChartView from "@/components/ChartView";
 import NavbarTitle from "@/components/NavbarTitle";
 import SectionTitle from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
-import useAccounts from "@/utility/accounts/service/useAccounts";
-import useBalances from "@/utility/balance/service/useBalances";
+import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { getLatestTransactions } from "@/utility/transactions/selector";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import Pen from "@/icons/Pen";
@@ -17,11 +16,10 @@ import { useRedirect } from "@/utility/redirect/service/useRedirect";
 export default function AccountsDetails() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const accountsList = useAccounts();
+  const { getAccounts } = useAccounts();
   const transactions = useTransactions() ?? [];
-  const accountsBalances = useBalances() ?? [];
   const accountID = Number(searchParams.get("id"));
-  const account = accountsList.find((item) => item.id === accountID);
+  const account = getAccounts().find((item) => item.id === accountID);
   const accountTransactions = transactions.filter((item) =>
     [item.debit, item.credit].includes(accountID),
   );
@@ -32,14 +30,14 @@ export default function AccountsDetails() {
     setRedirect(window.location.pathname + window.location.search);
 
     if (isNaN(accountID)) router.replace("/");
-    if (accountsList.length === 0) router.replace(`/splash`);
+    if (getAccounts().length === 0) router.replace(`/splash`);
   }, []);
 
   useEffect(() => {
     addRedirect(redirect);
   }, [addRedirect, redirect]);
 
-  if (accountsList.length === 0) return;
+  if (getAccounts().length === 0) return;
   else
     return (
       <div className="p-7.5 grid gap-15">
@@ -56,7 +54,6 @@ export default function AccountsDetails() {
           timeSelector
           accountID={account?.id}
           transactions={transactions}
-          balances={accountsBalances}
         />
 
         <div className="grid gap-7.5">

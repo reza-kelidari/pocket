@@ -1,10 +1,12 @@
-function replaceNumber(number: string): number {
-  return Number(
-    number.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))),
-  );
+import { toGregorian } from "jalaali-js";
+
+export function toEnglishDigits(value: string): string {
+  return value
+    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
+    .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString());
 }
 
-export function persianDateToEnglishNumber(date: Date): number[] {
+export function toJalaliDateArray(date: Date): number[] {
   return date
     .toLocaleDateString("fa-ir", {
       year: "numeric",
@@ -12,15 +14,27 @@ export function persianDateToEnglishNumber(date: Date): number[] {
       day: "numeric",
     })
     .split("/")
-    .map((item) => replaceNumber(item));
+    .map((item) => Number(toEnglishDigits(item)));
 }
 
 export function pastDaysInYear(date: number[]): number {
-  let days = date[2];
+  const [, month, day] = date;
 
-  if (date[1] <= 6) days += (date[1] - 1) * 31;
-  if (date[1] > 6 && date[1] < 12) days += 186 + (date[1] - 7) * 30;
-  if (date[1] === 12) days += 336;
+  let days = day;
+
+  if (month <= 6) days += (month - 1) * 31;
+  if (month > 6 && month < 12) days += 186 + (month - 7) * 30;
+  if (month === 12) days += 336;
 
   return days;
+}
+
+export function jalaliToTimestamp([year, month, day]: [
+  number,
+  number,
+  number,
+]): number {
+  const { gy, gm, gd } = toGregorian(year, month, day);
+
+  return new Date(gy, gm - 1, gd).getTime();
 }

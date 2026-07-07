@@ -3,9 +3,10 @@
 import Right from "@/icons/Right";
 import { IconComponent } from "@/icons/types";
 import { useRedirect } from "@/utility/redirect/service/useRedirect";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { ComponentProps } from "react";
 
-type NavbarTitleType = {
+type NavbarTitleType = ComponentProps<"a"> & {
   option?: { link: string; Icon: IconComponent };
   children?: React.ReactNode;
   title: string;

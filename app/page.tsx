@@ -6,7 +6,7 @@ import Chart from "@/components/ChartView";
 import QuickAccess from "@/app/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
-import useAccounts from "@/utility/accounts/service/useAccounts";
+import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import useBalances from "@/utility/balance/service/useBalances";
 import { getLatestTransactions } from "@/utility/transactions/selector";
 import { IconComponent } from "@/icons/types";
@@ -22,16 +22,16 @@ import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
-  const accounts = useAccounts() ?? [];
+  const { getAccounts } = useAccounts() ?? [];
   const transactions = useTransactions() ?? [];
   const accountsBalances = useBalances() ?? [];
 
   const splashGuard =
-    !accounts.length || !sessionStorage.getItem("splashShown");
+    !getAccounts().length || !sessionStorage.getItem("splashShown");
 
   useEffect(() => {
     splashGuard && router.replace("/splash");
-  }, [accounts, router]);
+  }, [getAccounts(), router]);
 
   const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: "long",
@@ -70,7 +70,7 @@ export default function Home() {
           </Title>
         </Link>
         <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
-          {accounts.map((account) => {
+          {getAccounts().map((account) => {
             return (
               <AccountCard
                 key={account.id}
@@ -83,6 +83,7 @@ export default function Home() {
                     ?.history?.at(-1)?.balance ?? 0
                 }
                 type={account.type}
+                create={account.create}
               />
             );
           })}
@@ -107,7 +108,6 @@ export default function Home() {
         timeSelector
         link="/analyze"
         linkTitle="تحلیل و بررسی پیشرفته"
-        balances={accountsBalances}
       />
 
       <div className="grid gap-7.5">
@@ -117,21 +117,10 @@ export default function Home() {
           </div>
         </Title>
 
-        <div className="flex flex-col w-full gap-2.5">
+        <div className="flex flex-col w-full gap-5">
           {getLatestTransactions(transactions, 5).map((transaction) => {
-            let transactionAccountID: number;
-            let transactionName: string;
-
-            transactionName =
-              transaction.type === "initial"
-                ? "موجودی اولیه"
-                : transaction.name;
-
             return (
-              <TransactionItem
-                key={transaction.id}
-                transaction={transaction}
-              />
+              <TransactionItem key={transaction.id} transaction={transaction} />
             );
           })}
         </div>

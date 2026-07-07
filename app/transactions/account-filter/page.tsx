@@ -6,14 +6,14 @@ import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { filterToUrl } from "../methods";
-import useAccounts from "@/utility/accounts/service/useAccounts";
+import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import AccountsListElement from "@/components/AccountsListElement";
 import useBalances from "@/utility/balance/service/useBalances";
 
 export default function AccountFilter() {
   const searchParams = useSearchParams();
   const { add, back } = useRedirect();
-  const accounts = useAccounts();
+  const { getAccounts } = useAccounts();
   const balances = useBalances();
   const router = useRouter();
   const [accountFilter, setAccountFilter]: [
@@ -41,22 +41,16 @@ export default function AccountFilter() {
   }, [add]);
 
   useEffect(() => {
-    if (accounts.length === 0) {
+    if (getAccounts().length === 0) {
       router.replace(`/splash`);
     }
-  }, [accounts.length, router, searchParams]);
-
-  // useEffect(() => {
-  //   if (accountFilter.length === 0) {
-  //     setAccountFilter(accounts.map((item) => item.id));
-  //   }
-  // }, [accountFilter]);
+  }, [getAccounts().length, router, searchParams]);
 
   useEffect(() => {
     setAccountFilter(transactionsFilter.accounts);
   }, []);
 
-  if (accounts.length === 0) return null;
+  if (getAccounts().length === 0) return null;
 
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
@@ -65,7 +59,7 @@ export default function AccountFilter() {
       </div>
 
       <div className="grid gap-4">
-        {accounts.map((item) => (
+        {getAccounts().map((item) => (
           <AccountsListElement
             account={item}
             balances={balances}
@@ -94,14 +88,14 @@ export default function AccountFilter() {
         href={`/transactions${filterToUrl({
           ...transactionsFilter,
           accounts:
-            accountFilter.length !== accounts.length ? accountFilter : [],
+            accountFilter.length !== getAccounts().length ? accountFilter : [],
         })}`}
         onClick={() => {
           back();
 
           const selectedAccounts =
             accountFilter.length === 0
-              ? accounts.map((item) => item.id)
+              ? getAccounts().map((item) => item.id)
               : accountFilter;
 
           back();
@@ -110,7 +104,7 @@ export default function AccountFilter() {
             `/transactions${filterToUrl({
               ...transactionsFilter,
               accounts:
-                selectedAccounts.length !== accounts.length
+                selectedAccounts.length !== getAccounts().length
                   ? selectedAccounts
                   : [],
             })}`,

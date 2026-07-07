@@ -1,61 +1,53 @@
-"use client";
-
 import { AccountType } from "@/utility/accounts/types";
 
-/**
- * In-memory storage for all loaded accounts.
- *
- * This variable acts as the single source of truth for the accounts store
- * during the application's runtime.
- */
-let accounts: AccountType[] = [];
+class AccountsStore {
+  private accounts: AccountType[] = [];
 
-/**
- * Registered listeners that are notified whenever the accounts data changes.
- */
-const listeners = new Set<() => void>();
+  private listeners: Set<() => void> = new Set();
 
-/**
- * A lightweight global store for managing account data.
- *
- * Provides methods to:
- * - Read the current accounts.
- * - Replace the accounts collection.
- * - Subscribe to changes.
- *
- * This store follows a simple publish/subscribe (Pub/Sub) pattern and is
- * intended for client-side state sharing without an external state library.
- */
-export const accountsStore = {
-  /**
-   * Returns the current list of accounts.
-   *
-   * @returns The current accounts collection.
-   */
-  getAccounts() {
-    return accounts;
-  },
+  private notify() {
+    this.listeners.forEach((listener) => listener());
+  }
 
-  /**
-   * Replaces the current accounts collection and notifies all subscribers.
-   *
-   * @param data The new accounts collection.
-   */
+  getAccounts(): AccountType[] {
+    return [...this.accounts];
+  }
+
   setAccounts(data: AccountType[]) {
-    accounts = data;
+    this.accounts = [...data];
+    this.notify();
+  }
 
-    listeners.forEach((listener) => listener());
-  },
+  addAccount(account: AccountType) {
+    this.accounts.push(account);
+    this.notify();
+  }
 
-  /**
-   * Registers a listener that will be called whenever the accounts data changes.
-   *
-   * @param listener Callback invoked after {@link setAccounts} updates the store.
-   * @returns A function that unsubscribes the listener.
-   */
-  subscribe(listener: () => void) {
-    listeners.add(listener);
+  updateAccount(updatedAccount: AccountType) {
+    const index = this.accounts.findIndex((acc) => acc.id === updatedAccount.id);
+    if (index !== -1) {
+      this.accounts[index] = { ...updatedAccount };
+      this.notify();
+    }
+  }
 
-    return () => listeners.delete(listener);
-  },
-};
+  removeAccount(id: number) {
+    this.accounts = this.accounts.filter((acc) => acc.id !== id);
+    this.notify();
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  getSnapshot = () => this.accounts;
+
+  clear() {
+    this.accounts = [];
+    this.notify();
+  }
+}
+
+export const accountsStore = new AccountsStore();
+export default accountsStore;

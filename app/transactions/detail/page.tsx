@@ -3,7 +3,7 @@
 import Box from "@/components/Box";
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
-import useAccounts from "@/utility/accounts/service/useAccounts";
+import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
 import { getCategoryById } from "@/utility/transactions/methods";
 import useTransactions from "@/utility/transactions/service/useTransactions";
@@ -14,7 +14,7 @@ import { useRedirect } from "@/utility/redirect/service/useRedirect";
 
 export default function TransactionDetail() {
   const searchParams = useSearchParams();
-  const accounts = useAccounts();
+  const { getAccounts } = useAccounts();
   const router = useRouter();
   const { add: addRedirect } = useRedirect();
   const transaction = useTransactions().find(
@@ -24,11 +24,15 @@ export default function TransactionDetail() {
   const accountID = isTxDebit ? transaction?.debit : transaction?.credit;
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;
   const txCategory = getCategoryById(categoryID ?? 0);
-  const account = accounts.find((item) => item.id === accountID);
+  const account = getAccounts().find((item) => item.id === accountID);
   const [forwardRedirect, setForwardRedirect] = useState("");
 
-  const fromAccount = accounts.find((item) => item.id === transaction?.credit);
-  const toAccount = accounts.find((item) => item.id === transaction?.debit);
+  const fromAccount = getAccounts().find(
+    (item) => item.id === transaction?.credit,
+  );
+  const toAccount = getAccounts().find(
+    (item) => item.id === transaction?.debit,
+  );
 
   const txName =
     transaction?.type === "initial" ? "موجودی اولیه" : transaction?.name;
@@ -38,24 +42,20 @@ export default function TransactionDetail() {
   useEffect(() => {
     setForwardRedirect(window.location.pathname + window.location.search);
 
-    if (accounts.length === 0)
-      router.replace(`/splash`);
+    if (getAccounts().length === 0) router.replace(`/splash`);
   }, [forwardRedirect]);
 
   useEffect(() => {
     addRedirect(forwardRedirect);
   }, [forwardRedirect, addRedirect]);
 
-  if (accounts.length === 0) return;
+  if (getAccounts().length === 0) return;
 
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
         <NavbarTitle title="مشاهده تراکنش">
-          <Capsule
-            href={`/transactions/edit?id=${transaction?.id}`}
-            Icon={Pen}
-          >
+          <Capsule href={`/transactions/edit?id=${transaction?.id}`} Icon={Pen}>
             ویرایش
           </Capsule>
         </NavbarTitle>

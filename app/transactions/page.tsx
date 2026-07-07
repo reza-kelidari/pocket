@@ -4,13 +4,13 @@ import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import TransactionItem from "@/components/TransactionItem";
 import Left from "@/icons/Left";
-import useAccounts from "@/utility/accounts/service/useAccounts";
+import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
-import { persianDateToEnglishNumber } from "@/utility/time/methods";
+import { toJalaliDateArray } from "@/utility/time/methods";
 import { AccountColors } from "@/utility/colors";
 
 export type transactionsFilterType = {
@@ -22,11 +22,11 @@ export type transactionsFilterType = {
 
 export default function Transactions() {
   const searchParams = useSearchParams();
-  const accounts = useAccounts();
+  const { getAccounts } = useAccounts();
   const router = useRouter();
   const transactions = useTransactions();
   const { add: addRedirect, last: lastRedirect, replaceLast } = useRedirect();
-  const timeFilter = timeFilters(persianDateToEnglishNumber(new Date()));
+  const timeFilter = timeFilters(toJalaliDateArray(new Date()));
 
   const transactionsFilter: transactionsFilterType = useMemo(
     () => ({
@@ -76,10 +76,10 @@ export default function Transactions() {
   }, [transactions, transactionsFilter]);
 
   useEffect(() => {
-    if (accounts.length === 0) {
+    if (getAccounts().length === 0) {
       router.replace(`/splash`);
     }
-  }, [accounts.length, router, searchParams]);
+  }, [getAccounts().length, router, searchParams]);
 
   useEffect(() => {
     if (!lastRedirect().includes(window.location.pathname))
@@ -87,7 +87,7 @@ export default function Transactions() {
     else replaceLast(window.location.pathname + window.location.search);
   }, [searchParams]);
 
-  if (accounts.length === 0) return null;
+  if (getAccounts().length === 0) return null;
 
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
@@ -110,7 +110,7 @@ export default function Transactions() {
             primary={transactionsFilter.accounts.length > 0}
             accountColor={
               transactionsFilter.accounts.length === 1
-                ? accounts.find(
+                ? getAccounts().find(
                     (item) => item.id === transactionsFilter.accounts[0],
                   )?.color
                 : undefined
@@ -119,21 +119,21 @@ export default function Transactions() {
               transactionsFilter.accounts.length === 1
                 ? `${
                     AccountColors[
-                      accounts.find(
+                      getAccounts().find(
                         (item) => item.id === transactionsFilter.accounts[0],
                       )?.color ?? "black"
                     ].border
                   }
                   ${
                     AccountColors[
-                      accounts.find(
+                      getAccounts().find(
                         (item) => item.id === transactionsFilter.accounts[0],
                       )?.color ?? "black"
                     ].text
                   }
                   ${
                     AccountColors[
-                      accounts.find(
+                      getAccounts().find(
                         (item) => item.id === transactionsFilter.accounts[0],
                       )?.color ?? "black"
                     ].surface
@@ -144,7 +144,7 @@ export default function Transactions() {
             {transactionsFilter.accounts.length === 0
               ? "همه حساب‌ها"
               : transactionsFilter.accounts.length === 1
-                ? accounts.find(
+                ? getAccounts().find(
                     (item) => item.id === transactionsFilter.accounts[0],
                   )?.name
                 : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}

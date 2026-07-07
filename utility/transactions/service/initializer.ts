@@ -35,7 +35,7 @@ export default async function getTransactionsList(): Promise<
       id: 1775765200001,
       time: 1775765200001,
       name: "خرید از سوپرمارکت",
-      debit: 0x01020000,
+      debit: 0x02020000,
       credit: 0x01020001,
       value: 1850000,
       type: "credit",

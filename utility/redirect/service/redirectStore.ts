@@ -1,5 +1,3 @@
-// @/store/redirectStore.ts
-
 class RedirectStore {
   private redirects: string[] = [];
   private listeners: (() => void)[] = [];
@@ -10,7 +8,6 @@ class RedirectStore {
 
   add(url: string) {
     if (!url || url === "/") return;
-    // جلوگیری از تکرار متوالی
     if (this.redirects[this.redirects.length - 1] !== url) {
       this.redirects.push(url);
       this.notify();
@@ -45,7 +42,6 @@ class RedirectStore {
     this.notify();
   }
 
-  // برای useSyncExternalStore
   subscribe = (listener: () => void) => {
     this.listeners.push(listener);
     return () => {
@@ -56,6 +52,5 @@ class RedirectStore {
   getSnapshot = () => this.redirects;
 }
 
-// Singleton
 export const redirectStore = new RedirectStore();
 export default redirectStore;
