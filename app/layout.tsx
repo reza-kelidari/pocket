@@ -35,9 +35,12 @@ export default async function RootLayout({
     <html
       lang="fa"
       dir="rtl"
-      className={`${vazirMatn.variable} h-full antialiased`}
+      className={`${vazirMatn.variable} h-full antialiased select-none`}
     >
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no"
+      />
       <body className="min-h-full flex flex-col">
         {/* {isMobile ? children : onlyMobile} */}
         {children}

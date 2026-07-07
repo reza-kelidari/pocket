@@ -37,6 +37,7 @@ export default function Accounts() {
             account={account}
             balances={balances}
             key={account.id}
+            href={`accounts/details?id=${account.id}`}
           />
         ))}
       </div>

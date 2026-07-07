@@ -94,16 +94,15 @@ export default function Transactions() {
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
         <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-fill scrollbar-none">
+          <span className="me-2">فیلترها</span>
           <Capsule
             Icon={Left}
             href={`/transactions/time-filter${filterToUrl(transactionsFilter)}`}
             primary={transactionsFilter.timeWindow !== 29}
           >
-            {
-              timeFilter.find(
-                (filter) => filter.time === transactionsFilter.timeWindow,
-              )?.name ?? "۳۰ روز گذشته"
-            }
+            {timeFilter.find(
+              (filter) => filter.time === transactionsFilter.timeWindow,
+            )?.name ?? "۳۰ روز گذشته"}
           </Capsule>
           <Capsule
             Icon={Left}

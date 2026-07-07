@@ -8,7 +8,6 @@ import {
   getAccountBalanceHistory,
   getTotalBalanceHistory,
 } from "@/utility/balance/methods";
-import useTransactions from "@/utility/transactions/service/useTransactions";
 import { TransactionType } from "@/utility/transactions/types";
 
 type ChartParamsType = {

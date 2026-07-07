@@ -86,7 +86,6 @@ export default function AccountFilter() {
 
               setAccountFilter(newArray);
             }}
-            notLink
           />
         ))}
       </div>

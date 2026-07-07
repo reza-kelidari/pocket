@@ -10,14 +10,12 @@ type AccountListElementPropsType = ComponentProps<"a"> & {
   account: AccountType;
   balances: AccountBalanceType[];
   disabled?: boolean;
-  notLink?: boolean;
 };
 
 export default function AccountsListElement({
   account,
   balances,
   disabled,
-  notLink,
   ...props
 }: AccountListElementPropsType) {
   const balance =
@@ -31,7 +29,7 @@ export default function AccountsListElement({
 
   return (
     <Link
-      href={!notLink ? `accounts/details?id=${account.id}` : "#"}
+      href={props.href ?? "#"}
       className={`flex items-center justify-between p-5 rounded-2xl border ${!disabled ? activeColors : disableColors}`}
       {...props}
     >
