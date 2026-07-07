@@ -5,7 +5,6 @@ import AccountsListElement from "../../components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import useBalances from "@/utility/balance/service/useBalances";
-import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Left from "@/icons/Left";
@@ -14,17 +13,14 @@ export default function Accounts() {
   const { getAccounts } = useAccounts();
   const balances = useBalances();
   const router = useRouter();
-  const { add } = useRedirect();
 
   useEffect(() => {
-    if (getAccounts().length === 0) router.replace(`/splash`);
-  }, []);
+    if (getAccounts().length === 0) {
+      router.replace(`/splash`);
+    }
+  }, [getAccounts, router]);
 
-  useEffect(() => {
-    add(window.location.pathname + window.location.search);
-  }, [add]);
-
-  if (getAccounts().length === 0) return;
+  if (getAccounts().length === 0) return null;
 
   return (
     <div className="p-7.5 grid gap-15">

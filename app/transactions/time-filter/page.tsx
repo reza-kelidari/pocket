@@ -1,17 +1,14 @@
 "use client";
 
 import NavbarTitle from "@/components/NavbarTitle";
-import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import { toJalaliDateArray } from "@/utility/time/methods";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { filterToUrl, timeFilters } from "../methods";
 import { PrimaryColors } from "@/utility/colors";
 
 export default function TimeFilter() {
   const searchParams = useSearchParams();
-  const { add, back } = useRedirect();
+  const router = useRouter();
   const date = new Date();
   const dateOptions: Intl.DateTimeFormatOptions = {
     day: "2-digit",
@@ -27,27 +24,27 @@ export default function TimeFilter() {
       .filter((n) => !isNaN(n) && n !== 0);
   };
 
-  let transactionsFilter = {
-    timeWindow: Number(searchParams.get("time") ?? 29),
+  const transactionsFilter = {
+    timeWindow: Number(searchParams.get("time") ?? 29) || 29,
     accounts: parseNumberArray(searchParams.get("accounts")),
     categories: parseNumberArray(searchParams.get("categories")),
     tags: parseNumberArray(searchParams.get("tags")),
   };
 
-  useEffect(() => {
-    add(window.location.pathname);
-  }, [add]);
-
-  useEffect(() => {
-    !transactionsFilter.timeWindow
-      ? (transactionsFilter = { ...transactionsFilter, timeWindow: 29 })
-      : null;
-  });
+  const handleSelectTime = (time: number) => {
+    const newUrl = `/transactions${filterToUrl({
+      ...transactionsFilter,
+      timeWindow: time,
+    })}`;
+    
+    // جایگزینی صفحه فعلی با صفحه تراکنش‌های فیلتر شده
+    router.replace(newUrl);
+  };
 
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
       <div className="grid gap-7.5">
-        <NavbarTitle title="بازه زمانی" disabled />
+        <NavbarTitle title="بازه زمانی" />
       </div>
 
       <div className="grid gap-5">
@@ -59,20 +56,16 @@ export default function TimeFilter() {
                   Date.now() - item.time * 1000 * 3600 * 24,
                 ).toLocaleDateString("fa-ir", dateOptions);
           return (
-            <Link
+            <div
               key={index}
-              href={`/transactions${filterToUrl({
-                ...transactionsFilter,
-                timeWindow: item.time,
-              })}`}
-              onClick={back}
-              className={`${transactionsFilter.timeWindow === item.time ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-5 py-4 rounded-2xl text-sm flex items-center justify-between`}
+              onClick={() => handleSelectTime(item.time)}
+              className={`${transactionsFilter.timeWindow === item.time ? PrimaryColors.primary.box : PrimaryColors.secondary.box} px-5 py-4 rounded-2xl text-sm flex items-center justify-between cursor-pointer`}
             >
               {item.name}
               <span className="text-xs text-secondary">
                 {secondDay} {item.time !== 36500 && "~ " + today}
               </span>
-            </Link>
+            </div>
           );
         })}
       </div>

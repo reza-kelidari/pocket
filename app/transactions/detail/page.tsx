@@ -9,23 +9,22 @@ import { getCategoryById } from "@/utility/transactions/methods";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ComponentProps, useEffect, useState } from "react";
-import { useRedirect } from "@/utility/redirect/service/useRedirect";
+import { ComponentProps, useEffect } from "react";
 
 export default function TransactionDetail() {
   const searchParams = useSearchParams();
   const { getAccounts } = useAccounts();
   const router = useRouter();
-  const { add: addRedirect } = useRedirect();
+  
   const transaction = useTransactions().find(
     (item) => item.id === Number(searchParams.get("id") ?? 0),
   );
+  
   const isTxDebit = transaction?.type === "debit";
   const accountID = isTxDebit ? transaction?.debit : transaction?.credit;
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;
   const txCategory = getCategoryById(categoryID ?? 0);
   const account = getAccounts().find((item) => item.id === accountID);
-  const [forwardRedirect, setForwardRedirect] = useState("");
 
   const fromAccount = getAccounts().find(
     (item) => item.id === transaction?.credit,
@@ -40,16 +39,13 @@ export default function TransactionDetail() {
   const txDate = new Date(transaction?.time ?? 0);
 
   useEffect(() => {
-    setForwardRedirect(window.location.pathname + window.location.search);
+    if (getAccounts().length === 0) {
+      const currentPath = window.location.pathname + window.location.search;
+      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
+    }
+  }, [getAccounts, router]);
 
-    if (getAccounts().length === 0) router.replace(`/splash`);
-  }, [forwardRedirect]);
-
-  useEffect(() => {
-    addRedirect(forwardRedirect);
-  }, [forwardRedirect, addRedirect]);
-
-  if (getAccounts().length === 0) return;
+  if (getAccounts().length === 0 || !transaction) return null;
 
   return (
     <div className="p-7.5 grid gap-15">

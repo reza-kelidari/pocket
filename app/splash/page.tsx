@@ -3,19 +3,21 @@
 import getAccountsList from "@/utility/accounts/service/initializer";
 import getTransactionsList from "@/utility/transactions/service/initializer";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { transactionsStore } from "@/utility/transactions/service/transactionsStore";
 import { getAccountBalanceHistory } from "@/utility/balance/methods";
 import { AccountBalanceType } from "@/utility/balance/types";
 import { balancesStore } from "@/utility/balance/service/balanceStore";
-import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 
 export default function Splash() {
   const router = useRouter();
-  const { last: redirect } = useRedirect();
+  const searchParams = useSearchParams();
   const { setAccounts } = useAccounts();
+  
+  // خواندن مسیری که کاربر قرار بوده برود از کوئری پارامتر
+  const fromPath = searchParams.get("from") || "/";
 
   useEffect(() => {
     async function load() {
@@ -41,11 +43,13 @@ export default function Splash() {
 
       sessionStorage.setItem("splashShown", "1");
 
-      router.replace(redirect());
+      // ارسال کاربر به مسیر اصلی
+      router.replace(fromPath);
     }
 
-    setTimeout(load, 500);
-  }, []);
+    const timer = setTimeout(load, 500);
+    return () => clearTimeout(timer);
+  }, [router, fromPath, setAccounts]);
 
   return (
     <div className="flex flex-col place-content-center items-center h-screen relative">

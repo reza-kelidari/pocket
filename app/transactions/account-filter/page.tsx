@@ -2,7 +2,6 @@
 
 import Button from "@/components/Button";
 import NavbarTitle from "@/components/NavbarTitle";
-import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { filterToUrl } from "../methods";
@@ -12,24 +11,21 @@ import useBalances from "@/utility/balance/service/useBalances";
 
 export default function AccountFilter() {
   const searchParams = useSearchParams();
-  const { add, back } = useRedirect();
+  const router = useRouter();
   const { getAccounts } = useAccounts();
   const balances = useBalances();
-  const router = useRouter();
-  const [accountFilter, setAccountFilter]: [
-    accountFilter: number[],
-    setAccountFilter: any,
-  ] = useState([]);
+
+  const [accountFilter, setAccountFilter] = useState<number[]>([]);
 
   const parseNumberArray = (param: string | null): number[] => {
     if (!param) return [];
     return param
       .split(",")
       .map(Number)
-      .filter((n) => !isNaN(n) && n !== 0); // فقط اعداد معتبر
+      .filter((n) => !isNaN(n) && n !== 0);
   };
 
-  let transactionsFilter = {
+  const transactionsFilter = {
     timeWindow: Number(searchParams.get("time") ?? 29),
     accounts: parseNumberArray(searchParams.get("accounts")),
     categories: parseNumberArray(searchParams.get("categories")),
@@ -37,20 +33,34 @@ export default function AccountFilter() {
   };
 
   useEffect(() => {
-    add(window.location.pathname);
-  }, [add]);
-
-  useEffect(() => {
     if (getAccounts().length === 0) {
-      router.replace(`/splash`);
+      const currentPath = window.location.pathname + window.location.search;
+      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
     }
-  }, [getAccounts().length, router, searchParams]);
+  }, [getAccounts, router]);
 
   useEffect(() => {
     setAccountFilter(transactionsFilter.accounts);
   }, []);
 
   if (getAccounts().length === 0) return null;
+
+  const handleApplyFilter = () => {
+    const selectedAccounts =
+      accountFilter.length === 0
+        ? getAccounts().map((item) => item.id)
+        : accountFilter;
+
+    const newUrl = `/transactions${filterToUrl({
+      ...transactionsFilter,
+      accounts:
+        selectedAccounts.length !== getAccounts().length
+          ? selectedAccounts
+          : [],
+    })}`;
+
+    router.replace(newUrl);
+  };
 
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
@@ -70,7 +80,6 @@ export default function AccountFilter() {
 
               if (accountFilter.includes(item.id)) {
                 const index = accountFilter.indexOf(item.id);
-
                 if (index > -1) {
                   newArray.splice(index, 1);
                 }
@@ -84,35 +93,7 @@ export default function AccountFilter() {
         ))}
       </div>
 
-      <Button
-        href={`/transactions${filterToUrl({
-          ...transactionsFilter,
-          accounts:
-            accountFilter.length !== getAccounts().length ? accountFilter : [],
-        })}`}
-        onClick={() => {
-          back();
-
-          const selectedAccounts =
-            accountFilter.length === 0
-              ? getAccounts().map((item) => item.id)
-              : accountFilter;
-
-          back();
-
-          router.replace(
-            `/transactions${filterToUrl({
-              ...transactionsFilter,
-              accounts:
-                selectedAccounts.length !== getAccounts().length
-                  ? selectedAccounts
-                  : [],
-            })}`,
-          );
-        }}
-      >
-        اعمال فیلتر
-      </Button>
+      <Button onClick={handleApplyFilter}>اعمال فیلتر</Button>
     </div>
   );
 }

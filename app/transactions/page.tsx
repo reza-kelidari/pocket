@@ -5,10 +5,9 @@ import NavbarTitle from "@/components/NavbarTitle";
 import TransactionItem from "@/components/TransactionItem";
 import Left from "@/icons/Left";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
-import { useRedirect } from "@/utility/redirect/service/useRedirect";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
 import { toJalaliDateArray } from "@/utility/time/methods";
 import { AccountColors } from "@/utility/colors";
@@ -25,7 +24,6 @@ export default function Transactions() {
   const { getAccounts } = useAccounts();
   const router = useRouter();
   const transactions = useTransactions();
-  const { add: addRedirect, last: lastRedirect, replaceLast } = useRedirect();
   const timeFilter = timeFilters(toJalaliDateArray(new Date()));
 
   const transactionsFilter: transactionsFilterType = useMemo(
@@ -77,15 +75,10 @@ export default function Transactions() {
 
   useEffect(() => {
     if (getAccounts().length === 0) {
-      router.replace(`/splash`);
+      const currentPath = window.location.pathname + window.location.search;
+      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
     }
-  }, [getAccounts().length, router, searchParams]);
-
-  useEffect(() => {
-    if (!lastRedirect().includes(window.location.pathname))
-      addRedirect(window.location.pathname);
-    else replaceLast(window.location.pathname + window.location.search);
-  }, [searchParams]);
+  }, [getAccounts, router]);
 
   if (getAccounts().length === 0) return null;
 
@@ -98,6 +91,7 @@ export default function Transactions() {
           <Capsule
             Icon={Left}
             href={`/transactions/time-filter${filterToUrl(transactionsFilter)}`}
+            replace
             primary={transactionsFilter.timeWindow !== 29}
           >
             {timeFilter.find(
@@ -107,6 +101,7 @@ export default function Transactions() {
           <Capsule
             Icon={Left}
             href={`/transactions/account-filter${filterToUrl(transactionsFilter)}`}
+            replace
             primary={transactionsFilter.accounts.length > 0}
             accountColor={
               transactionsFilter.accounts.length === 1

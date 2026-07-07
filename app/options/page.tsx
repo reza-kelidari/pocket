@@ -30,22 +30,19 @@ export default function Options() {
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
         <NavbarTitle title="امکانات">
-          <Capsule
-            Icon={Restart}
-            onClick={() => window.location.assign("/")}
-          >
+          <Capsule Icon={Restart} onClick={() => window.location.reload()}>
             بارگذاری مجدد
           </Capsule>
         </NavbarTitle>
       </div>
 
       <div className="grid gap-4">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const { name, color, Icon, link } = item;
 
           return (
             <ListElement
-              key={items.indexOf(item)}
+              key={index}
               iconColor={color}
               Icon={<Icon height={17} width={17} fill="#fff" />}
               href={link}
