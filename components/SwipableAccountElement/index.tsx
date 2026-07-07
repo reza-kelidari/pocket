@@ -9,6 +9,7 @@ export default function SwipeableAccountItem({
   onCloseOthers,
   onEdit,
   onDelete,
+  defaultAccount,
 }: {
   children: React.ReactNode;
   isOpen: boolean;
@@ -16,6 +17,7 @@ export default function SwipeableAccountItem({
   onCloseOthers: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  defaultAccount?: boolean;
 }) {
   const [translateX, setTranslateX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,15 +49,14 @@ export default function SwipeableAccountItem({
     const rawTranslate = startTranslateX.current + delta;
 
     let clampedDelta;
+    const maxLimit = defaultAccount ? 0 : ACTION_WIDTH;
+
     if (startTranslateX.current > 0) {
-      clampedDelta = Math.max(0, Math.min(ACTION_WIDTH, rawTranslate));
+      clampedDelta = Math.max(0, Math.min(maxLimit, rawTranslate));
     } else if (startTranslateX.current < 0) {
       clampedDelta = Math.max(-ACTION_WIDTH, Math.min(0, rawTranslate));
     } else {
-      clampedDelta = Math.max(
-        -ACTION_WIDTH,
-        Math.min(ACTION_WIDTH, rawTranslate),
-      );
+      clampedDelta = Math.max(-ACTION_WIDTH, Math.min(maxLimit, rawTranslate));
     }
 
     setTranslateX(clampedDelta);
@@ -69,7 +70,7 @@ export default function SwipeableAccountItem({
     const threshold = ACTION_WIDTH / 3;
 
     if (startTranslateX.current === 0) {
-      if (delta > threshold) {
+      if (delta > threshold && !defaultAccount) {
         setTranslateX(ACTION_WIDTH);
         onOpenChange(true);
       } else if (delta < -threshold) {
@@ -106,14 +107,17 @@ export default function SwipeableAccountItem({
           ویرایش
         </button>
       </div>
-      <div className="absolute inset-y-0 left-0 w-22.5 bg-red-background border border-red-border flex items-center justify-center rounded-2xl ms-2">
-        <button
-          onClick={onDelete}
-          className="text-red text-xs font-medium w-full h-full"
-        >
-          حذف
-        </button>
-      </div>
+
+      {!defaultAccount && (
+        <div className="absolute inset-y-0 left-0 w-22.5 bg-red-background border border-red-border flex items-center justify-center rounded-2xl ms-2">
+          <button
+            onClick={onDelete}
+            className="text-red text-xs font-medium w-full h-full"
+          >
+            حذف
+          </button>
+        </div>
+      )}
 
       <div
         onMouseDown={(e) => handleStart(e.clientX)}

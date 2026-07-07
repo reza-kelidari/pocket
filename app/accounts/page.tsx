@@ -11,7 +11,7 @@ import Left from "@/icons/Left";
 import SwipeableAccountItem from "@/components/SwipableAccountElement";
 
 export default function Accounts() {
-  const { getAccounts } = useAccounts();
+  const { getAccounts, removeAccount } = useAccounts();
   const balances = useBalances();
   const router = useRouter();
 
@@ -42,14 +42,6 @@ export default function Accounts() {
 
   if (getAccounts().length === 0) return null;
 
-  const handleEdit = (id: number) => {
-    router.push(`/accounts/edit?id=${id}`);
-  };
-
-  const handleDelete = (id: number) => {
-    alert(`حساب ${id} حذف شود!`);
-  };
-
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
@@ -67,8 +59,11 @@ export default function Accounts() {
             isOpen={openItemId === account.id}
             onOpenChange={(open) => setOpenItemId(open ? account.id : null)}
             onCloseOthers={() => setOpenItemId(null)}
-            onEdit={() => handleEdit(account.id)}
-            onDelete={() => handleDelete(account.id)}
+            onEdit={() => router.push(`/accounts/edit?id=${account.id}`)}
+            onDelete={() => {
+              removeAccount(account.id);
+            }}
+            defaultAccount={account.default}
           >
             <AccountsListElement
               account={account}

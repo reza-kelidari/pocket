@@ -8,6 +8,7 @@ export default async function getAccountsList(): Promise<AccountType[]> {
       color: "orange",
       type: "Wallet",
       create: 0,
+      default: true,
     },
     {
       id: 0x01020001,
@@ -22,6 +23,7 @@ export default async function getAccountsList(): Promise<AccountType[]> {
       color: "green1",
       type: "Wallet",
       create: 0,
+      default: true,
     },
     {
       id: 0x01010001,
@@ -29,6 +31,7 @@ export default async function getAccountsList(): Promise<AccountType[]> {
       color: "red",
       type: "Wallet",
       create: 0,
+      default: true,
     },
   ];
 }

@@ -34,4 +34,5 @@ export type AccountType = {
   color: AccountColorType;
   type: AccountTypesType;
   create: number;
+  default?: boolean;
 };
