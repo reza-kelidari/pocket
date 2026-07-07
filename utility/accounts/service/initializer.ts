@@ -7,7 +7,7 @@ export default async function getAccountsList(): Promise<AccountType[]> {
       name: "کیف پول نقدی",
       color: "orange",
       type: "Wallet",
-      create: 0,
+      create: Date.now(),
       default: true,
     },
     {
@@ -15,14 +15,14 @@ export default async function getAccountsList(): Promise<AccountType[]> {
       name: "سامان",
       color: "blue1",
       type: "Bank",
-      create: 0,
+      create: Date.now(),
     },
     {
       id: 0x01010000,
       name: "طلب‌ها",
       color: "green1",
       type: "Wallet",
-      create: 0,
+      create: Date.now(),
       default: true,
     },
     {
@@ -30,7 +30,7 @@ export default async function getAccountsList(): Promise<AccountType[]> {
       name: "بدهی‌ها",
       color: "red",
       type: "Wallet",
-      create: 0,
+      create: Date.now(),
       default: true,
     },
   ];

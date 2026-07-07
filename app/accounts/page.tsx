@@ -61,7 +61,7 @@ export default function Accounts() {
             onCloseOthers={() => setOpenItemId(null)}
             onEdit={() => router.push(`/accounts/edit?id=${account.id}`)}
             onDelete={() => {
-              removeAccount(account.id);
+              router.push(`/accounts/delete?id=${account.id}`);
             }}
             defaultAccount={account.default}
           >
