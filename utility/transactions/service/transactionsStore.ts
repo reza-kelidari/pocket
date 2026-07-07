@@ -41,6 +41,15 @@ class TransactionsStore {
     this.notify();
   }
 
+  removeTransactionsByAccountID(accountID: number) {
+    console.log(accountID);
+    this.transactions.forEach((t) => {
+      if (t.debit === accountID || t.credit === accountID) {
+        this.removeTransaction(t.id);
+      }
+    });
+  }
+
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

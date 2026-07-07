@@ -13,8 +13,12 @@ export default function useTransactions() {
   return {
     transactions,
     addTransaction: transactionsStore.addTransaction.bind(transactionsStore),
-    updateTransaction: transactionsStore.updateTransaction.bind(transactionsStore),
-    removeTransaction: transactionsStore.removeTransaction.bind(transactionsStore),
+    updateTransaction:
+      transactionsStore.updateTransaction.bind(transactionsStore),
+    removeTransaction:
+      transactionsStore.removeTransaction.bind(transactionsStore),
+    removeTransactionsByAccountID:
+      transactionsStore.removeTransactionsByAccountID.bind(transactionsStore),
     clear: transactionsStore.clear.bind(transactionsStore),
     getTransactions: transactionsStore.getTransactions.bind(transactionsStore),
     getSnapshot: transactionsStore.getSnapshot.bind(transactionsStore),
