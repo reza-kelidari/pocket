@@ -1,3 +1,4 @@
+import { AccountType } from "../accounts/types";
 import { TransactionType } from "../transactions/types";
 import { AccountBalanceType, BalanceType } from "./types";
 
@@ -83,4 +84,22 @@ export function getTotalBalanceHistory(
   });
 
   return history;
+}
+
+export function getAccountBalances(
+  accounts: AccountType[],
+  transactions: TransactionType[],
+): AccountBalanceType[] {
+  let balances: AccountBalanceType[] = [];
+
+  accounts.forEach((account) => {
+    const calculatedbalances = getAccountBalanceHistory(
+      transactions.filter(
+        (item) => item.debit === account.id || item.credit === account.id,
+      ),
+      account.id,
+    );
+    balances.push(calculatedbalances);
+  });
+  return balances;
 }
