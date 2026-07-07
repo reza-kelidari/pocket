@@ -2,65 +2,57 @@
 
 import { TransactionType } from "../types";
 
-/**
- * In-memory storage for all loaded transactions.
- *
- * This variable acts as the single source of truth for the transactions store
- * during the application's runtime.
- */
-let transactions: TransactionType[] = [];
+class TransactionsStore {
+  private transactions: TransactionType[] = [];
+  private listeners: Set<() => void> = new Set();
 
-/**
- * Registered listeners that are notified whenever the transactions data changes.
- */
-const listeners = new Set<() => void>();
+  private notify() {
+    this.listeners.forEach((listener) => listener());
+  }
 
-/**
- * A lightweight global store for managing transaction data.
- *
- * Provides methods to:
- * - Read the current transactions.
- * - Replace the transactions collection.
- * - Subscribe to changes.
- *
- * Transactions are automatically sorted by time whenever they are updated.
- *
- * This store follows a simple publish/subscribe (Pub/Sub) pattern and is
- * intended for client-side state sharing without an external state library.
- */
-export const transactionsStore = {
-  /**
-   * Returns the current list of transactions.
-   *
-   * @returns The current transactions collection.
-   */
-  getTransactions() {
-    return transactions;
-  },
+  getTransactions(): TransactionType[] {
+    return [...this.transactions];
+  }
 
-  /**
-   * Replaces the current transactions collection.
-   *
-   * The provided transactions are sorted chronologically before being stored,
-   * then all registered subscribers are notified.
-   *
-   * @param data The new transactions collection.
-   */
   setTransactions(data: TransactionType[]) {
-    transactions = [...data].sort((a, b) => a.time - b.time);
+    this.transactions = [...data].sort((a, b) => a.time - b.time);
+    this.notify();
+  }
 
-    listeners.forEach((listener) => listener());
-  },
+  addTransaction(transaction: TransactionType) {
+    this.transactions.push(transaction);
+    this.transactions.sort((a, b) => a.time - b.time);
+    this.notify();
+  }
 
-  /**
-   * Registers a listener that will be called whenever the transactions data changes.
-   *
-   * @param listener Callback invoked after {@link setTransactions} updates the store.
-   * @returns A function that unsubscribes the listener.
-   */
-  subscribe(listener: () => void) {
-    listeners.add(listener);
+  updateTransaction(updatedTransaction: TransactionType) {
+    const index = this.transactions.findIndex(
+      (t) => t.id === updatedTransaction.id,
+    );
+    if (index !== -1) {
+      this.transactions[index] = { ...updatedTransaction };
+      this.transactions.sort((a, b) => a.time - b.time);
+      this.notify();
+    }
+  }
 
-    return () => listeners.delete(listener);
-  },
-};
+  removeTransaction(id: number) {
+    this.transactions = this.transactions.filter((t) => t.id !== id);
+    this.notify();
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  getSnapshot = () => this.transactions;
+
+  clear() {
+    this.transactions = [];
+    this.notify();
+  }
+}
+
+export const transactionsStore = new TransactionsStore();
+export default transactionsStore;
