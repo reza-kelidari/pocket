@@ -8,6 +8,7 @@ import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
 import Tag from "@/icons/Tag";
 import Restart from "@/icons/Restart";
+import { useRouter } from "next/navigation";
 
 export default function Options() {
   const items = [
@@ -30,7 +31,12 @@ export default function Options() {
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
         <NavbarTitle title="امکانات">
-          <Capsule Icon={Restart} onClick={() => window.location.reload()}>
+          <Capsule
+            Icon={Restart}
+            replace
+            href="/"
+            onClick={window.location.reload}
+          >
             بارگذاری مجدد
           </Capsule>
         </NavbarTitle>

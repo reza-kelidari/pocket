@@ -146,23 +146,21 @@ export default function AddAccount() {
     addAccount(account);
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
     resetFormState();
-    
-    // برگشت به صفحه قبل با استفاده از روتر بومی Next.js
+
     router.back();
   };
 
   const handleCancel = () => {
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
     resetFormState();
-    
-    // برگشت به صفحه قبل با استفاده از روتر بومی Next.js
+
     router.back();
   };
 
   // ==================== Effects ====================
   useEffect(() => {
     if (getAccounts().length === 0) {
-      router.replace("/splash");
+      router.replace("/splash?from=/accounts/add");
     }
   }, [getAccounts, router]);
 
@@ -265,12 +263,12 @@ export default function AddAccount() {
                 type="button"
                 key={key}
                 onClick={() => handleColorChange(key as AccountColorType)}
-                aria-label={`انتخاب رنگ ${key}`}
                 className={`
                   ${color.primary}
                   h-11 w-11 rounded-3xl cursor-pointer
-                  transition-all justify-self-center
-                  ${account.color === key ? "scale-110 ring-2 ring-white/50" : "hover:scale-110"}
+                  transition-all duration-200 justify-self-center
+                  border-4 border-transparent
+                  ${account.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}
                 `}
               />
             ))}

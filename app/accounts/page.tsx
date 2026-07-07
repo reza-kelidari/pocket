@@ -9,17 +9,28 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Left from "@/icons/Left";
 import SwipeableAccountItem from "@/components/SwipableAccountElement";
+import Right from "@/icons/Right";
 
 export default function Accounts() {
-  const { getAccounts, removeAccount } = useAccounts();
+  const { getAccounts } = useAccounts();
   const balances = useBalances();
   const router = useRouter();
+
+  const [showHint, setShowHint] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowHint(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const [openItemId, setOpenItemId] = useState<number | null>(null);
 
   useEffect(() => {
     if (getAccounts().length === 0) {
-      router.replace(`/splash`);
+      router.replace(`/splash?from=/accounts`);
     }
   }, [getAccounts, router]);
 
@@ -53,6 +64,22 @@ export default function Accounts() {
       </div>
 
       <div className="grid gap-5">
+        <div
+          className={`absolute top-16 z-20 right-1/2 translate-x-1/2 w-screen p-7.5 transition-all duration-700 ${showHint ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-secondary flex items-center gap-1">
+              <Right className="fill-secondary" height={15} width={15} />
+              برای حذف به راست بکشید
+            </span>
+
+            <span className="text-[10px] text-secondary flex items-center gap-1">
+              برای ویرایش به چپ بکشید
+              <Left className="fill-secondary" height={15} width={15} />
+            </span>
+          </div>
+        </div>
+
         {getAccounts().map((account) => (
           <SwipeableAccountItem
             key={account.id}

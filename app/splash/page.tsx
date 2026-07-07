@@ -16,7 +16,6 @@ export default function Splash() {
   const searchParams = useSearchParams();
   const { setAccounts } = useAccounts();
   
-  // خواندن مسیری که کاربر قرار بوده برود از کوئری پارامتر
   const fromPath = searchParams.get("from") || "/";
 
   useEffect(() => {
@@ -43,7 +42,6 @@ export default function Splash() {
 
       sessionStorage.setItem("splashShown", "1");
 
-      // ارسال کاربر به مسیر اصلی
       router.replace(fromPath);
     }
 

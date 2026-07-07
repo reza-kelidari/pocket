@@ -2,6 +2,7 @@
 
 import Button from "@/components/Button";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
+import { AccountColors } from "@/utility/colors";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -36,8 +37,10 @@ export default function AccountDelete() {
       <h1 className="text-center text-xl">هشدار</h1>
       <p className="text-center text-xs">
         با این‌کار تمام تراکنش‌های حساب{" "}
-        <span className="font-bold">{account.name}</span> اعم‌از واریز، برداشت،
-        انتقال حذف میشه؛ مطمئن هستین؟
+        <span className="font-bold">
+          {account.name} <span className={`inline-block h-2 w-2 rounded-4xl ${AccountColors[account.color].primary}`}></span>
+        </span>{" "}
+        اعم‌از واریز، برداشت، انتقال حذف میشه؛ مطمئن هستین؟
       </p>
 
       <div className="grid gap-4">
