@@ -70,3 +70,9 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+* {
+  -webkit-user-drag: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
