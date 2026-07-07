@@ -30,7 +30,10 @@ class TransactionsStore {
       (t) => t.id === updatedTransaction.id,
     );
     if (index !== -1) {
-      this.transactions[index] = { ...updatedTransaction };
+      this.transactions[index] = {
+        ...this.transactions,
+        ...updatedTransaction,
+      };
       this.transactions.sort((a, b) => a.time - b.time);
       this.notify();
     }

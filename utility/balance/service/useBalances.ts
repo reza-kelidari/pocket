@@ -12,10 +12,13 @@ export default function useBalances() {
 
   return {
     balances,
+    addBalance: balancesStore.addBalance.bind(balancesStore),
+    updateBalance: balancesStore.updateBalance.bind(balancesStore),
+    removeBalance: balancesStore.removeBalance.bind(balancesStore),
+    clear: balancesStore.clear.bind(balancesStore),
     getBalances: balancesStore.getBalances.bind(balancesStore),
     getSnapshot: balancesStore.getSnapshot.bind(balancesStore),
     setBalances: balancesStore.setBalances.bind(balancesStore),
-    addBalance: balancesStore.addBalance.bind(balancesStore),
     subscribe: balancesStore.subscribe.bind(balancesStore),
   };
 }

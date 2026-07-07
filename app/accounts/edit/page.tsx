@@ -15,17 +15,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccountColors } from "@/utility/colors";
 import { CREATE_ACCOUNT_KEY } from "../add/page";
+import useTransactions from "@/utility/transactions/service/useTransactions";
+import { TransactionType } from "@/utility/transactions/types";
+import useBalances from "@/utility/balance/service/useBalances";
+import { getAccountBalanceHistory } from "@/utility/balance/methods";
 
-type NewAccountType = AccountType & {
-  initialBalance: number;
-};
-
-const defaultAccount: NewAccountType = {
+const defaultAccount: AccountType = {
   id: 0,
   name: "",
   type: "Bank",
   color: "black",
-  initialBalance: 0,
   create: Date.now(),
 };
 
@@ -34,24 +33,25 @@ export default function AccountEdit() {
   const router = useRouter();
   const accountID = Number(searchParams.get("id"));
   const { getAccounts, updateAccount } = useAccounts();
+  const { transactions, updateTransaction, addTransaction } = useTransactions();
+  const { updateBalance } = useBalances();
 
   const existingAccount = getAccounts().find((item) => item.id === accountID);
 
-  const [account, setAccount] = useState<NewAccountType>(() => {
+  const [account, setAccount] = useState<AccountType>(() => {
     const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
 
     if (data) {
-      const parsed = JSON.parse(data) as Partial<NewAccountType>;
+      const parsed = JSON.parse(data) as AccountType;
       if (parsed.id === accountID) {
         return { ...defaultAccount, ...parsed };
       }
     }
 
-    const loadedAccount: NewAccountType = {
+    const loadedAccount: AccountType = {
       ...defaultAccount,
       ...existingAccount,
       id: accountID,
-      initialBalance: 0,
     };
 
     sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(loadedAccount));
@@ -62,6 +62,16 @@ export default function AccountEdit() {
     formatJalaliDate(account.create),
   );
 
+  // ==================== اصلاح این بخش ====================
+  // خواندن مقدار موجودی اولیه فقط یک بار هنگام لود صفحه
+  const [initialBalance, setInitialBalance] = useState(() => {
+    const tx = transactions.find(
+      (item) => item.type === "initial" && item.debit === accountID,
+    );
+    return tx?.value ?? 0;
+  });
+  // ======================================================
+
   // ==================== Validation ====================
   const isValid = useMemo(() => {
     const nameValid = account.name.trim().length >= 3;
@@ -70,7 +80,7 @@ export default function AccountEdit() {
   }, [account.name, account.create]);
 
   // ==================== State Update & Sync ====================
-  const updateAccountState = useCallback((updated: Partial<NewAccountType>) => {
+  const updateAccountState = useCallback((updated: Partial<AccountType>) => {
     setAccount((prev) => {
       const newAccount = { ...prev, ...updated };
       sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(newAccount));
@@ -88,7 +98,7 @@ export default function AccountEdit() {
 
   const parseJalaliInput = (formattedValue: string): number => {
     const raw = toEnglishDigits(formattedValue).replace(/\D/g, "");
-    if (raw.length !== 8) return Date.now();
+    if (raw.length !== 8) return 0;
 
     const year = parseInt(raw.slice(0, 4), 10);
     const month = parseInt(raw.slice(4, 6), 10);
@@ -97,7 +107,7 @@ export default function AccountEdit() {
     if (year >= 1300 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
       return jalaliToTimestamp([year, month, day]);
     }
-    return Date.now();
+    return 0;
   };
 
   const formatCreateInput = (value: string): string => {
@@ -115,10 +125,18 @@ export default function AccountEdit() {
     updateAccountState({ name: e.target.value });
   };
 
+  function handleInitialChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
+    setInitialBalance(Number(raw || 0));
+  }
+
   const handleCreateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCreateInput(e.target.value);
     setCreateInput(formatted);
-    updateAccountState({ create: parseJalaliInput(formatted) });
+    const timestamp = parseJalaliInput(formatted);
+    if (timestamp > 0) {
+      updateAccountState({ create: timestamp });
+    }
   };
 
   const handleColorChange = (color: AccountColorType) => {
@@ -128,8 +146,42 @@ export default function AccountEdit() {
   const handleSave = () => {
     if (!isValid) return;
 
-    // آپدیت حساب در استور اصلی
     updateAccount(account);
+
+    const initialTx = transactions.find(
+      (t) => t.type === "initial" && t.debit === account.id,
+    );
+
+    let finalTx: TransactionType;
+
+    if (initialTx) {
+      finalTx = {
+        ...initialTx,
+        value: initialBalance,
+        time: account.create,
+      };
+      updateTransaction(finalTx);
+    } else {
+      finalTx = {
+        id: Date.now(),
+        type: "initial",
+        name: "موجودی اولیه",
+        time: account.create,
+        value: initialBalance,
+        debit: account.id,
+        credit: 0,
+        note: "",
+      } as TransactionType;
+      addTransaction(finalTx);
+    }
+
+    const accountTxs = transactions
+      .filter((t) => t.debit === account.id || t.credit === account.id)
+      .map((t) => (t.id === finalTx.id ? finalTx : t));
+
+    const updatedBalance = getAccountBalanceHistory(accountTxs, account.id);
+    updateBalance(updatedBalance);
+
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
     router.back();
   };
@@ -145,19 +197,18 @@ export default function AccountEdit() {
       const currentPath = window.location.pathname + window.location.search;
       router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
     } else if (!existingAccount && accountID) {
-      // اگر آیدی نامعتبر بود
       router.replace("/accounts");
     }
+    // بخش else و setInitialBalance کاملا حذف شد
   }, [getAccounts, router, existingAccount, accountID]);
 
-  // هنگام بازگشت از صفحه انتخاب نوع، استیت را از sessionStorage می‌خواند
   useEffect(() => {
     const handleFocus = () => {
       const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
       if (!data) return;
 
       try {
-        const parsed = JSON.parse(data) as NewAccountType;
+        const parsed = JSON.parse(data) as AccountType;
         setAccount((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
             setCreateInput(formatJalaliDate(parsed.create));
@@ -220,12 +271,11 @@ export default function AccountEdit() {
               type="text"
               inputMode="numeric"
               value={
-                account.initialBalance
-                  ? account.initialBalance.toLocaleString("fa-IR")
-                  : "غیرقابل ویرایش"
+                initialBalance ? initialBalance.toLocaleString("fa-IR") : ""
               }
-              disabled
-              className="h-12 w-full text-sm border border-elements-border bg-elements-background/50 px-4 pl-10 rounded-2xl outline-none text-secondary cursor-not-allowed"
+              onChange={handleInitialChange}
+              placeholder="۰"
+              className="h-12 w-full text-sm border border-elements-border bg-elements-background px-4 pl-10 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
             />
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-[10px] pointer-events-none">
               ﷼
