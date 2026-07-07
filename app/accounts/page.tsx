@@ -13,7 +13,7 @@ import Right from "@/icons/Right";
 
 export default function Accounts() {
   const { getAccounts } = useAccounts();
-  const balances = useBalances();
+  const {getBalances} = useBalances();
   const router = useRouter();
   const [showHint, setShowHint] = useState(true);
   const [openItemId, setOpenItemId] = useState<number | null>(null);
@@ -92,7 +92,7 @@ export default function Accounts() {
           >
             <AccountsListElement
               account={account}
-              balances={balances}
+              balances={getBalances()}
               href={`accounts/details?id=${account.id}`}
             />
           </SwipeableAccountItem>

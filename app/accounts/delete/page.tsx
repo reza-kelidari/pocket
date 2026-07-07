@@ -3,6 +3,7 @@
 import Button from "@/components/Button";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
+import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,6 +11,7 @@ export default function AccountDelete() {
   const searchParams = useSearchParams();
   const accountID = Number(searchParams.get("id") ?? "0");
   const { getAccounts, removeAccount } = useAccounts();
+  const { removeTransactionsByAccountID } = useTransactions();
   const router = useRouter();
   const [validate, setValidate] = useState(false);
   const account = getAccounts().find((acc) => acc.id === accountID);
@@ -29,6 +31,9 @@ export default function AccountDelete() {
     if (!validate) return;
 
     removeAccount(accountID);
+
+    removeTransactionsByAccountID(accountID);
+
     router.back();
   };
 
@@ -38,7 +43,10 @@ export default function AccountDelete() {
       <p className="text-center text-xs">
         با این‌کار تمام تراکنش‌های حساب{" "}
         <span className="font-bold">
-          {account.name} <span className={`inline-block h-2 w-2 rounded-4xl ${AccountColors[account.color].primary}`}></span>
+          {account.name}{" "}
+          <span
+            className={`inline-block h-2 w-2 rounded-4xl ${AccountColors[account.color].primary}`}
+          ></span>
         </span>{" "}
         اعم‌از واریز، برداشت، انتقال حذف میشه؛ مطمئن هستین؟
       </p>

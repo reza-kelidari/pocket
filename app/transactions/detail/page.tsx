@@ -14,13 +14,13 @@ import { ComponentProps, useEffect } from "react";
 export default function TransactionDetail() {
   const searchParams = useSearchParams();
   const { getAccounts } = useAccounts();
+  const { getTransactions } = useTransactions();
   const router = useRouter();
 
-  const transaction = useTransactions()
-    .getTransactions()
-    .find((item) => item.id === Number(searchParams.get("id") ?? 0));
+  const txID = Number(searchParams.get("id") ?? 0);
+  const transaction = getTransactions().find((item) => item.id === txID);
 
-  const isTxDebit = transaction?.type === "debit";
+  const isTxDebit = transaction?.type === "debit" || transaction?.type === "initial";
   const accountID = isTxDebit ? transaction?.debit : transaction?.credit;
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;
   const txCategory = getCategoryById(categoryID ?? 0);
@@ -39,6 +39,7 @@ export default function TransactionDetail() {
   const txDate = new Date(transaction?.time ?? 0);
 
   useEffect(() => {
+    if (!transaction || !txID) router.back();
     if (getAccounts().length === 0) {
       const currentPath = window.location.pathname + window.location.search;
       router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);

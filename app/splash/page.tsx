@@ -6,16 +6,18 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { transactionsStore } from "@/utility/transactions/service/transactionsStore";
-import { getAccountBalanceHistory } from "@/utility/balance/methods";
-import { AccountBalanceType } from "@/utility/balance/types";
-import { balancesStore } from "@/utility/balance/service/balanceStore";
+import {
+  getAccountBalances,
+} from "@/utility/balance/methods";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
+import useBalances from "@/utility/balance/service/useBalances";
 
 export default function Splash() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setBalances } = useBalances();
   const { setAccounts } = useAccounts();
-  
+
   const fromPath = searchParams.get("from") || "/";
 
   useEffect(() => {
@@ -26,19 +28,7 @@ export default function Splash() {
       setAccounts(accounts);
       transactionsStore.setTransactions(transactions);
 
-      let balances: AccountBalanceType[] = [];
-
-      accounts.forEach((account) => {
-        const calculatedbalances = getAccountBalanceHistory(
-          transactions.filter(
-            (item) => item.debit === account.id || item.credit === account.id,
-          ),
-          account.id,
-        );
-        balances.push(calculatedbalances);
-      });
-
-      balancesStore.setBalances(balances);
+      setBalances(getAccountBalances(accounts, transactions));
 
       sessionStorage.setItem("splashShown", "1");
 

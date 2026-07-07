@@ -5,6 +5,8 @@ import Left from "@/icons/Left";
 import { AccountTypes } from "@/utility/accounts/constants";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColorType, AccountType } from "@/utility/accounts/types";
+import useTransactions from "@/utility/transactions/service/useTransactions";
+import { TransactionType } from "@/utility/transactions/types";
 import {
   jalaliToTimestamp,
   toEnglishDigits,
@@ -15,6 +17,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { generateNextId } from "./methods";
 import { AccountColors } from "@/utility/colors";
+import useBalances from "@/utility/balance/service/useBalances";
 
 export const CREATE_ACCOUNT_KEY = "new-account";
 
@@ -27,22 +30,25 @@ const defaultAccount: Omit<NewAccountType, "id"> = {
   type: "Bank",
   color: "black",
   initialBalance: 0,
-  create: Date.now(),
+  create: jalaliToTimestamp(
+    toJalaliDateArray(new Date()) as [number, number, number],
+  ),
 };
 
 export default function AddAccount() {
   const router = useRouter();
   const pathname = usePathname();
   const { getAccounts, addAccount } = useAccounts();
+  const { addTransaction } = useTransactions();
+  const { addBalance } = useBalances();
 
   const [account, setAccount] = useState<NewAccountType>(() => {
+    // جلوگیری از خطای SSR در Next.js
     if (typeof window === "undefined") return { ...defaultAccount, id: 0 };
+
     const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
-    if (!data) {
-      return { ...defaultAccount, id: generateNextId(getAccounts()) };
-    }
     try {
-      const parsed = JSON.parse(data) as Partial<NewAccountType>;
+      const parsed = JSON.parse(data!) as Partial<NewAccountType>;
       const id =
         parsed.id && parsed.id !== 0
           ? parsed.id
@@ -75,6 +81,7 @@ export default function AddAccount() {
 
   // ==================== Date Helpers ====================
   function formatJalaliDate(timestamp: number): string {
+    if (!timestamp) return "";
     const date = new Date(timestamp);
     const [year, month, day] = toJalaliDateArray(date);
     const result = `${year}/${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}`;
@@ -83,7 +90,8 @@ export default function AddAccount() {
 
   const parseJalaliInput = (formattedValue: string): number => {
     const raw = toEnglishDigits(formattedValue).replace(/\D/g, "");
-    if (raw.length !== 8) return Date.now();
+    // اگر کاربر هنوز 8 رقم را کامل نکرده بود، 0 برمی‌گردانیم تا تاریخ را به Date.now تغییر ندهد
+    if (raw.length !== 8) return 0;
 
     const year = parseInt(raw.slice(0, 4), 10);
     const month = parseInt(raw.slice(4, 6), 10);
@@ -92,7 +100,7 @@ export default function AddAccount() {
     if (year >= 1300 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
       return jalaliToTimestamp([year, month, day]);
     }
-    return Date.now();
+    return 0;
   };
 
   const formatCreateInput = (value: string): string => {
@@ -132,8 +140,13 @@ export default function AddAccount() {
 
   const handleCreateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCreateInput(e.target.value);
-    setCreateInput(formatted);
-    updateAccount({ create: parseJalaliInput(formatted) });
+    setCreateInput(formatted); // آپدیت کردن فقط ظاهر اینپوت
+
+    const timestamp = parseJalaliInput(formatted);
+    // فقط اگر تاریخ معتبری بود، استیت اصلی را آپدیت کن
+    if (timestamp > 0) {
+      updateAccount({ create: timestamp });
+    }
   };
 
   const handleColorChange = (color: AccountColorType) => {
@@ -143,17 +156,40 @@ export default function AddAccount() {
   const handleSave = () => {
     if (!isValid) return;
 
+    // ۱. ذخیره حساب
     addAccount(account);
+
+    const initialTransaction: TransactionType = {
+      id: Date.now(),
+      type: "initial",
+      name: "موجودی اولیه",
+      time: account.create,
+      value: account.initialBalance,
+      debit: account.id,
+      credit: 0,
+      note: "",
+    } as TransactionType;
+
+    addTransaction(initialTransaction);
+
+    addBalance({
+      id: account.id,
+      history: [
+        {
+          time: account.create,
+          balance: account.initialBalance,
+        },
+      ],
+    });
+
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
     resetFormState();
-
     router.back();
   };
 
   const handleCancel = () => {
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
     resetFormState();
-
     router.back();
   };
 

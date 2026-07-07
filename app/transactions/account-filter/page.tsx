@@ -13,7 +13,7 @@ export default function AccountFilter() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { getAccounts } = useAccounts();
-  const balances = useBalances();
+  const { getBalances } = useBalances();
 
   const [accountFilter, setAccountFilter] = useState<number[]>([]);
 
@@ -72,7 +72,7 @@ export default function AccountFilter() {
         {getAccounts().map((item) => (
           <AccountsListElement
             account={item}
-            balances={balances}
+            balances={getBalances()}
             key={item.id}
             disabled={!accountFilter.includes(item.id)}
             onClick={() => {

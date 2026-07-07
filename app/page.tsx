@@ -24,7 +24,7 @@ export default function Home() {
   const router = useRouter();
   const { getAccounts } = useAccounts();
   const { getTransactions } = useTransactions();
-  const accountsBalances = useBalances();
+  const { getBalances } = useBalances();
 
   const splashGuard =
     !getAccounts().length || !sessionStorage.getItem("splashShown");
@@ -78,7 +78,7 @@ export default function Home() {
                 name={account.name}
                 color={account.color}
                 lastBalance={
-                  accountsBalances
+                  getBalances()
                     .find((item) => item.id === account.id)
                     ?.history?.at(-1)?.balance ?? 0
                 }
