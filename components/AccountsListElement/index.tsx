@@ -9,12 +9,14 @@ type AccountListElementPropsType = ComponentProps<"a"> & {
   account: AccountType;
   balances: AccountBalanceType[];
   disabled?: boolean;
+  desaturated?: boolean;
 };
 
 export default function AccountsListElement({
   account,
   balances,
   disabled,
+  desaturated,
   ...props
 }: AccountListElementPropsType) {
   const balance =
@@ -29,7 +31,9 @@ export default function AccountsListElement({
   return (
     <Link
       href={props.href ?? "#"}
-      className={`flex items-center justify-between p-4 rounded-2xl border ${!disabled ? activeColors : disableColors}`}
+      className={`flex items-center justify-between p-4 rounded-2xl border
+        ${!disabled ? activeColors : disableColors}
+        ${desaturated && "saturate-25 opacity-75"}`}
       {...props}
     >
       <div className="grid gap-2.5">

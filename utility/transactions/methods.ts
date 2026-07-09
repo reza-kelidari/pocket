@@ -1,4 +1,4 @@
-import { TransactionCategories } from "./constant";
+import { TransactionCategories } from "../category/constant";
 
 export function getCategoryById(id: number) {
   for (const cat of TransactionCategories.expense) {

@@ -1,0 +1,295 @@
+import Wallet from "@/icons/Wallet";
+
+export const TransactionCategories = {
+  expense: [
+    {
+      id: 0x02010000,
+      name: "مواد غذایی",
+      sub: [
+        { id: 0x02010001, name: "برنج و روغن", icon: Wallet },
+        { id: 0x02010002, name: "غلات و حبوبات", icon: Wallet },
+        { id: 0x02010003, name: "مواد پروتئینی", icon: Wallet },
+        { id: 0x02010004, name: "نان و غلات صبحانه", icon: Wallet },
+        { id: 0x02010005, name: "لبنیات", icon: Wallet },
+        { id: 0x02010006, name: "ادویه‌ها و سس‌ها", icon: Wallet },
+        { id: 0x02010007, name: "نوشابه‌های گازدار و انرژی‌زا", icon: Wallet },
+        { id: 0x02010008, name: "آب‌میوه", icon: Wallet },
+        { id: 0x02010009, name: "میوه", icon: Wallet },
+        { id: 0x0201000a, name: "سبزیجات و صیفیجات", icon: Wallet },
+        { id: 0x0201000b, name: "شیرینی", icon: Wallet },
+        { id: 0x0201000c, name: "آجیل و خشکبار", icon: Wallet },
+        { id: 0x0201000d, name: "تنقلات", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02020000,
+      name: "کافه و رستوران",
+      sub: [
+        { id: 0x02020001, name: "کافه", icon: Wallet },
+        { id: 0x02020002, name: "رستوران", icon: Wallet },
+        { id: 0x02020003, name: "فست‌فود", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02030000,
+      name: "حمل و نقل",
+      sub: [
+        { id: 0x02030001, name: "حمل و نقل عمومی", icon: Wallet },
+        { id: 0x02030002, name: "تاکسی، اسنپ، تپسی، و...", icon: Wallet },
+        { id: 0x02030003, name: "کامیون، وانت، و ...", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02040000,
+      name: "مرسولات",
+      sub: [
+        { id: 0x02040001, name: "اسنپ‌باکس، تپسی‌باکس، و ...", icon: Wallet },
+        { id: 0x02040002, name: "کامیون، وانت، باربری بین‌شهری", icon: Wallet },
+        { id: 0x02040003, name: "پست، تیپاکس، و ...", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02050000,
+      name: "پوشاک",
+      sub: [
+        { id: 0x02050001, name: "پیراهن", icon: Wallet },
+        { id: 0x02050002, name: "شلوار", icon: Wallet },
+        { id: 0x02050003, name: "تیشرت و پولوشرت", icon: Wallet },
+        { id: 0x02050004, name: "کفش", icon: Wallet },
+        { id: 0x02050005, name: "کاپشن", icon: Wallet },
+        { id: 0x02050006, name: "جوراب", icon: Wallet },
+        { id: 0x02050007, name: "لباس زیر", icon: Wallet },
+        { id: 0x02050008, name: "لباس راحتی", icon: Wallet },
+        { id: 0x02050009, name: "کیف و کوله", icon: Wallet },
+        { id: 0x0205000a, name: "خیاطی", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02060000,
+      name: "مراقبت از پوشاک",
+      sub: [{ id: 0x02060001, name: "واکس", icon: Wallet }],
+    },
+    {
+      id: 0x02070000,
+      name: "بهداشت، زیبایی و سلامت",
+      sub: [
+        { id: 0x02070001, name: "پیرایشگاه", icon: Wallet },
+        { id: 0x02070002, name: "شامپو، صابون", icon: Wallet },
+        { id: 0x02070003, name: "پودر لباسشویی", icon: Wallet },
+        { id: 0x02070004, name: "سفیدکننده لباس", icon: Wallet },
+        { id: 0x02070005, name: "مایع ظرفشویی", icon: Wallet },
+        { id: 0x02070006, name: "شوینده‌های قوی و جرم‌گیر", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02080000,
+      name: "لوازم خانگی",
+      sub: [
+        { id: 0x02080001, name: "لوازم خانگی برقی", icon: Wallet },
+        { id: 0x02080002, name: "لوازم خانگی غیربرقی", icon: Wallet },
+        { id: 0x02080003, name: "خرده‌ریز لوازم خانگی", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02090000,
+      name: "اکسسوری",
+      sub: [
+        { id: 0x02090001, name: "ساعت", icon: Wallet },
+        { id: 0x02090002, name: "گردنبند", icon: Wallet },
+        { id: 0x02090003, name: "دستبند", icon: Wallet },
+        { id: 0x02090004, name: "انگشتر", icon: Wallet },
+        { id: 0x02090005, name: "پابند", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x020a0000,
+      name: "وسایل الکترونیکی",
+      sub: [
+        { id: 0x020a0001, name: "قطعات کامپیوتر", icon: Wallet },
+        { id: 0x020a0002, name: "لپ‌تاپ", icon: Wallet },
+        { id: 0x020a0003, name: "موبایل، تبلت", icon: Wallet },
+        { id: 0x020a0004, name: "ساعت هوشمند", icon: Wallet },
+        { id: 0x020a0005, name: "هدفون، هندزفری", icon: Wallet },
+        { id: 0x020a0006, name: "اسپیکر", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x020b0000,
+      name: "لوازم جانبی وسایل الکترونیکی",
+      sub: [
+        { id: 0x020b0001, name: "کابل و تبدیل", icon: Wallet },
+        { id: 0x020b0002, name: "پاوربانک", icon: Wallet },
+        { id: 0x020b0003, name: "محافظ برق", icon: Wallet },
+        { id: 0x020b0004, name: "لوازم جانبی کامپیوتر", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x020c0000,
+      name: "تعمیر و نگهداری وسایل الکترونیکی",
+      sub: [
+        {
+          id: 0x020c0001,
+          name: "تعمیر و نگهداری وسایل الکترونیکی",
+          icon: Wallet,
+        },
+        { id: 0x020c0002, name: " لوازم جانبی وسایل الکترونیکی", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x020d0000,
+      name: "هدایا",
+      sub: [
+        { id: 0x020d0001, name: "هدیه", icon: Wallet },
+        { id: 0x020d0002, name: "کارت هدیه", icon: Wallet },
+        { id: 0x020d0003, name: "کمک بلاعوض", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x020e0000,
+      name: "ابزارها",
+      sub: [
+        { id: 0x020e0001, name: "پیچ‌گوشتی", icon: Wallet },
+        { id: 0x020e0002, name: "دریل", icon: Wallet },
+        { id: 0x020e0003, name: "مته", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x020f0000,
+      name: "پزشکی",
+      sub: [
+        { id: 0x020f0001, name: "معاینه پزشکی", icon: Wallet },
+        { id: 0x020f0002, name: "داروخانه", icon: Wallet },
+        { id: 0x020f0003, name: "آزمایشگاه", icon: Wallet },
+        { id: 0x020f0004, name: "بیمارستان", icon: Wallet },
+        { id: 0x020f0005, name: "تزریقات", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02110000,
+      name: "خانه‌داری",
+      sub: [
+        { id: 0x02110001, name: "اجاره خانه", icon: Wallet },
+        { id: 0x02110002, name: "قبض آب", icon: Wallet },
+        { id: 0x02110003, name: "قبض برق", icon: Wallet },
+        { id: 0x02110004, name: "قبض گاز", icon: Wallet },
+        { id: 0x02110005, name: "قبض تلفن", icon: Wallet },
+        { id: 0x02110006, name: "سرویس‌ها، اشتراک‌ها", icon: Wallet },
+        { id: 0x02110007, name: "تعمیر و نگهداری خانه", icon: Wallet },
+        { id: 0x02110008, name: "بیمه حوادث خانه", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02120000,
+      name: "خودرو",
+      sub: [
+        { id: 0x02120001, name: "خرید خودرو", icon: Wallet },
+        { id: 0x02120002, name: "اجاره خودرو", icon: Wallet },
+        { id: 0x02120003, name: "بنزین، CNG، LPG، گازوئیل", icon: Wallet },
+        { id: 0x02120004, name: "پارکینگ", icon: Wallet },
+        { id: 0x02120005, name: "تعمیر و نگهداری خودرو", icon: Wallet },
+        { id: 0x02120006, name: "جرائم رانندگی", icon: Wallet },
+        { id: 0x02120007, name: "بیمه خودرو", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02130000,
+      name: "زندگی و سرگرمی",
+      sub: [
+        { id: 0x02130001, name: "آرامش، روانشناسی", icon: Wallet },
+        { id: 0x02130002, name: "بیمه فردی", icon: Wallet },
+        { id: 0x02130003, name: "بیمه عمر", icon: Wallet },
+        { id: 0x02130004, name: "ورزش", icon: Wallet },
+        { id: 0x02130005, name: "سینما، تئاتر، کنسرت، و...", icon: Wallet },
+        { id: 0x02130006, name: "رویداد‌های ورزشی", icon: Wallet },
+        { id: 0x02130007, name: "سرگرمی", icon: Wallet },
+        { id: 0x02130008, name: "تحصیل، توصعه فردی", icon: Wallet },
+        { id: 0x02130009, name: "عکاسی، آتلیه", icon: Wallet },
+        { id: 0x0213000a, name: "کتاب (چاپی، صوتی، اشتراک)", icon: Wallet },
+        { id: 0x0213000b, name: "تور، هتل", icon: Wallet },
+        { id: 0x0213000c, name: "خیریه", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02140000,
+      name: "ارتباطات",
+      sub: [
+        { id: 0x02140001, name: "شارژ و قبض سیمکارت", icon: Wallet },
+        { id: 0x02140002, name: "اینترنت", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02150000,
+      name: "اشتراک‌ها",
+      sub: [
+        { id: 0x02150001, name: "اشتراک سایت‌ها و برنامه‌ها", icon: Wallet },
+        { id: 0x02150002, name: "اشتراک تلوزیون‌های آنلاین", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02160000,
+      name: "مخارج مالی",
+      sub: [
+        { id: 0x02160001, name: "کارمزد خدمات بانکی", icon: Wallet },
+        { id: 0x02160002, name: "کارمزد خدمات دولتی", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02170000,
+      name: "مسافرت",
+      sub: [
+        { id: 0x02170001, name: "قطار", icon: Wallet },
+        { id: 0x02170002, name: "اتوبوس", icon: Wallet },
+        { id: 0x02170003, name: "هواپیما", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x02180000,
+      name: "لوازم تحریر و نوشت‌افزار",
+      sub: [
+        {
+          id: 0x02180001,
+          name: "چاپ، کپی رنگی، کپی سیاه و سفید",
+          icon: Wallet,
+        },
+        { id: 0x02180002, name: "کاغذ", icon: Wallet },
+        { id: 0x02180003, name: "دفتر، دفترچه، سررسید، و...", icon: Wallet },
+        { id: 0x02180004, name: "خودکار، مداد، غلط‌گیر، و ...", icon: Wallet },
+        { id: 0x02180005, name: "نقاله، گونیا، پرگار، و...", icon: Wallet },
+        { id: 0x02180006, name: "برچسب و استیکر", icon: Wallet },
+        { id: 0x02180007, name: "طلق و شیرازه", icon: Wallet },
+        {
+          id: 0x02180008,
+          name: "منگنه، سوزن منگنه، منگنه‌کش، پانچ، و...",
+          icon: Wallet,
+        },
+        { id: 0x02180009, name: "تقویم", icon: Wallet },
+      ],
+    },
+  ],
+  income: [
+    {
+      id: 0x03010000,
+      name: "درآمد مستقیم",
+      sub: [
+        { id: 0x03010001, name: "حقوق و دستمزد", icon: Wallet },
+        { id: 0x03010002, name: "عیدی و سنوات", icon: Wallet },
+        { id: 0x03010003, name: "سایر مزایا", icon: Wallet },
+      ],
+    },
+    {
+      id: 0x03020000,
+      name: "درآمد غیرمستقیم",
+      sub: [
+        { id: 0x03020001, name: "کمک بلاعوض", icon: Wallet },
+        { id: 0x03020002, name: "قرعه‌کشی", icon: Wallet },
+        { id: 0x03020003, name: "هدایای دریافتی", icon: Wallet },
+        { id: 0x03020004, name: "بازپرداخت‌ها", icon: Wallet },
+        { id: 0x03020005, name: "سود بانکی", icon: Wallet },
+        { id: 0x03020006, name: "سود سرمایه‌گذاری", icon: Wallet },
+        { id: 0x03020007, name: "سود سهام عدالت", icon: Wallet },
+        { id: 0x03020008, name: "اجاره دارایی‌ها", icon: Wallet },
+        { id: 0x03020009, name: "فروش دارایی‌ها", icon: Wallet },
+      ],
+    },
+  ],
+} as const;

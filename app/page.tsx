@@ -44,9 +44,9 @@ export default function Home() {
 
   const quickAccessList: { name: string; link: string; icon: IconComponent }[] =
     [
-      { name: "دریافت", link: "/newtransaction?type=debit", icon: Receive },
-      { name: "پرداخت", link: "/newtransaction?type=credit", icon: Send },
-      { name: "انتقال", link: "/newtransaction?type=transfer", icon: Transfer },
+      { name: "دریافت", link: "/transactions/add?type=debit", icon: Receive },
+      { name: "پرداخت", link: "/transactions/add?type=credit", icon: Send },
+      { name: "انتقال", link: "/transactions/add?type=transfer", icon: Transfer },
     ];
 
   // اصلاح خطای بازگشت undefined
