@@ -20,22 +20,22 @@ export default function Message() {
   }, []);
 
   if (!message) router.replace("/");
+  else
+    return (
+      <div className="flex flex-col justify-center items-center gap-7.5 p-15 h-screen">
+        <div className="flex items-center justify-center gap-2">
+          <Info
+            className={
+              message.type === "error" ? "fill-red" : "fill-income-primary"
+            }
+            height={30}
+            width={30}
+          />
+          <h1 className="text-xl">{message.title}</h1>
+        </div>
+        <p className="text-center text-xs">{message.message}</p>
 
-  return (
-    <div className="flex flex-col justify-center items-center gap-7.5 p-15 h-screen">
-      <div className="flex items-center justify-center gap-2">
-        <Info
-          className={
-            message.type === "error" ? "fill-red" : "fill-income-primary"
-          }
-          height={30}
-          width={30}
-        />
-        <h1 className="text-xl">{message.title}</h1>
+        <Button href="/">باشه</Button>
       </div>
-      <p className="text-center text-xs">{message.message}</p>
-
-      <Button href="/">باشه</Button>
-    </div>
-  );
+    );
 }

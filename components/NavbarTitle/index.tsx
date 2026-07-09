@@ -1,19 +1,16 @@
 "use client";
 
 import Right from "@/icons/Right";
-import { IconComponent } from "@/icons/types";
 import { useRouter } from "next/navigation";
 import { ComponentProps } from "react";
 
 type NavbarTitleType = ComponentProps<"div"> & {
-  option?: { link: string; Icon: IconComponent };
   children?: React.ReactNode;
   title: string;
   disabled?: boolean;
 };
 
 export default function NavbarTitle({
-  option,
   children,
   title,
   disabled,
@@ -23,11 +20,11 @@ export default function NavbarTitle({
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (disabled) return;
-    
+
     if (onClick) {
       onClick(e);
     }
-    
+
     router.back();
   };
 

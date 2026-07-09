@@ -23,7 +23,6 @@ import { useEffect } from "react";
 export default function Home() {
   const router = useRouter();
   
-  // ذخیره خروجی توابع در متغیرها برای جلوگیری از ایجاد آرایه جدید در هر رندر
   const accounts = useAccounts().getAccounts();
   const transactions = useTransactions().getTransactions();
   const balances = useBalances().getBalances();
@@ -35,7 +34,7 @@ export default function Home() {
     if (splashGuard) {
       router.replace("/splash");
     }
-  }, [splashGuard, router]); // استفاده از splashGuard به جای accounts
+  }, [splashGuard, router]);
 
   const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: "long",
@@ -117,9 +116,7 @@ export default function Home() {
 
       <div className="grid gap-7.5">
         <Title>
-          <div className="flex gap-0.5 items-center">
-            <div>تراکنش‌های اخیر</div>
-          </div>
+          تراکنش‌های اخیر
         </Title>
 
         <div className="flex flex-col w-full gap-5">
