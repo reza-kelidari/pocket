@@ -5,16 +5,22 @@ import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import { TransactionType } from "@/utility/transactions/types";
-import {
-  jalaliToTimestamp,
-  toEnglishDigits,
-  toJalaliDateArray,
-} from "@/utility/time/methods";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { getCategoryById } from "@/utility/transactions/methods";
+import {
+  formatJalaliDate,
+  formatTimeInput,
+  formatJalaliInput,
+  formatTimeTyping,
+  parseJalaliInput,
+  parseTimeInput,
+  mergeDateTime,
+} from "@/utility/shared/formatters";
+import { usePageShowSync } from "@/utility/shared/usePageShowSync";
+import { toEnglishDigits } from "@/utility/time/methods";
 
 export const CREATE_TRANSACTION_KEY = "new-transaction";
 
@@ -28,97 +34,6 @@ const defaultTransaction: Omit<TransactionType, "id"> = {
   note: "",
 };
 
-// ==================== توابع کمکی خالص (بیرون کامپوننت) ====================
-
-const toPersianDigits = (value: string) =>
-  value.replace(/\d/g, (d) => Number(d).toLocaleString("fa-IR"));
-
-function formatJalaliDate(timestamp: number): string {
-  if (!timestamp) return "";
-  const [year, month, day] = toJalaliDateArray(new Date(timestamp));
-  return toPersianDigits(
-    `${year}/${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}`,
-  );
-}
-
-function formatTimeInput(timestamp: number): string {
-  if (!timestamp) return "";
-  const date = new Date(timestamp);
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  return toPersianDigits(`${hours}:${minutes}`);
-}
-
-function parseJalaliInput(formattedValue: string): number {
-  const raw = toEnglishDigits(formattedValue).replace(/\D/g, "");
-  if (raw.length !== 8) return 0;
-  const year = parseInt(raw.slice(0, 4), 10);
-  const month = parseInt(raw.slice(4, 6), 10);
-  const day = parseInt(raw.slice(6, 8), 10);
-  if (year >= 1300 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-    return jalaliToTimestamp([year, month, day]);
-  }
-  return 0;
-}
-
-function parseTimeInput(formattedValue: string): number {
-  const raw = toEnglishDigits(formattedValue).replace(/\D/g, "");
-  if (raw.length !== 4) return 0;
-  const hours = parseInt(raw.slice(0, 2), 10);
-  const minutes = parseInt(raw.slice(2, 4), 10);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return 0;
-  const now = new Date();
-  now.setHours(hours, minutes, 0, 0);
-  return now.getTime();
-}
-
-function formatJalaliInput(value: string): string {
-  const digits = toEnglishDigits(value).replace(/\D/g, "").slice(0, 8);
-  let result = "";
-  for (let i = 0; i < digits.length; i++) {
-    if (i === 4 || i === 6) result += "/";
-    result += digits[i];
-  }
-  return toPersianDigits(result);
-}
-
-function formatTimeTyping(value: string): string {
-  const digits = toEnglishDigits(value).replace(/\D/g, "").slice(0, 4);
-  let result = "";
-  for (let i = 0; i < digits.length; i++) {
-    if (i === 2) result += ":";
-    result += digits[i];
-  }
-  return toPersianDigits(result);
-}
-
-// جایگزین کردن بخشی از timestamp (فقط تاریخ یا فقط ساعت) با حفظ بقیه‌ش
-function mergeDateTime(
-  baseTimestamp: number,
-  newTimestamp: number,
-  part: "date" | "time",
-): number {
-  const base = new Date(baseTimestamp);
-  const incoming = new Date(newTimestamp);
-  const result = new Date(base);
-
-  if (part === "date") {
-    result.setFullYear(
-      incoming.getFullYear(),
-      incoming.getMonth(),
-      incoming.getDate(),
-    );
-  } else {
-    result.setHours(
-      incoming.getHours(),
-      incoming.getMinutes(),
-      incoming.getSeconds(),
-      0,
-    );
-  }
-  return result.getTime();
-}
-
 export default function AddTransaction() {
   const searchParams = useSearchParams();
   const transactionType = searchParams.get("type") as TransactionType["type"];
@@ -127,15 +42,13 @@ export default function AddTransaction() {
   const { getTransactions, addTransaction } = useTransactions();
   const { getAccounts } = useAccounts();
 
-  // ==================== State ====================
   const [transaction, setTransaction] = useState<TransactionType>(() => {
     if (typeof window === "undefined")
       return { ...defaultTransaction, id: 0, type: transactionType };
 
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
-    if (!data) {
+    if (!data)
       return { ...defaultTransaction, id: Date.now(), type: transactionType };
-    }
 
     try {
       const parsed = JSON.parse(data) as Partial<TransactionType>;
@@ -153,7 +66,6 @@ export default function AddTransaction() {
     formatTimeInput(transaction.time),
   );
 
-  // ==================== Derived States ====================
   const accounts = getAccounts();
 
   const toAccountName = useMemo(() => {
@@ -177,23 +89,31 @@ export default function AddTransaction() {
     return id ? (getCategoryById(id)?.name ?? "") : "";
   }, [transaction.type, transaction.credit, transaction.debit]);
 
-  // ==================== Validation ====================
   const isValid = useMemo(() => {
     const nameValid = transaction.name.trim().length >= 3;
     const valueValid = transaction.value > 0;
-    const dateValid = !!transaction.time && transaction.time > 0;
+    const dateValid = dateInput.trim().length === 10;
+    const timeValid = timeInput.trim().length === 5;
+    let accountAndCategoryValid = false;
+    if (transaction.type === "transfer") {
+      accountAndCategoryValid =
+        transaction.debit > 0 &&
+        transaction.credit > 0 &&
+        transaction.debit !== transaction.credit;
+    } else if (transaction.type === "debit") {
+      accountAndCategoryValid = transaction.debit > 0 && transaction.credit > 0;
+    } else if (transaction.type === "credit") {
+      accountAndCategoryValid = transaction.credit > 0 && transaction.debit > 0;
+    }
+    return (
+      nameValid &&
+      valueValid &&
+      dateValid &&
+      timeValid &&
+      accountAndCategoryValid
+    );
+  }, [transaction, dateInput, timeInput]);
 
-    const accountValid =
-      transaction.type === "transfer"
-        ? transaction.debit > 0 &&
-          transaction.credit > 0 &&
-          transaction.debit !== transaction.credit
-        : transaction.debit > 0 || transaction.credit > 0;
-
-    return nameValid && valueValid && dateValid && accountValid;
-  }, [transaction]);
-
-  // ==================== State Update & Sync ====================
   const persist = useCallback((data: TransactionType) => {
     sessionStorage.setItem(CREATE_TRANSACTION_KEY, JSON.stringify(data));
   }, []);
@@ -209,7 +129,6 @@ export default function AddTransaction() {
     [persist],
   );
 
-  // ==================== Reset Form ====================
   const resetFormState = useCallback(() => {
     const cleared: TransactionType = {
       ...defaultTransaction,
@@ -222,12 +141,11 @@ export default function AddTransaction() {
     setTimeInput(formatTimeInput(cleared.time));
   }, [transactionType]);
 
-  // ==================== Handlers ====================
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     updateTransaction({ name: e.target.value });
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
+    const raw = toEnglishDigits(e.target.value).replace(/\D/g, ""); // اضافه شدن toEnglishDigits
     updateTransaction({ value: Number(raw || 0) });
   };
 
@@ -235,24 +153,21 @@ export default function AddTransaction() {
     const formatted = formatJalaliInput(e.target.value);
     setDateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
-    if (timestamp > 0) {
+    if (timestamp > 0)
       updateTransaction({
         time: mergeDateTime(transaction.time, timestamp, "date"),
       });
-    }
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatTimeTyping(e.target.value);
     setTimeInput(formatted);
     const timestamp = parseTimeInput(formatted);
-    if (timestamp > 0) {
+    if (timestamp > 0)
       updateTransaction({
         time: mergeDateTime(transaction.time, timestamp, "time"),
       });
-    }
   };
-
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
     updateTransaction({ note: e.target.value });
 
@@ -266,57 +181,33 @@ export default function AddTransaction() {
 
   const handleCancel = () => {
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
-    
     resetFormState();
+    router.back();
   };
 
-  // ==================== Effects ====================
   useEffect(() => {
-    if (getTransactions().length === 0) {
+    if (getTransactions().length === 0)
       router.replace(`/splash?from=/transactions/add?type=${transactionType}`);
-    }
-    if (!transactionType) {
-      router.replace("/");
-    }
+    if (!transactionType) router.replace("/");
   }, [getTransactions, searchParams, router, transactionType]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     persist(transaction);
-  }, []);
+  }, []); // eslint-disable-line
 
-  // سنک کردن استیت با بازگشت از صفحات دیگر (account/category)
-  useEffect(() => {
-    const syncFromStorage = () => {
-      const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
-      if (!data) return;
-
-      try {
-        const parsed = JSON.parse(data) as TransactionType;
-        const corrected: TransactionType = { ...parsed, type: transactionType };
-
-        setTransaction((prev) => {
-          if (JSON.stringify(prev) === JSON.stringify(corrected)) return prev;
-          setDateInput(formatJalaliDate(corrected.time));
-          setTimeInput(formatTimeInput(corrected.time));
-          return corrected;
-        });
-      } catch {}
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") syncFromStorage();
-    };
-
-    window.addEventListener("focus", syncFromStorage);
-    window.addEventListener("pageshow", syncFromStorage);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", syncFromStorage);
-      window.removeEventListener("pageshow", syncFromStorage);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+  usePageShowSync(() => {
+    const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
+    if (!data) return;
+    try {
+      const parsed = JSON.parse(data) as TransactionType;
+      const corrected: TransactionType = { ...parsed, type: transactionType };
+      setTransaction((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(corrected)) return prev;
+        setDateInput(formatJalaliDate(corrected.time));
+        setTimeInput(formatTimeInput(corrected.time));
+        return corrected;
+      });
+    } catch {}
   }, [transactionType]);
 
   if (getTransactions().length === 0 || !transactionType) return null;
@@ -331,7 +222,7 @@ export default function AddTransaction() {
               : transactionType === "credit"
                 ? "پرداخت جدید"
                 : "انتقال جدید"
-              }
+          }
           onClick={handleCancel}
         >
           <Capsule Icon={Left} primary={isValid} onClick={handleSave}>
@@ -339,7 +230,6 @@ export default function AddTransaction() {
           </Capsule>
         </NavbarTitle>
       </div>
-
       <div className="grid gap-7.5">
         <div className="grid gap-2">
           <span className="text-xs">نام تراکنش</span>
@@ -357,7 +247,6 @@ export default function AddTransaction() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
-
         <div className="grid gap-2">
           <span className="text-xs">مبلغ</span>
           <div className="relative">
@@ -378,7 +267,6 @@ export default function AddTransaction() {
             </span>
           </div>
         </div>
-
         {transactionType === "transfer" && (
           <div className="grid gap-2">
             <span className="text-xs">حساب مبدأ</span>
@@ -391,7 +279,6 @@ export default function AddTransaction() {
             </Link>
           </div>
         )}
-
         <div className="grid gap-2">
           <span className="text-xs">
             {transactionType === "transfer" ? "حساب مقصد" : "انتخاب حساب"}
@@ -409,7 +296,6 @@ export default function AddTransaction() {
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>
-
         {["debit", "credit"].includes(transactionType) && (
           <div className="grid gap-2">
             <span className="text-xs">دسته‌بندی</span>
@@ -422,7 +308,6 @@ export default function AddTransaction() {
             </Link>
           </div>
         )}
-
         <div className="grid gap-2">
           <span className="text-xs">برچسب (اختیاری)</span>
           <Link
@@ -433,7 +318,6 @@ export default function AddTransaction() {
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>
-
         <div className="grid gap-2">
           <span className="text-xs">تاریخ</span>
           <input
@@ -445,7 +329,6 @@ export default function AddTransaction() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
-
         <div className="grid gap-2">
           <span className="text-xs">ساعت</span>
           <input
@@ -457,7 +340,6 @@ export default function AddTransaction() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
-
         <div className="grid gap-7.5">
           <div className="grid gap-2">
             <span className="text-xs">شرح تراکنش (اختیاری)</span>
