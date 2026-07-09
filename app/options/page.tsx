@@ -13,7 +13,12 @@ import { usePathname } from "next/navigation";
 export default function Options() {
   const pathname = usePathname();
   const items = [
-    { name: "برچسب‌ها", color: PrimaryColors.primary, Icon: Tag, link: "/" },
+    {
+      name: "برچسب‌ها",
+      color: PrimaryColors.primary,
+      Icon: Tag,
+      link: `${pathname}/tags`,
+    },
     {
       name: "پشتیبان‌گیری و بازیابی",
       color: PrimaryColors.primary,
@@ -51,7 +56,7 @@ export default function Options() {
             <ListElement
               key={index}
               iconColor={color}
-              Icon={<Icon height={17} width={17} fill="#fff" />}
+              Icon={Icon}
               href={link}
             >
               {name}

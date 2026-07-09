@@ -7,7 +7,7 @@ import useTransactions from "@/utility/transactions/service/useTransactions";
 import { TransactionType } from "@/utility/transactions/types";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import {
@@ -120,15 +120,15 @@ export default function TransactionEdit() {
     [persist],
   );
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) =>
     updateTransactionState({ name: e.target.value });
 
-  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleValueChange = (e: ChangeEvent<HTMLInputElement>) => {
     const raw = toEnglishDigits(e.target.value).replace(/\D/g, ""); // اضافه شدن toEnglishDigits
     updateTransactionState({ value: Number(raw || 0) });
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
     const formatted = formatJalaliInput(e.target.value, dateInput); // اضافه شدن dateInput
     setDateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
@@ -139,7 +139,7 @@ export default function TransactionEdit() {
     }
   };
 
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTimeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const formatted = formatTimeTyping(e.target.value, timeInput); // اضافه شدن timeInput
     setTimeInput(formatted);
     const timestamp = parseTimeInput(formatted);
@@ -150,7 +150,7 @@ export default function TransactionEdit() {
     }
   };
 
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
+  const handleNoteChange = (e: ChangeEvent<HTMLTextAreaElement>) =>
     updateTransactionState({ note: e.target.value });
 
   const handleSave = () => {

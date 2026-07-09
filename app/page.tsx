@@ -83,16 +83,12 @@ export default function Home() {
             return (
               <AccountCard
                 key={account.id}
-                id={account.id}
-                name={account.name}
-                color={account.color}
                 lastBalance={
                   balances
                     .find((item) => item.id === account.id)
                     ?.history?.at(-1)?.balance ?? 0
                 }
-                type={account.type}
-                create={account.create}
+                {...account}
               />
             );
           })}

@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { generateNextId } from "./methods";
+import { generateNextAccountId } from "../../../utility/shared/idGenerationMethods";
 import { AccountColors } from "@/utility/colors";
 import useBalances from "@/utility/balance/service/useBalances";
 import {
@@ -57,10 +57,10 @@ export default function AddAccount() {
       const id =
         parsed.id && parsed.id !== 0
           ? parsed.id
-          : generateNextId(getAccounts());
+          : generateNextAccountId(getAccounts());
       return { ...defaultAccount, ...parsed, id };
     } catch {
-      return { ...defaultAccount, id: generateNextId(getAccounts()) };
+      return { ...defaultAccount, id: generateNextAccountId(getAccounts()) };
     }
   });
 
@@ -92,7 +92,7 @@ export default function AddAccount() {
   }, []);
 
   const resetFormState = useCallback(() => {
-    const newId = generateNextId(getAccounts());
+    const newId = generateNextAccountId(getAccounts());
     const clearedAccount = {
       ...defaultAccount,
       id: newId,

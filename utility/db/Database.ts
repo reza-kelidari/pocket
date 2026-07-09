@@ -19,8 +19,13 @@ export function getDB(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("accounts")) {
           db.createObjectStore("accounts", { keyPath: "id" });
         }
+
         if (!db.objectStoreNames.contains("transactions")) {
           db.createObjectStore("transactions", { keyPath: "id" });
+        }
+
+        if (!db.objectStoreNames.contains("tags")) {
+          db.createObjectStore("tags", { keyPath: "id" });
         }
       };
 

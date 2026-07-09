@@ -12,12 +12,13 @@ export default function DeleteAll() {
 
       <div className="grid gap-10">
         <Box className="gap-5">
-          <h1 className="text-sm text-center">حذف همه‌ی اطلاعات</h1>
+          <h1 className="text-sm text-center text-red">حذف همه‌ی اطلاعات</h1>
 
           <Description className="[text-align-last:center]">
-            در این‌بخش میتونین همه‌ی اطلاعاتی که در برنامه وارد کردین رو حذف
-            کنین. اکیداً توصیه میشه قبل از این‌کار یه نسخه‌ی پشتیبان رو بارگیری
-            کنین.
+            در این‌بخش میتونین <span className="text-red">همه‌ی</span> اطلاعاتی
+            که در برنامه وارد کردین رو <span className="text-red">حذف</span>{" "}
+            کنین. اکیداً توصیه میشه قبل از این‌کار یه نسخه‌ی{" "}
+            <span className="text-primary">پشتیبان</span> رو بارگیری کنین.
           </Description>
 
           <Button href="/options/backup-restore">بارگیری نسخه پشتیبان</Button>

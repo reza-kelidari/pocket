@@ -27,16 +27,13 @@ export default function DeleteAllConfirm() {
     if (!validate) return;
 
     try {
-      // ۱. پاک کردن استورها (هم حافظه ری‌اکت، هم IndexedDB)
       await accountsStore.clear();
       await transactionsStore.clear();
-      balancesStore.clear(); // موجودی‌ها دیتابیس ندارند و فقط حافظه پاک می‌شود
+      balancesStore.clear();
 
-      // ۲. پاک کردن فلگ اسپلش برای اطمینان از اجرای مجدد منطق اسپلش
       sessionStorage.removeItem("splashShown");
 
-      // ۳. هدایت به صفحه اسپلش برای بازسازی دیتای پیش‌فرض
-      router.replace("/splash?from=/");
+      router.replace("/splash");
     } catch (error) {
       console.error("Error deleting all data:", error);
     }

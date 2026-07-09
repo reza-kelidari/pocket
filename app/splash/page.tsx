@@ -24,11 +24,9 @@ export default function Splash() {
   useEffect(() => {
     async function load() {
       try {
-        // خواندن دیتا از دیتابیس
         let accounts = (await getAll("accounts")) as AccountType[];
         let transactions = (await getAll("transactions")) as TransactionType[];
 
-        // اگر دیتابیس خالی بود، مقادیر پیش‌فرض را بساز و در دیتابیس ذخیره کن
         if (accounts.length === 0) {
           accounts = getDefaultAccounts();
           for (const acc of accounts) {
@@ -43,11 +41,9 @@ export default function Splash() {
           }
         }
 
-        // قرار دادن در استورهای حافظه (اصلاح شده: صدا زدن مستقیم روی استور)
         accountsStore.setAccounts(accounts);
         transactionsStore.setTransactions(transactions);
 
-        // محاسبه موجودی‌ها
         balancesStore.setBalances(getAccountBalances(accounts, transactions));
 
         sessionStorage.setItem("splashShown", "1");
@@ -57,7 +53,7 @@ export default function Splash() {
       }
     }
 
-    const timer = setTimeout(load, 500);
+    const timer = setTimeout(load, 100);
     return () => clearTimeout(timer);
   }, [router, fromPath]);
 
