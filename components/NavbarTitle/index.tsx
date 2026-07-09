@@ -24,12 +24,10 @@ export default function NavbarTitle({
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (disabled) return;
     
-    // اگر تابع اختصاصی برای کلیک داده شده باشد، اول آن اجرا شود
     if (onClick) {
       onClick(e);
     }
     
-    // سپس به صفحه قبلی برگردد
     router.back();
   };
 

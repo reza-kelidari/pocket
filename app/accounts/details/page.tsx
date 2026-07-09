@@ -1,10 +1,13 @@
 "use client";
 
 import Button from "@/components/Button";
+import Capsule from "@/components/Capsule";
 import ChartView from "@/components/ChartView";
 import NavbarTitle from "@/components/NavbarTitle";
 import SectionTitle from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
+import Pen from "@/icons/Pen";
+import { IconProps } from "@/icons/types";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { getLatestTransactions } from "@/utility/transactions/selector";
 import useTransactions from "@/utility/transactions/service/useTransactions";
@@ -37,9 +40,9 @@ export default function AccountsDetails() {
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle
-          title={account.name}
-        />
+        <NavbarTitle title={account.name}>
+          <Capsule Icon={Pen} href={`/accounts/edit?id=${account.id}`}>اصلاح حساب</Capsule>
+        </NavbarTitle>
       </div>
 
       <ChartView
