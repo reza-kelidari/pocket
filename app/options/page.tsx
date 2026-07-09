@@ -8,21 +8,23 @@ import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
 import Tag from "@/icons/Tag";
 import Restart from "@/icons/Restart";
+import { usePathname } from "next/navigation";
 
 export default function Options() {
+  const pathname = usePathname();
   const items = [
     { name: "برچسب‌ها", color: PrimaryColors.primary, Icon: Tag, link: "/" },
     {
       name: "پشتیبان‌گیری و بازیابی",
       color: PrimaryColors.primary,
       Icon: Database,
-      link: "/options/backup-restore",
+      link: `${pathname}/backup-restore`,
     },
     {
       name: "حذف همه داده‌ها",
       color: PrimaryColors.red,
       Icon: Forbidden,
-      link: "/",
+      link: `${pathname}/delete-all`,
     },
   ];
 
