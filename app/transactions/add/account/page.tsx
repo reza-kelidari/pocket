@@ -101,6 +101,7 @@ export default function AccountSelector() {
       <div className="grid gap-4">
         {getAccounts().map((item) => {
           const isSelected = selectedId === item.id;
+          
           return (
             <AccountsListElement
               key={item.id}

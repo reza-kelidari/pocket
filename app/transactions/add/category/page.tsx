@@ -3,7 +3,7 @@
 import NavbarTitle from "@/components/NavbarTitle";
 import { TransactionType } from "@/utility/transactions/types";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CREATE_TRANSACTION_KEY } from "../page";
 import { TransactionCategories } from "@/utility/category/constant";
 import Title from "@/components/SectionTitle";
@@ -11,11 +11,13 @@ import Title from "@/components/SectionTitle";
 export default function CategorySelector() {
   const searchParams = useSearchParams();
   const accountParam = searchParams.get("type") as "debit" | "credit" | null;
-  const [selectedCategory, setSelectedCategory] = useState<number>(0);
+  const [selectedCategory, setSelectedCategory] = useState<number>();
   const [transactionType, setTransactionType] = useState<
     TransactionType["type"] | null
   >(null);
   const router = useRouter();
+
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const categories =
     transactionType === "debit"
@@ -36,6 +38,17 @@ export default function CategorySelector() {
       setSelectedCategory(currentSelected || 0);
     } catch (e) {}
   }, [accountParam]);
+
+  // اسکرول کردن به المان انتخاب‌شده پس از رندر شدن لیست
+  useEffect(() => {
+    if (!!selectedCategory && selectedCategory !== 0) {
+      const node = itemRefs.current.get(selectedCategory);
+      if (node) {
+        // اسکرول نرم به وسط صفحه
+        node.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [selectedCategory, categories]); // وابستگی به categories چون لیست باید اول رندر شود
 
   function handleSelect(id: number): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
@@ -62,26 +75,38 @@ export default function CategorySelector() {
   }
 
   if (!accountParam) return null;
-  else
-    return (
-      <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
-        <div className="grid gap-7.5">
-          <NavbarTitle title="انتخاب دسته‌بندی" />
-        </div>
-        <div className="grid gap-15">
-          {categories.map((items) => (
-            <div key={items.id} className="grid gap-7.5">
-              <Title>{items.name}</Title>
-              <div className="grid grid-cols-3 gap-2.5 w-full">
-                {items.sub.map((sub) => (
+
+  return (
+    <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
+      <div className="grid gap-7.5">
+        <NavbarTitle title="انتخاب دسته‌بندی" />
+      </div>
+      <div className="grid gap-15">
+        {categories.map((items) => (
+          <div key={items.id} className="grid gap-7.5">
+            <Title>{items.name}</Title>
+            <div className="grid grid-cols-3 gap-2.5 w-full">
+              {items.sub.map((sub) => {
+                const isSelected = selectedCategory === sub.id;
+
+                return (
                   <div
                     key={sub.id}
-                    className={`flex flex-col gap-2 items-center text-xs rounded-2xl p-2
-                      ${
-                        transactionType === "debit"
-                          ? "bg-income-background border border-income-border"
-                          : "bg-expense-background border border-expense-border"
-                      }`}
+                    // ثبت رفرنس المان در Map
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(sub.id, el);
+                      else itemRefs.current.delete(sub.id);
+                    }}
+                    // انتقال onClick به کل کادر برای دسترسی بهتر
+                    onClick={() => handleSelect(sub.id)}
+                    className={`flex flex-col gap-2 items-center justify-center text-xs rounded-2xl p-2 cursor-pointer transition-all
+                    ${
+                      transactionType === "debit"
+                        ? "bg-income-background border border-income-border"
+                        : "bg-expense-background border border-expense-border"
+                    }
+                    ${!!selectedCategory && !isSelected ? "saturate-25 opacity-75" : ""}
+                    ${isSelected ? "scale-110 shadow-lg shadow-zinc-200" : ""}`}
                   >
                     <sub.icon
                       height={40}
@@ -91,7 +116,6 @@ export default function CategorySelector() {
                           ? "fill-income-primary"
                           : "fill-expense-primary"
                       }
-                      onClick={() => handleSelect(sub.id)}
                     />
                     <span
                       className={`text-[9px] ${
@@ -103,11 +127,12 @@ export default function CategorySelector() {
                       {sub.name}
                     </span>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
-    );
+    </div>
+  );
 }
