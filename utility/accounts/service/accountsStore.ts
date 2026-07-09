@@ -12,7 +12,7 @@ class AccountsStore {
   }
 
   getAccounts(): AccountType[] {
-    return [...this.accounts];
+    return [...this.accounts].sort((a, b) => (a.order || 0) - (b.order || 0));
   }
 
   setAccounts(data: AccountType[]) {
@@ -21,9 +21,15 @@ class AccountsStore {
   }
 
   async addAccount(account: AccountType) {
-    this.accounts.push(account);
+    const maxOrder = this.accounts.reduce(
+      (max, a) => Math.max(max, a.order || 0),
+      0,
+    );
+    const newAccount = { ...account, order: maxOrder + 1 };
+
+    this.accounts.push(newAccount);
     this.notify();
-    await putItem("accounts", account);
+    await putItem("accounts", newAccount);
   }
 
   async updateAccount(updatedAccount: AccountType) {
@@ -34,6 +40,17 @@ class AccountsStore {
       this.accounts[index] = { ...updatedAccount };
       this.notify();
       await putItem("accounts", updatedAccount);
+    }
+  }
+
+  async reorderAccounts(newAccounts: AccountType[]) {
+    this.accounts = newAccounts.map((acc, index) => ({
+      ...acc,
+      order: index + 1,
+    }));
+    this.notify();
+    for (const acc of this.accounts) {
+      await putItem("accounts", acc);
     }
   }
 

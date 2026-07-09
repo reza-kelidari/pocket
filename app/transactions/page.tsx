@@ -90,7 +90,7 @@ export default function Transactions() {
           <span className="me-2">فیلترها</span>
           <Capsule
             Icon={Left}
-            href={`/transactions/time-filter${filterToUrl(transactionsFilter)}`}
+            href={`/transactions/filter-time${filterToUrl(transactionsFilter)}`}
             replace
             primary={transactionsFilter.timeWindow !== 29}
           >
@@ -100,7 +100,7 @@ export default function Transactions() {
           </Capsule>
           <Capsule
             Icon={Left}
-            href={`/transactions/account-filter${filterToUrl(transactionsFilter)}`}
+            href={`/transactions/filter-account${filterToUrl(transactionsFilter)}`}
             replace
             primary={transactionsFilter.accounts.length > 0}
             accountColor={

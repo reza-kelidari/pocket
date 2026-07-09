@@ -14,6 +14,7 @@ export function getDefaultAccounts(): AccountType[] {
   return [
     {
       id: 0x01020000,
+      order: 1,
       name: "کیف پول نقدی",
       color: "orange",
       type: "Wallet",
@@ -22,6 +23,7 @@ export function getDefaultAccounts(): AccountType[] {
     },
     {
       id: 0x01010000,
+      order: 2,
       name: "طلب‌ها",
       color: "green1",
       type: "Wallet",
@@ -30,6 +32,7 @@ export function getDefaultAccounts(): AccountType[] {
     },
     {
       id: 0x01010001,
+      order: 3,
       name: "بدهی‌ها",
       color: "red",
       type: "Wallet",

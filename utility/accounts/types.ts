@@ -30,6 +30,7 @@ export type AccountTypesType = keyof typeof AccountTypes;
 
 export type AccountType = {
   id: number;
+  order: number;
   name: string;
   color: AccountColorType;
   type: AccountTypesType;
