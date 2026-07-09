@@ -7,7 +7,7 @@ import ChartBox from "./ChartBox";
 import {
   getAccountBalanceHistory,
   getTotalBalanceHistory,
-} from "@/utility/balance/methods";
+} from "@/utility/shared/balancesMethods";
 import { TransactionType } from "@/utility/transactions/types";
 
 type ChartParamsType = {

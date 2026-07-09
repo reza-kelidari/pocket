@@ -3,7 +3,7 @@ import { AccountColors, PrimaryColors } from "@/utility/colors";
 import Link from "next/link";
 import { ComponentProps } from "react";
 import { AccountBalanceType, BalanceType } from "@/utility/balance/types";
-import { AccountTypes } from "@/utility/accounts/constants";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
 
 type AccountListElementPropsType = ComponentProps<"a"> & {
   account: AccountType;

@@ -1,5 +1,5 @@
 import { AccountColors } from "../colors";
-import { AccountTypes } from "./constants";
+import { AccountTypes } from "../shared/accountsTypes";
 
 /**
  * Defines `Account Colors` type by keys of {@link AccountColors} element

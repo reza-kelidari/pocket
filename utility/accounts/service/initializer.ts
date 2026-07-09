@@ -1,4 +1,4 @@
-import { jalaliToTimestamp, toJalaliDateArray } from "@/utility/time/methods";
+import { jalaliToTimestamp, toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { create } from "domain";
 import { type } from "os";
 import { AccountType } from "../types";

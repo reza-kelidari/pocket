@@ -1,6 +1,6 @@
 import { AccountType } from "../accounts/types";
 import { TransactionType } from "../transactions/types";
-import { AccountBalanceType, BalanceType } from "./types";
+import { AccountBalanceType, BalanceType } from "../balance/types";
 
 /**
  * Calculates the balance history for a specific account.
@@ -102,4 +102,20 @@ export function getAccountBalances(
     balances.push(calculatedbalances);
   });
   return balances;
+}
+
+/**
+ * Calculates the total balance across all accounts.
+ *
+ * @param balancePoints Map of account IDs to their latest balances.
+ * @returns The sum of all account balances.
+ */
+
+export function getTotalBalances(balancePoints: AccountBalanceType[]): number {
+  let balance = 0;
+
+  balancePoints.forEach(
+    (item) => (balance += item.history?.at(-1)?.balance ?? 0),
+  );
+  return balance;
 }

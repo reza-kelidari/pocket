@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
-import { getCategoryById } from "@/utility/transactions/methods";
+import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import {
   formatJalaliDate,
   formatTimeInput,
@@ -21,7 +21,7 @@ import {
 } from "@/utility/shared/formatters";
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { CREATE_TRANSACTION_KEY } from "../add/page";
-import { toEnglishDigits } from "@/utility/time/methods";
+import { toEnglishDigits } from "@/utility/shared/timeMethods";
 
 export default function TransactionEdit() {
   const searchParams = useSearchParams();

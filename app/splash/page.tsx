@@ -8,7 +8,7 @@ import Image from "next/image";
 import { transactionsStore } from "@/utility/transactions/service/transactionsStore";
 import {
   getAccountBalances,
-} from "@/utility/balance/methods";
+} from "@/utility/shared/balancesMethods";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import useBalances from "@/utility/balance/service/useBalances";
 

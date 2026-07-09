@@ -1,7 +1,7 @@
 "use client";
 
 import NavbarTitle from "@/components/NavbarTitle";
-import { AccountTypes } from "@/utility/accounts/constants";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { PrimaryColors } from "@/utility/colors";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

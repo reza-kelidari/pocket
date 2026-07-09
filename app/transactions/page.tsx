@@ -9,7 +9,7 @@ import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
-import { toJalaliDateArray } from "@/utility/time/methods";
+import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { AccountColors } from "@/utility/colors";
 
 export type transactionsFilterType = {

@@ -2,7 +2,7 @@
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import { AccountTypes } from "@/utility/accounts/constants";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColorType, AccountType } from "@/utility/accounts/types";
 import Link from "next/link";
@@ -13,8 +13,8 @@ import { CREATE_ACCOUNT_KEY } from "../add/page";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import { TransactionType } from "@/utility/transactions/types";
 import useBalances from "@/utility/balance/service/useBalances";
-import { getAccountBalanceHistory } from "@/utility/balance/methods";
-import { toEnglishDigits } from "@/utility/time/methods";
+import { getAccountBalanceHistory } from "@/utility/shared/balancesMethods";
+import { toEnglishDigits } from "@/utility/shared/timeMethods";
 import {
   formatJalaliDate,
   parseJalaliInput,

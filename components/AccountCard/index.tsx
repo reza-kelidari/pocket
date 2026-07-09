@@ -1,4 +1,4 @@
-import { AccountTypes } from "@/utility/accounts/constants";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { AccountType } from "@/utility/accounts/types";
 import { AccountColors } from "@/utility/colors";
 import { IconComponent } from "@/icons/types";

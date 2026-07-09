@@ -2,7 +2,7 @@ import {
   jalaliToTimestamp,
   toEnglishDigits,
   toJalaliDateArray,
-} from "@/utility/time/methods";
+} from "@/utility/shared/timeMethods";
 
 export const toPersianDigits = (value: string) =>
   value.replace(/\d/g, (d) => Number(d).toLocaleString("fa-IR"));

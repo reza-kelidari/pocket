@@ -8,7 +8,7 @@ import Title from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import useBalances from "@/utility/balance/service/useBalances";
-import { getLatestTransactions } from "@/utility/transactions/selector";
+import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
 import { IconComponent } from "@/icons/types";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import Receive from "@/icons/Receive";

@@ -8,7 +8,7 @@ import SectionTitle from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
 import Pen from "@/icons/Pen";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
-import { getLatestTransactions } from "@/utility/transactions/selector";
+import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";

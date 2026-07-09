@@ -1,4 +1,5 @@
-import { TransactionType } from "./types";
+import { TransactionCategories } from "./transactionCategories";
+import { TransactionType } from "../transactions/types";
 
 /**
  * Returns the most recent transactions.
@@ -16,4 +17,24 @@ export function getLatestTransactions(
   limit: number,
 ): TransactionType[] {
   return [...transactions].sort((a, b) => b.time - a.time).slice(0, limit);
+}
+
+export function getCategoryById(id: number) {
+  for (const cat of TransactionCategories.expense) {
+    if (cat.id === id) return cat;
+    if (cat.sub) {
+      const found = cat.sub.find((sub) => sub.id === id);
+      if (found) return found;
+    }
+  }
+
+  for (const cat of TransactionCategories.income) {
+    if (cat.id === id) return cat;
+    if (cat.sub) {
+      const found = cat.sub.find((sub) => sub.id === id);
+      if (found) return found;
+    }
+  }
+
+  return null;
 }

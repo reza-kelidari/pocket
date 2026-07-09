@@ -5,7 +5,7 @@ import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
-import { getCategoryById } from "@/utility/transactions/methods";
+import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";

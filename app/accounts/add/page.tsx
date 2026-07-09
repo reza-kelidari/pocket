@@ -2,7 +2,7 @@
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import { AccountTypes } from "@/utility/accounts/constants";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColorType, AccountType } from "@/utility/accounts/types";
 import useTransactions from "@/utility/transactions/service/useTransactions";
@@ -11,7 +11,7 @@ import {
   jalaliToTimestamp,
   toEnglishDigits,
   toJalaliDateArray,
-} from "@/utility/time/methods";
+} from "@/utility/shared/timeMethods";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";

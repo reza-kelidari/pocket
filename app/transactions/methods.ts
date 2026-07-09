@@ -1,4 +1,4 @@
-import { pastDaysInYear } from "@/utility/time/methods";
+import { pastDaysInYear } from "@/utility/shared/timeMethods";
 import { transactionsFilterType } from "./page";
 
 export const filterToUrl: (

@@ -1,5 +1,5 @@
 import { AccountType } from "../accounts/types";
-import { getAccountBalances } from "../balance/methods";
+import { getAccountBalances } from "../shared/balancesMethods";
 import { TransactionType } from "../transactions/types";
 
 export type BackupType = {

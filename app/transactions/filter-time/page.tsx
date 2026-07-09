@@ -1,7 +1,7 @@
 "use client";
 
 import NavbarTitle from "@/components/NavbarTitle";
-import { toJalaliDateArray } from "@/utility/time/methods";
+import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { useRouter, useSearchParams } from "next/navigation";
 import { filterToUrl, timeFilters } from "../methods";
 import { PrimaryColors } from "@/utility/colors";
