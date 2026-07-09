@@ -8,16 +8,18 @@ import { ComponentProps } from "react";
 type ListElementProps = ComponentProps<typeof Link> & {
   iconColor: PrimaryColorsItemType;
   Icon: IconComponent;
+  desc?: string;
 };
 
 export default function ListElement({
   children,
   iconColor,
   Icon,
+  desc,
   ...props
 }: ListElementProps) {
   return (
-    <Link className="w-full" {...props}>
+    <Link className="w-ful relative" {...props}>
       <div
         className={`${PrimaryColors.secondary.box} p-4 flex items-center gap-2.5 w-full rounded-2xl`}
       >
@@ -33,6 +35,9 @@ export default function ListElement({
           {children}
         </span>
       </div>
+      <span className="absolute -translate-y-1/2 top-1/2 left-4 text-xs text-secondary">
+        {desc}
+      </span>
     </Link>
   );
 }
