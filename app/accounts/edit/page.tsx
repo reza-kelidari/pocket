@@ -293,26 +293,28 @@ export default function AccountEdit() {
           />
         </div>
 
-        <div className="grid gap-2">
-          <span className="text-xs">رنگ حساب</span>
-          <div className="grid grid-cols-4 gap-7.5 w-full p-5">
-            {Object.entries(AccountColors).map(([key, color]) => (
-              <button
-                type="button"
-                key={key}
-                onClick={() => handleColorChange(key as AccountColorType)}
-                aria-label={`انتخاب رنگ ${key}`}
-                className={`
+        {!account.default && (
+          <div className="grid gap-2">
+            <span className="text-xs">رنگ حساب</span>
+            <div className="grid grid-cols-4 gap-7.5 w-full p-5">
+              {Object.entries(AccountColors).map(([key, color]) => (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => handleColorChange(key as AccountColorType)}
+                  aria-label={`انتخاب رنگ ${key}`}
+                  className={`
                   ${color.primary}
                   h-11 w-11 rounded-3xl cursor-pointer
                   transition-all duration-200 justify-self-center
                   border-4 border-transparent
                   ${account.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}
                 `}
-              />
-            ))}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
