@@ -22,7 +22,7 @@ import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
-  
+
   const accounts = useAccounts().getAccounts();
   const transactions = useTransactions().getTransactions();
   const balances = useBalances().getBalances();
@@ -31,6 +31,7 @@ export default function Home() {
     !accounts.length || !sessionStorage.getItem("splashShown");
 
   useEffect(() => {
+    console.log("Started");
     if (splashGuard) {
       router.replace("/splash");
     }
@@ -46,7 +47,11 @@ export default function Home() {
     [
       { name: "دریافت", link: "/transactions/add?type=debit", icon: Receive },
       { name: "پرداخت", link: "/transactions/add?type=credit", icon: Send },
-      { name: "انتقال", link: "/transactions/add?type=transfer", icon: Transfer },
+      {
+        name: "انتقال",
+        link: "/transactions/add?type=transfer",
+        icon: Transfer,
+      },
     ];
 
   // اصلاح خطای بازگشت undefined
@@ -115,9 +120,7 @@ export default function Home() {
       />
 
       <div className="grid gap-7.5">
-        <Title>
-          تراکنش‌های اخیر
-        </Title>
+        <Title>تراکنش‌های اخیر</Title>
 
         <div className="flex flex-col w-full gap-5">
           {getLatestTransactions(transactions, 5).map((transaction) => {

@@ -12,10 +12,14 @@ export default function AccountDelete() {
   const searchParams = useSearchParams();
   const accountID = Number(searchParams.get("id") ?? "0");
   const { getAccounts, removeAccount } = useAccounts();
+  const { getTransactions } = useTransactions();
   const { removeTransactionsByAccountID } = useTransactions();
   const router = useRouter();
   const [validate, setValidate] = useState(false);
   const account = getAccounts().find((acc) => acc.id === accountID);
+  const transactionsCount = getTransactions()
+    .filter((item) => item.credit === accountID || item.debit === accountID)
+    .length.toLocaleString("fa-ir");
 
   useEffect(() => {
     if (getAccounts().length === 0) {
@@ -53,7 +57,8 @@ export default function AccountDelete() {
             className={`inline-block h-2 w-2 rounded-4xl ${AccountColors[account.color].primary}`}
           ></span>
         </span>{" "}
-        اعم‌از واریز، برداشت، انتقال حذف میشه؛ مطمئن هستین؟
+        شامل {transactionsCount} تراکنش <span className="text-red">حذف</span>{" "}
+        میشه؛ مطمئن هستین؟
       </p>
 
       <div className="grid gap-4">
@@ -61,7 +66,7 @@ export default function AccountDelete() {
           <input
             type="checkbox"
             onChange={(e) => setValidate(e.target.checked)}
-            className="accent-red p-8"
+            className="accent-red p-3 ml-1"
           />
           بله، مطمئن هستم
         </label>

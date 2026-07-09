@@ -68,7 +68,7 @@ export default function DeleteAllConfirm() {
           <input
             type="checkbox"
             onChange={(e) => setValidate(e.target.checked)}
-            className="accent-red p-8"
+            className="accent-red p-3 ml-1"
           />
           بله، مطمئن هستم
         </label>
