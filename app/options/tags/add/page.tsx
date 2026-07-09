@@ -22,7 +22,6 @@ export default function AddTag() {
 
   useEffect(() => {
     async function load() {
-      console.log(id);
       if (!!id) {
         const tagInDB = ((await getAll("tags")) as TagType[]).find(
           (item) => item.id === id,

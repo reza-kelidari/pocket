@@ -22,6 +22,8 @@ import {
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { CREATE_TRANSACTION_KEY } from "../add/page";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
+import { TagType } from "@/utility/tags/type";
+import { getAll } from "@/utility/db/Database";
 
 export default function TransactionEdit() {
   const searchParams = useSearchParams();
@@ -29,6 +31,7 @@ export default function TransactionEdit() {
   const router = useRouter();
   const { getTransactions, updateTransaction } = useTransactions();
   const { getAccounts } = useAccounts();
+  const [tags, setTags] = useState<TagType[]>([]);
 
   const [transaction, setTransaction] = useState<TransactionType | null>(() => {
     if (typeof window === "undefined" || !txID) return null;
@@ -66,6 +69,11 @@ export default function TransactionEdit() {
     if (!transaction || transaction.type !== "transfer") return "";
     return accounts.find((item) => item.id === transaction.credit)?.name ?? "";
   }, [accounts, transaction]);
+
+  const tagName = useMemo(() => {
+    if (!transaction || !transaction.tag) return "";
+    return tags.find((item) => item.id == transaction.tag)?.name;
+  }, [transaction?.tag, tags]);
 
   const categoryName = useMemo(() => {
     if (!transaction) return "";
@@ -189,6 +197,14 @@ export default function TransactionEdit() {
     } catch {}
   }, [txID]);
 
+  useEffect(() => {
+    async function loadData() {
+      setTags((await getAll("tags")) as TagType[]);
+    }
+
+    loadData();
+  }, []);
+
   if (!txID || !transaction || !transactionType) return null;
 
   return (
@@ -209,6 +225,7 @@ export default function TransactionEdit() {
           </Capsule>
         </NavbarTitle>
       </div>
+
       <div className="grid gap-7.5">
         <div className="grid gap-2">
           <span className="text-xs">نام تراکنش</span>
@@ -226,6 +243,7 @@ export default function TransactionEdit() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">مبلغ</span>
           <div className="relative">
@@ -246,6 +264,7 @@ export default function TransactionEdit() {
             </span>
           </div>
         </div>
+
         {transactionType === "transfer" && (
           <div className="grid gap-2">
             <span className="text-xs">حساب مبدأ</span>
@@ -258,6 +277,7 @@ export default function TransactionEdit() {
             </Link>
           </div>
         )}
+
         <div className="grid gap-2">
           <span className="text-xs">
             {transactionType === "transfer" ? "حساب مقصد" : "انتخاب حساب"}
@@ -275,6 +295,7 @@ export default function TransactionEdit() {
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>
+
         {["debit", "credit"].includes(transactionType) && (
           <div className="grid gap-2">
             <span className="text-xs">دسته‌بندی</span>
@@ -287,16 +308,18 @@ export default function TransactionEdit() {
             </Link>
           </div>
         )}
+
         <div className="grid gap-2">
           <span className="text-xs">برچسب (اختیاری)</span>
           <Link
-            href="#"
+            href={tags.length ? "/transactions/add/tag" : "#"}
             className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
           >
-            <span>نام برچسب</span>
+            <span>{tagName ?? "نام برچسب"}</span>
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">تاریخ</span>
           <input
@@ -308,6 +331,7 @@ export default function TransactionEdit() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">ساعت</span>
           <input
@@ -319,6 +343,7 @@ export default function TransactionEdit() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
+
         <div className="grid gap-7.5">
           <div className="grid gap-2">
             <span className="text-xs">شرح تراکنش (اختیاری)</span>

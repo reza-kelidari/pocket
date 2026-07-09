@@ -19,7 +19,7 @@ export default function ListElement({
   ...props
 }: ListElementProps) {
   return (
-    <Link className="w-ful relative" {...props}>
+    <Link className="w-ful relative text-sm" {...props}>
       <div
         className={`${PrimaryColors.secondary.box} p-4 flex items-center gap-2.5 w-full rounded-2xl`}
       >

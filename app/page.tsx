@@ -31,7 +31,6 @@ export default function Home() {
     !accounts.length || !sessionStorage.getItem("splashShown");
 
   useEffect(() => {
-    console.log("Started");
     if (splashGuard) {
       router.replace("/splash");
     }

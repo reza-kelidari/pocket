@@ -3,12 +3,11 @@
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import useTransactions from "@/utility/transactions/service/useTransactions";
 import { TransactionType } from "@/utility/transactions/types";
+import { AccountType } from "@/utility/accounts/types";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import {
   formatJalaliDate,
@@ -21,6 +20,8 @@ import {
 } from "@/utility/shared/formatters";
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
+import { getAll, putItem } from "@/utility/db/Database";
+import { TagType } from "@/utility/tags/type";
 
 export const CREATE_TRANSACTION_KEY = "new-transaction";
 
@@ -39,8 +40,8 @@ export default function AddTransaction() {
   const transactionType = searchParams.get("type") as TransactionType["type"];
   const router = useRouter();
   const pathname = usePathname();
-  const { getTransactions, addTransaction } = useTransactions();
-  const { getAccounts } = useAccounts();
+  const [tags, setTags] = useState<TagType[]>([]);
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
 
   const [transaction, setTransaction] = useState<TransactionType>(() => {
     if (typeof window === "undefined")
@@ -62,11 +63,33 @@ export default function AddTransaction() {
   const [dateInput, setDateInput] = useState(() =>
     formatJalaliDate(transaction.time),
   );
+
   const [timeInput, setTimeInput] = useState(() =>
     formatTimeInput(transaction.time),
   );
 
-  const accounts = getAccounts();
+  useEffect(() => {
+    async function loadInitialData() {
+      if (!transactionType) {
+        router.replace("/");
+        return;
+      }
+
+      const accs = (await getAll("accounts")) as AccountType[];
+      setAccounts(accs);
+
+      const txs = (await getAll("transactions")) as TransactionType[];
+      if (txs.length === 0) {
+        router.replace(
+          `/splash?from=/transactions/add?type=${transactionType}`,
+        );
+      }
+
+      
+      
+    }
+    loadInitialData();
+  }, [router, transactionType]);
 
   const toAccountName = useMemo(() => {
     const id =
@@ -78,6 +101,11 @@ export default function AddTransaction() {
     if (transaction.type !== "transfer") return "";
     return accounts.find((item) => item.id === transaction.credit)?.name ?? "";
   }, [accounts, transaction.type, transaction.credit]);
+
+  const tagName = useMemo(() => {
+    if (!transaction.tag) return "";
+    return tags.find((item) => item.id == transaction.tag)?.name;
+  }, [transaction.tag, tags]);
 
   const categoryName = useMemo(() => {
     const id =
@@ -145,12 +173,12 @@ export default function AddTransaction() {
     updateTransaction({ name: e.target.value });
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = toEnglishDigits(e.target.value).replace(/\D/g, ""); // اضافه شدن toEnglishDigits
+    const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
     updateTransaction({ value: Number(raw || 0) });
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatJalaliInput(e.target.value, dateInput); // اضافه شدن dateInput
+    const formatted = formatJalaliInput(e.target.value, dateInput);
     setDateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
     if (timestamp > 0) {
@@ -161,7 +189,7 @@ export default function AddTransaction() {
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTimeTyping(e.target.value, timeInput); // اضافه شدن timeInput
+    const formatted = formatTimeTyping(e.target.value, timeInput);
     setTimeInput(formatted);
     const timestamp = parseTimeInput(formatted);
     if (timestamp > 0) {
@@ -174,9 +202,9 @@ export default function AddTransaction() {
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
     updateTransaction({ note: e.target.value });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValid) return;
-    addTransaction(transaction);
+    await putItem("transactions", transaction);
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     resetFormState();
     router.back();
@@ -185,14 +213,7 @@ export default function AddTransaction() {
   const handleCancel = () => {
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     resetFormState();
-    router.back();
   };
-
-  useEffect(() => {
-    if (getTransactions().length === 0)
-      router.replace(`/splash?from=/transactions/add?type=${transactionType}`);
-    if (!transactionType) router.replace("/");
-  }, [getTransactions, searchParams, router, transactionType]);
 
   useEffect(() => {
     persist(transaction);
@@ -213,7 +234,7 @@ export default function AddTransaction() {
     } catch {}
   }, [transactionType]);
 
-  if (getTransactions().length === 0 || !transactionType) return null;
+  if (!transactionType) return null;
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -311,16 +332,18 @@ export default function AddTransaction() {
             </Link>
           </div>
         )}
+
         <div className="grid gap-2">
           <span className="text-xs">برچسب (اختیاری)</span>
           <Link
-            href="#"
+            href={tags.length ? `${pathname}/tag` : "#"}
             className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
           >
-            <span>نام برچسب</span>
+            <span>{tagName ?? "نام برچسب"}</span>
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">تاریخ</span>
           <input

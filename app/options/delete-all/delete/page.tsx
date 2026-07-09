@@ -34,9 +34,7 @@ export default function DeleteAllConfirm() {
       sessionStorage.removeItem("splashShown");
 
       router.replace("/splash");
-    } catch (error) {
-      console.error("Error deleting all data:", error);
-    }
+    } catch (error) {}
   };
 
   if (getAccounts().length === 0) return null;

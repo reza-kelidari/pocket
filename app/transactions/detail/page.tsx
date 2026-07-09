@@ -9,13 +9,18 @@ import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import useTransactions from "@/utility/transactions/service/useTransactions";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ComponentProps, useEffect } from "react";
+import { ComponentProps, useEffect, useState } from "react";
+import { TagType } from "@/utility/tags/type";
+import { getAll } from "@/utility/db/Database";
+import { TagItemTypes } from "@/utility/shared/tagTypes";
 
 export default function TransactionDetail() {
   const searchParams = useSearchParams();
   const { getAccounts } = useAccounts();
   const { getTransactions } = useTransactions();
   const router = useRouter();
+  const [tags, setTags] = useState<TagType[]>([]);
+  const [tagName, setTagName] = useState<string>("");
 
   const txID = Number(searchParams.get("id") ?? 0);
   const transaction = getTransactions().find((item) => item.id === txID);
@@ -46,6 +51,19 @@ export default function TransactionDetail() {
       router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
     }
   }, [getAccounts, router]);
+
+  useEffect(() => {
+    const load = async () => {
+      const tagsInDB = (await getAll("tags")) as TagType[];
+      const tagName = tagsInDB.find(
+        (item) => item.id === transaction?.tag,
+      )?.name;
+
+      tagName && setTagName(tagName);
+    };
+
+    load();
+  }, []);
 
   if (getAccounts().length === 0 || !transaction) return null;
   else
@@ -125,7 +143,7 @@ export default function TransactionDetail() {
             )}
 
             <InfoRow name="برچسب" className="text-xs flex items-center gap-1.5">
-              {transaction?.tag ? transaction.tag : "بدون برچسب"}
+              {tagName || "بدون برچسب"}
             </InfoRow>
 
             <InfoRow name="تاریخ" className="text-xs flex items-center gap-1.5">

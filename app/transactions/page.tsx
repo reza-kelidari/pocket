@@ -84,13 +84,6 @@ export default function Transactions() {
     }
   }, [getAccounts, router]);
 
-  console.log(
-    transactionsFilter.accounts.length > 0 ||
-      transactionsFilter.categories.length > 0 ||
-      transactionsFilter.tags.length > 0 ||
-      transactionsFilter.timeWindow < 29,
-  );
-
   if (getAccounts().length === 0) return null;
 
   return (

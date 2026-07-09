@@ -49,7 +49,6 @@ export default function Splash() {
         sessionStorage.setItem("splashShown", "1");
         router.replace(fromPath);
       } catch (error) {
-        console.error("Error loading database:", error);
       }
     }
 

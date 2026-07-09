@@ -59,8 +59,6 @@ export async function putItem<T>(storeName: string, item: T): Promise<void> {
 }
 
 export async function deleteItem(storeName: string, id: number): Promise<void> {
-  console.log("id", id);
-  
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
