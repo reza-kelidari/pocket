@@ -150,24 +150,27 @@ export default function AddTransaction() {
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatJalaliInput(e.target.value);
+    const formatted = formatJalaliInput(e.target.value, dateInput); // اضافه شدن dateInput
     setDateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
-    if (timestamp > 0)
+    if (timestamp > 0) {
       updateTransaction({
         time: mergeDateTime(transaction.time, timestamp, "date"),
       });
+    }
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTimeTyping(e.target.value);
+    const formatted = formatTimeTyping(e.target.value, timeInput); // اضافه شدن timeInput
     setTimeInput(formatted);
     const timestamp = parseTimeInput(formatted);
-    if (timestamp > 0)
+    if (timestamp > 0) {
       updateTransaction({
         time: mergeDateTime(transaction.time, timestamp, "time"),
       });
+    }
   };
+
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
     updateTransaction({ note: e.target.value });
 

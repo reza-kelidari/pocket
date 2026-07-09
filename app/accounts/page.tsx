@@ -13,7 +13,7 @@ import Right from "@/icons/Right";
 
 export default function Accounts() {
   const { getAccounts } = useAccounts();
-  const {getBalances} = useBalances();
+  const { getBalances } = useBalances();
   const router = useRouter();
   const [showHint, setShowHint] = useState(true);
   const [openItemId, setOpenItemId] = useState<number | null>(null);

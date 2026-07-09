@@ -23,16 +23,6 @@ import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { CREATE_TRANSACTION_KEY } from "../add/page";
 import { toEnglishDigits } from "@/utility/time/methods";
 
-const defaultTransaction: Omit<TransactionType, "id"> = {
-  type: "credit",
-  name: "",
-  time: Date.now(),
-  value: 0,
-  debit: 0,
-  credit: 0,
-  note: "",
-};
-
 export default function TransactionEdit() {
   const searchParams = useSearchParams();
   const txID = searchParams.get("id");
@@ -137,26 +127,29 @@ export default function TransactionEdit() {
     const raw = toEnglishDigits(e.target.value).replace(/\D/g, ""); // اضافه شدن toEnglishDigits
     updateTransactionState({ value: Number(raw || 0) });
   };
+
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatJalaliInput(e.target.value);
+    const formatted = formatJalaliInput(e.target.value, dateInput); // اضافه شدن dateInput
     setDateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
-    if (timestamp > 0 && transaction)
+    if (timestamp > 0) {
       updateTransactionState({
-        time: mergeDateTime(transaction.time, timestamp, "date"),
+        time: mergeDateTime(transaction!.time, timestamp, "date"),
       });
+    }
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTimeTyping(e.target.value);
+    const formatted = formatTimeTyping(e.target.value, timeInput); // اضافه شدن timeInput
     setTimeInput(formatted);
     const timestamp = parseTimeInput(formatted);
-    if (timestamp > 0 && transaction)
+    if (timestamp > 0) {
       updateTransactionState({
-        time: mergeDateTime(transaction.time, timestamp, "time"),
+        time: mergeDateTime(transaction!.time, timestamp, "time"),
       });
+    }
   };
-  
+
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
     updateTransactionState({ note: e.target.value });
 
