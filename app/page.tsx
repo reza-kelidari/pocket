@@ -22,16 +22,20 @@ import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
-  const { getAccounts } = useAccounts();
-  const { getTransactions } = useTransactions();
-  const { getBalances } = useBalances();
+  
+  // ذخیره خروجی توابع در متغیرها برای جلوگیری از ایجاد آرایه جدید در هر رندر
+  const accounts = useAccounts().getAccounts();
+  const transactions = useTransactions().getTransactions();
+  const balances = useBalances().getBalances();
 
   const splashGuard =
-    !getAccounts().length || !sessionStorage.getItem("splashShown");
+    !accounts.length || !sessionStorage.getItem("splashShown");
 
   useEffect(() => {
-    splashGuard && router.replace("/splash");
-  }, [getAccounts(), router]);
+    if (splashGuard) {
+      router.replace("/splash");
+    }
+  }, [splashGuard, router]); // استفاده از splashGuard به جای accounts
 
   const dateOptions: Intl.DateTimeFormatOptions = {
     weekday: "long",
@@ -46,7 +50,8 @@ export default function Home() {
       { name: "انتقال", link: "/newtransaction?type=transfer", icon: Transfer },
     ];
 
-  if (splashGuard) return;
+  // اصلاح خطای بازگشت undefined
+  if (splashGuard) return null;
 
   return (
     <div className="flex flex-col gap-15 p-7.5 pb-15 overflow-x-hidden">
@@ -70,7 +75,7 @@ export default function Home() {
           </Title>
         </Link>
         <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
-          {getAccounts().map((account) => {
+          {accounts.map((account) => {
             return (
               <AccountCard
                 key={account.id}
@@ -78,7 +83,7 @@ export default function Home() {
                 name={account.name}
                 color={account.color}
                 lastBalance={
-                  getBalances()
+                  balances
                     .find((item) => item.id === account.id)
                     ?.history?.at(-1)?.balance ?? 0
                 }
@@ -104,7 +109,7 @@ export default function Home() {
 
       <Chart
         title={"روند موجودی"}
-        transactions={getTransactions()}
+        transactions={transactions}
         timeSelector
         link="/analyze"
         linkTitle="تحلیل و بررسی پیشرفته"
@@ -118,7 +123,7 @@ export default function Home() {
         </Title>
 
         <div className="flex flex-col w-full gap-5">
-          {getLatestTransactions(getTransactions(), 5).map((transaction) => {
+          {getLatestTransactions(transactions, 5).map((transaction) => {
             return (
               <TransactionItem key={transaction.id} transaction={transaction} />
             );

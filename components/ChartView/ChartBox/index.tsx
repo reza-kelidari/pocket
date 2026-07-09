@@ -78,6 +78,14 @@ export default function BalanceChart({
         balance: lastBalance,
       },
     ];
+  } else if (chartData.length === 1) {
+    chartData = [
+      {
+        time: Date.now() - 1000 * 3600 * 24 * daysFilter,
+        balance: chartData[0].balance,
+      },
+      chartData[0],
+    ];
   }
 
   const values = [...chartData].map((item) => item.balance);

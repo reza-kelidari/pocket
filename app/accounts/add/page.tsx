@@ -43,7 +43,6 @@ export default function AddAccount() {
   const { addBalance } = useBalances();
 
   const [account, setAccount] = useState<NewAccountType>(() => {
-    // جلوگیری از خطای SSR در Next.js
     if (typeof window === "undefined") return { ...defaultAccount, id: 0 };
 
     const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
@@ -90,7 +89,6 @@ export default function AddAccount() {
 
   const parseJalaliInput = (formattedValue: string): number => {
     const raw = toEnglishDigits(formattedValue).replace(/\D/g, "");
-    // اگر کاربر هنوز 8 رقم را کامل نکرده بود، 0 برمی‌گردانیم تا تاریخ را به Date.now تغییر ندهد
     if (raw.length !== 8) return 0;
 
     const year = parseInt(raw.slice(0, 4), 10);
@@ -140,10 +138,9 @@ export default function AddAccount() {
 
   const handleCreateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCreateInput(e.target.value);
-    setCreateInput(formatted); // آپدیت کردن فقط ظاهر اینپوت
+    setCreateInput(formatted);
 
     const timestamp = parseJalaliInput(formatted);
-    // فقط اگر تاریخ معتبری بود، استیت اصلی را آپدیت کن
     if (timestamp > 0) {
       updateAccount({ create: timestamp });
     }
@@ -156,7 +153,6 @@ export default function AddAccount() {
   const handleSave = () => {
     if (!isValid) return;
 
-    // ۱. ذخیره حساب
     addAccount(account);
 
     const initialTransaction: TransactionType = {
