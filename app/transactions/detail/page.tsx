@@ -20,7 +20,8 @@ export default function TransactionDetail() {
   const txID = Number(searchParams.get("id") ?? 0);
   const transaction = getTransactions().find((item) => item.id === txID);
 
-  const isTxDebit = transaction?.type === "debit" || transaction?.type === "initial";
+  const isTxDebit =
+    transaction?.type === "debit" || transaction?.type === "initial";
   const accountID = isTxDebit ? transaction?.debit : transaction?.credit;
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;
   const txCategory = getCategoryById(categoryID ?? 0);
@@ -47,92 +48,111 @@ export default function TransactionDetail() {
   }, [getAccounts, router]);
 
   if (getAccounts().length === 0 || !transaction) return null;
+  else
+    return (
+      <div className="p-7.5 grid gap-15">
+        <div className="grid gap-7.5">
+          <NavbarTitle title="مشاهده تراکنش">
+            {transaction.type === "initial" ? (
+              <Capsule
+                href={`/accounts/edit?id=${transaction?.debit}`}
+                Icon={Pen}
+              >
+                ویرایش حساب
+              </Capsule>
+            ) : (
+              <Capsule
+                href={`/transactions/edit?id=${transaction.id}`}
+                Icon={Pen}
+              >
+                ویرایش
+              </Capsule>
+            )}
+          </NavbarTitle>
+        </div>
 
-  return (
-    <div className="p-7.5 grid gap-15">
-      <div className="grid gap-7.5">
-        <NavbarTitle title="مشاهده تراکنش">
-          <Capsule href={`/transactions/edit?id=${transaction?.id}`} Icon={Pen}>
-            ویرایش
-          </Capsule>
-        </NavbarTitle>
-      </div>
-
-      <Box>
-        <h1 className="text-center">{txName}</h1>
-        <br />
-        <div className="grid gap-5">
-          <InfoRow
-            name="مبلغ"
-            className={`text-xs ${isTxDebit ? "text-income-primary" : transaction?.type === "credit" ? "text-expense-primary" : ""}`}
-          >
-            {`${transaction?.value.toLocaleString("fa-ir")}
+        <Box>
+          <h1 className="text-center">{txName}</h1>
+          <br />
+          <div className="grid gap-5">
+            <InfoRow
+              name="مبلغ"
+              className={`text-xs ${isTxDebit ? "text-income-primary" : transaction?.type === "credit" ? "text-expense-primary" : ""}`}
+            >
+              {`${transaction?.value.toLocaleString("fa-ir")}
               ${isTxDebit ? "+" : transaction?.type === "credit" ? "-" : ""}
               ﷼`}
-          </InfoRow>
-
-          {txCategory && <InfoRow name="دسته‌بندی">{txCategory.name}</InfoRow>}
-
-          {["debit", "credit", "initial"].includes(transaction?.type ?? "") ? (
-            <InfoRow name="حساب" className="text-xs flex items-center gap-1.5">
-              {account?.name}{" "}
-              <span
-                className={`p-1 rounded-4xl ${AccountColors[account?.color ?? "blue1"].primary}`}
-              ></span>
             </InfoRow>
-          ) : (
-            <>
+
+            {txCategory && (
+              <InfoRow name="دسته‌بندی">{txCategory.name}</InfoRow>
+            )}
+
+            {["debit", "credit", "initial"].includes(
+              transaction?.type ?? "",
+            ) ? (
               <InfoRow
-                name="حساب مقصد"
+                name="حساب"
                 className="text-xs flex items-center gap-1.5"
               >
-                {toAccount?.name}{" "}
+                {account?.name}{" "}
                 <span
-                  className={`p-1 rounded-4xl ${AccountColors[toAccount?.color ?? "blue1"].primary}`}
+                  className={`p-1 rounded-4xl ${AccountColors[account?.color ?? "blue1"].primary}`}
                 ></span>
               </InfoRow>
+            ) : (
+              <>
+                <InfoRow
+                  name="حساب مقصد"
+                  className="text-xs flex items-center gap-1.5"
+                >
+                  {toAccount?.name}{" "}
+                  <span
+                    className={`p-1 rounded-4xl ${AccountColors[toAccount?.color ?? "blue1"].primary}`}
+                  ></span>
+                </InfoRow>
 
-              <InfoRow
-                name="حساب مبدا"
-                className="text-xs flex items-center gap-1.5"
-              >
-                {fromAccount?.name}{" "}
-                <span
-                  className={`p-1 rounded-4xl ${AccountColors[fromAccount?.color ?? "blue1"].primary}`}
-                ></span>
-              </InfoRow>
-            </>
-          )}
+                <InfoRow
+                  name="حساب مبدا"
+                  className="text-xs flex items-center gap-1.5"
+                >
+                  {fromAccount?.name}{" "}
+                  <span
+                    className={`p-1 rounded-4xl ${AccountColors[fromAccount?.color ?? "blue1"].primary}`}
+                  ></span>
+                </InfoRow>
+              </>
+            )}
 
-          <InfoRow name="برچسب" className="text-xs flex items-center gap-1.5">
-            {transaction?.tag ? transaction.tag : "بدون برچسب"}
-          </InfoRow>
+            <InfoRow name="برچسب" className="text-xs flex items-center gap-1.5">
+              {transaction?.tag ? transaction.tag : "بدون برچسب"}
+            </InfoRow>
 
-          <InfoRow name="تاریخ" className="text-xs flex items-center gap-1.5">
-            {txDate.toLocaleDateString("fa-ir", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            })}
-          </InfoRow>
+            <InfoRow name="تاریخ" className="text-xs flex items-center gap-1.5">
+              {txDate.toLocaleDateString("fa-ir", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              })}
+            </InfoRow>
 
-          <InfoRow name="ساعت" className="text-xs flex items-center gap-1.5">
-            {txDate.toLocaleString("fa-ir", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </InfoRow>
+            <InfoRow name="ساعت" className="text-xs flex items-center gap-1.5">
+              {txDate.toLocaleString("fa-ir", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </InfoRow>
 
-          {transaction?.note && (
-            <div className="p-4 min-h-25 bg-white rounded-2xl border-elements-border border text-[10px] text-justify">
-              {transaction.note}
-            </div>
-          )}
-        </div>
-      </Box>
-    </div>
-  );
+            {transaction?.note && (
+              <div className="p-4 min-h-25 bg-white rounded-2xl border-elements-border border text-[10px] text-justify">
+                {transaction.note}
+              </div>
+            )}
+          </div>
+        </Box>
+      </div>
+    );
 }
 
 type InfoRowPropsType = ComponentProps<"h3"> & {
