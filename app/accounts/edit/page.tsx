@@ -216,9 +216,7 @@ export default function AccountEdit() {
           }
           return prev;
         });
-      } catch (e) {
-        console.error("Failed to parse account data", e);
-      }
+      } catch (e) {}
     };
 
     window.addEventListener("focus", handleFocus);

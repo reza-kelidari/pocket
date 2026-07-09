@@ -25,15 +25,11 @@ class BalancesStore {
   }
 
   updateBalance(updatedBalance: AccountBalanceType) {
-    // فرض بر این است که فیلد شناسه حساب در موجودی‌ها accountId است
-    const index = this.balances.findIndex(
-      (b) => b.id === updatedBalance.id,
-    );
+    const index = this.balances.findIndex((b) => b.id === updatedBalance.id);
     if (index !== -1) {
       this.balances[index] = { ...updatedBalance };
       this.notify();
     } else {
-      // اگر موجودی قبلی برای این حساب ثبت نشده بود، آن را اضافه می‌کند
       this.addBalance(updatedBalance);
     }
   }

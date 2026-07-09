@@ -8,7 +8,6 @@ import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
 import Tag from "@/icons/Tag";
 import Restart from "@/icons/Restart";
-import { useRouter } from "next/navigation";
 
 export default function Options() {
   const items = [
@@ -17,7 +16,7 @@ export default function Options() {
       name: "پشتیبان‌گیری و بازیابی",
       color: PrimaryColors.primary,
       Icon: Database,
-      link: "/",
+      link: "/options/backup-restore",
     },
     {
       name: "حذف همه داده‌ها",
@@ -35,14 +34,14 @@ export default function Options() {
             Icon={Restart}
             replace
             href="/"
-            onClick={window.location.reload}
+            onClick={() => window.location.reload()}
           >
             بارگذاری مجدد
           </Capsule>
         </NavbarTitle>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-5">
         {items.map((item, index) => {
           const { name, color, Icon, link } = item;
 

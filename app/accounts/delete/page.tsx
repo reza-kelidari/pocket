@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/Button";
+import Info from "@/icons/Info";
 import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
 import useTransactions from "@/utility/transactions/service/useTransactions";
@@ -39,8 +40,12 @@ export default function AccountDelete() {
 
   return (
     <div className="grid place-content-center gap-7.5 p-15 h-screen">
-      <h1 className="text-center text-xl">هشدار</h1>
-      <p className="text-center text-xs">
+      <div className="flex items-center justify-center gap-2">
+        <Info className="fill-red" height={30} width={30} />
+        <h1 className="text-xl">هشدار</h1>
+      </div>
+
+      <p className="text-justify [text-align-last:center] text-xs">
         با این‌کار تمام تراکنش‌های حساب{" "}
         <span className="font-bold">
           {account.name}{" "}
