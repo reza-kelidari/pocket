@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { balancesStore } from "./balanceStore";
+import { balancesStore } from "./balancesStore";
 
 export default function useBalances() {
   const balances = useSyncExternalStore(

@@ -1,8 +1,10 @@
+"use client";
+
 import { AccountType } from "@/utility/accounts/types";
+import { putItem, deleteItem, clearStore } from "@/utility/db/Database";
 
 class AccountsStore {
   private accounts: AccountType[] = [];
-
   private listeners: Set<() => void> = new Set();
 
   private notify() {
@@ -18,22 +20,27 @@ class AccountsStore {
     this.notify();
   }
 
-  addAccount(account: AccountType) {
+  async addAccount(account: AccountType) {
     this.accounts.push(account);
     this.notify();
+    await putItem("accounts", account);
   }
 
-  updateAccount(updatedAccount: AccountType) {
-    const index = this.accounts.findIndex((acc) => acc.id === updatedAccount.id);
+  async updateAccount(updatedAccount: AccountType) {
+    const index = this.accounts.findIndex(
+      (acc) => acc.id === updatedAccount.id,
+    );
     if (index !== -1) {
       this.accounts[index] = { ...updatedAccount };
       this.notify();
+      await putItem("accounts", updatedAccount);
     }
   }
 
-  removeAccount(id: number) {
+  async removeAccount(id: number) {
     this.accounts = this.accounts.filter((acc) => acc.id !== id);
     this.notify();
+    await deleteItem("accounts", id);
   }
 
   subscribe = (listener: () => void) => {
@@ -43,9 +50,10 @@ class AccountsStore {
 
   getSnapshot = () => this.accounts;
 
-  clear() {
+  async clear() {
     this.accounts = [];
     this.notify();
+    await clearStore("accounts");
   }
 }
 

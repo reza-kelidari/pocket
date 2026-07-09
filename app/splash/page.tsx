@@ -1,43 +1,65 @@
 "use client";
 
-import getAccountsList from "@/utility/accounts/service/initializer";
-import getTransactionsList from "@/utility/transactions/service/initializer";
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { transactionsStore } from "@/utility/transactions/service/transactionsStore";
+import { accountsStore } from "@/utility/accounts/service/accountsStore";
+import { balancesStore } from "@/utility/balance/service/balancesStore";
+import { getAccountBalances } from "@/utility/shared/balancesMethods";
+import { getAll, putItem } from "@/utility/db/Database";
 import {
-  getAccountBalances,
-} from "@/utility/shared/balancesMethods";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
-import useBalances from "@/utility/balance/service/useBalances";
+  getDefaultAccounts,
+  getDefaultTransactions,
+} from "@/utility/db/defaults";
+import { AccountType } from "@/utility/accounts/types";
+import { TransactionType } from "@/utility/transactions/types";
 
 export default function Splash() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setBalances } = useBalances();
-  const { setAccounts } = useAccounts();
 
   const fromPath = searchParams.get("from") || "/";
 
   useEffect(() => {
     async function load() {
-      const accounts = await getAccountsList();
-      const transactions = await getTransactionsList();
+      try {
+        // خواندن دیتا از دیتابیس
+        let accounts = (await getAll("accounts")) as AccountType[];
+        let transactions = (await getAll("transactions")) as TransactionType[];
 
-      setAccounts(accounts);
-      transactionsStore.setTransactions(transactions);
+        // اگر دیتابیس خالی بود، مقادیر پیش‌فرض را بساز و در دیتابیس ذخیره کن
+        if (accounts.length === 0) {
+          accounts = getDefaultAccounts();
+          for (const acc of accounts) {
+            await putItem("accounts", acc);
+          }
+        }
 
-      setBalances(getAccountBalances(accounts, transactions));
+        if (transactions.length === 0) {
+          transactions = getDefaultTransactions();
+          for (const tx of transactions) {
+            await putItem("transactions", tx);
+          }
+        }
 
-      sessionStorage.setItem("splashShown", "1");
+        // قرار دادن در استورهای حافظه (اصلاح شده: صدا زدن مستقیم روی استور)
+        accountsStore.setAccounts(accounts);
+        transactionsStore.setTransactions(transactions);
 
-      router.replace(fromPath);
+        // محاسبه موجودی‌ها
+        balancesStore.setBalances(getAccountBalances(accounts, transactions));
+
+        sessionStorage.setItem("splashShown", "1");
+        router.replace(fromPath);
+      } catch (error) {
+        console.error("Error loading database:", error);
+      }
     }
 
     const timer = setTimeout(load, 500);
     return () => clearTimeout(timer);
-  }, [router, fromPath, setAccounts]);
+  }, [router, fromPath]);
 
   return (
     <div className="flex flex-col place-content-center items-center h-screen relative">

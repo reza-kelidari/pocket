@@ -1,6 +1,7 @@
 "use client";
 
-import { TransactionType } from "../types";
+import { TransactionType } from "@/utility/transactions/types";
+import { putItem, deleteItem, clearStore } from "@/utility/db/Database";
 
 class TransactionsStore {
   private transactions: TransactionType[] = [];
@@ -19,37 +20,38 @@ class TransactionsStore {
     this.notify();
   }
 
-  addTransaction(transaction: TransactionType) {
+  async addTransaction(transaction: TransactionType) {
     this.transactions.push(transaction);
     this.transactions.sort((a, b) => a.time - b.time);
     this.notify();
+    await putItem("transactions", transaction);
   }
 
-  updateTransaction(updatedTransaction: TransactionType) {
+  async updateTransaction(updatedTransaction: TransactionType) {
     const index = this.transactions.findIndex(
       (t) => t.id === updatedTransaction.id,
     );
     if (index !== -1) {
-      this.transactions[index] = {
-        ...this.transactions,
-        ...updatedTransaction,
-      };
+      this.transactions[index] = { ...updatedTransaction };
       this.transactions.sort((a, b) => a.time - b.time);
       this.notify();
+      await putItem("transactions", updatedTransaction);
     }
   }
 
-  removeTransaction(id: number) {
+  async removeTransaction(id: number) {
     this.transactions = this.transactions.filter((t) => t.id !== id);
     this.notify();
+    await deleteItem("transactions", id);
   }
 
-  removeTransactionsByAccountID(accountID: number) {
-    this.transactions.forEach((t) => {
-      if (t.debit === accountID || t.credit === accountID) {
-        this.removeTransaction(t.id);
-      }
-    });
+  async removeTransactionsByAccountID(accountID: number) {
+    const toRemove = this.transactions.filter(
+      (t) => t.debit === accountID || t.credit === accountID,
+    );
+    for (const t of toRemove) {
+      await this.removeTransaction(t.id);
+    }
   }
 
   subscribe = (listener: () => void) => {
@@ -59,9 +61,10 @@ class TransactionsStore {
 
   getSnapshot = () => this.transactions;
 
-  clear() {
+  async clear() {
     this.transactions = [];
     this.notify();
+    await clearStore("transactions");
   }
 }
 
