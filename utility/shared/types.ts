@@ -1,4 +1,4 @@
-import { TransactionCategories } from "./constant";
+import { TransactionCategories } from "./transactionCategories";
 
 /**
  * Top-level transaction category.

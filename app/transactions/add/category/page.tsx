@@ -5,7 +5,7 @@ import { TransactionType } from "@/utility/transactions/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CREATE_TRANSACTION_KEY } from "../page";
-import { TransactionCategories } from "@/utility/category/constant";
+import { TransactionCategories } from "@/utility/shared/transactionCategories";
 import Title from "@/components/SectionTitle";
 
 export default function CategorySelector() {
