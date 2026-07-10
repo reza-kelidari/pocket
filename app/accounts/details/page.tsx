@@ -7,65 +7,75 @@ import NavbarTitle from "@/components/NavbarTitle";
 import SectionTitle from "@/components/SectionTitle";
 import TransactionItem from "@/components/TransactionItem";
 import Pen from "@/icons/Pen";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
+import { AccountType } from "@/utility/accounts/types";
+import { getAll, getItem } from "@/utility/db/Database";
+import { DatabaseStores } from "@/utility/keys/database";
 import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
-import useTransactions from "@/utility/transactions/service/useTransactions";
+import { TransactionType } from "@/utility/transactions/types";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function AccountsDetails() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { getAccounts } = useAccounts();
-  const { getTransactions } = useTransactions();
+  const { accountsStore, transactionsStore } = DatabaseStores;
+  const [account, setAccount] = useState<AccountType>();
+  const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const accountID = Number(searchParams.get("id"));
-  const account = getAccounts().find((item) => item.id === accountID);
-
-  const accountTransactions = getTransactions().filter((item) =>
-    [item.debit, item.credit].includes(accountID),
-  );
 
   useEffect(() => {
-    if (isNaN(accountID) || !account) router.replace("/accounts");
+    if (isNaN(accountID)) router.replace("/accounts");
+  }, [accountID, router]);
 
-    if (getAccounts().length === 0) {
-      const currentPath = window.location.pathname + window.location.search;
-      router.replace(`/splash?from=${currentPath}`);
-    }
-  }, [accountID, getAccounts, router]);
+  useEffect(() => {
+    (async () => {
+      setAccount((await getItem<AccountType>(accountsStore, accountID)));
 
-  if (getAccounts().length === 0 || isNaN(accountID) || !account) return null;
+      setTransactions((await getAll<TransactionType>(transactionsStore)));
+    })();
+  }, [accountID]);
 
-  return (
-    <div className="p-7.5 grid gap-15">
-      <div className="grid gap-7.5">
-        <NavbarTitle title={account.name}>
-          <Capsule Icon={Pen} href={`/accounts/edit?id=${account.id}`}>
-            اصلاح حساب
-          </Capsule>
-        </NavbarTitle>
-      </div>
-
-      <ChartView
-        title={`موجودی ${account.name}`}
-        color={account.color}
-        timeSelector
-        accountID={account.id}
-        transactions={getTransactions()}
-      />
-
-      <div className="grid gap-7.5">
-        <SectionTitle>{`تراکنش‌های اخیر ${account.name}`}</SectionTitle>
-
-        <div className="flex flex-col w-full gap-2.5">
-          {getLatestTransactions(accountTransactions, 5).map((transaction) => (
-            <TransactionItem key={transaction.id} transaction={transaction} />
-          ))}
+  if (isNaN(accountID) || !account) return null;
+  else
+    return (
+      <div className="p-7.5 grid gap-15">
+        <div className="grid gap-7.5">
+          <NavbarTitle title={account.name}>
+            <Capsule Icon={Pen} href={`/accounts/edit?id=${account.id}`}>
+              اصلاح حساب
+            </Capsule>
+          </NavbarTitle>
         </div>
-        <Button href={`/transactions?accounts=${accountID}`}>
-          مشاهده همه تراکنش‌ها
-        </Button>
+
+        <ChartView
+          title={`موجودی ${account.name}`}
+          color={account.color}
+          timeSelector
+          accountID={account.id}
+          transactions={transactions}
+        />
+
+        <div className="grid gap-7.5">
+          <SectionTitle>{`تراکنش‌های اخیر ${account.name}`}</SectionTitle>
+
+          <div className="flex flex-col w-full gap-2.5">
+            {getLatestTransactions(
+              transactions.filter((item) =>
+                [item.debit, item.credit].includes(accountID),
+              ),
+              5,
+            ).map((transaction) => (
+              <TransactionItem
+                key={transaction.id}
+                account={account}
+                transaction={transaction}
+              />
+            ))}
+          </div>
+          <Button href={`/transactions?accounts=${accountID}`}>
+            مشاهده همه تراکنش‌ها
+          </Button>
+        </div>
       </div>
-    </div>
-  );
+    );
 }

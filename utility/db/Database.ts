@@ -1,3 +1,5 @@
+import { DatabaseStoreType } from "../keys/database";
+
 const DB_NAME = "pocket-finance-db";
 const DB_VERSION = 1;
 
@@ -36,7 +38,7 @@ export function getDB(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-export async function getAll<T>(storeName: string): Promise<T[]> {
+export async function getAll<T>(storeName: DatabaseStoreType): Promise<T[]> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly");
@@ -47,7 +49,25 @@ export async function getAll<T>(storeName: string): Promise<T[]> {
   });
 }
 
-export async function putItem<T>(storeName: string, item: T): Promise<void> {
+export async function getItem<T>(
+  storeName: DatabaseStoreType,
+  id: number,
+): Promise<T | undefined> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    const req = store.get(id);
+
+    req.onsuccess = () => resolve(req.result as T | undefined);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function putItem<T>(
+  storeName: DatabaseStoreType,
+  item: T,
+): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
@@ -58,7 +78,10 @@ export async function putItem<T>(storeName: string, item: T): Promise<void> {
   });
 }
 
-export async function deleteItem(storeName: string, id: number): Promise<void> {
+export async function deleteItem(
+  storeName: DatabaseStoreType,
+  id: number,
+): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
@@ -69,7 +92,7 @@ export async function deleteItem(storeName: string, id: number): Promise<void> {
   });
 }
 
-export async function clearStore(storeName: string): Promise<void> {
+export async function clearStore(storeName: DatabaseStoreType): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");

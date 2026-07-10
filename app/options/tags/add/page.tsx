@@ -21,18 +21,17 @@ export default function AddTag() {
   const id = Number(searchParams.get("id"));
 
   useEffect(() => {
-    async function load() {
+    (async () => {
       if (!!id) {
-        const tagInDB = ((await getAll("tags")) as TagType[]).find(
+        const tagInDB = (await getAll<TagType>("tags")).find(
           (item) => item.id === id,
         );
         setTagDetails(tagInDB!);
       } else {
-        const nextId = generateNextTagId((await getAll("tags")) as TagType[]);
+        const nextId = generateNextTagId(await getAll<TagType>("tags"));
         setTagDetails((prev) => ({ ...prev, id: nextId }));
       }
-    }
-    load();
+    })();
   }, []);
 
   const isValid = useMemo(() => {

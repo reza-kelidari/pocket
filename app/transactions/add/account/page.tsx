@@ -2,21 +2,22 @@
 
 import AccountsListElement from "@/components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import useBalances from "@/utility/balance/service/useBalances";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CREATE_TRANSACTION_KEY } from "../page";
 import { TransactionType } from "@/utility/transactions/types";
+import { AccountType } from "@/utility/accounts/types";
+import { getAll } from "@/utility/db/Database";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export default function AccountSelector() {
-  const { getAccounts } = useAccounts();
   const { getBalances } = useBalances();
   const router = useRouter();
-  const pathname = usePathname();
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
   const searchParams = useSearchParams();
+  const { accountsStore } = DatabaseStores;
 
-  // پارامتر ورودی: toAccount (مقصد) یا fromAccount (مبدأ)
   const accountParam = searchParams.get("type") as
     | "toAccount"
     | "fromAccount"
@@ -26,13 +27,7 @@ export default function AccountSelector() {
   const [transactionType, setTransactionType] = useState<
     TransactionType["type"] | null
   >(null);
-
   useEffect(() => {
-    if (getAccounts().length === 0) router.replace(`/splash?from=${pathname}`);
-  }, [getAccounts, router, pathname]);
-
-  useEffect(() => {
-    // خواندن آیدی حساب فعلی و نوع تراکنش برای تنظیمات اولیه
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data) return;
 
@@ -49,6 +44,13 @@ export default function AccountSelector() {
       setSelectedId(currentSelected || 0);
     } catch (e) {}
   }, [accountParam]);
+
+  useEffect(() => {
+    ((async () => {
+      setAccounts((await getAll<AccountType>(accountsStore)));
+    })(),
+      []);
+  });
 
   function handleSelect(id: number): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
@@ -77,9 +79,6 @@ export default function AccountSelector() {
     router.back();
   }
 
-  if (getAccounts().length === 0) return null;
-
-  // منطق تعیین عنوان صفحه بر اساس نوع تراکنش و پارامتر ورودی
   let navbarTitle = "انتخاب حساب";
   if (
     transactionType === "debit" ||
@@ -99,9 +98,9 @@ export default function AccountSelector() {
         <NavbarTitle title={navbarTitle} disabled />
       </div>
       <div className="grid gap-4">
-        {getAccounts().map((item) => {
+        {accounts.map((item) => {
           const isSelected = selectedId === item.id;
-          
+
           return (
             <AccountsListElement
               key={item.id}

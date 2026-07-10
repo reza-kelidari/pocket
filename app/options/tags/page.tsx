@@ -4,7 +4,7 @@ import Capsule from "@/components/Capsule";
 import Description from "@/components/Description";
 import ListElement from "@/components/ListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import SwipeableAccountItem from "@/components/SwipableAccountElement";
+import SwipeableAccountItem from "@/components/SwipableElement";
 import Left from "@/icons/Left";
 import Tag from "@/icons/Tag";
 import { PrimaryColors } from "@/utility/colors";
@@ -21,10 +21,9 @@ export default function Tags() {
   const router = useRouter();
 
   useEffect(() => {
-    async function load() {
-      setTags((await getAll("tags")) as TagType[]);
-    }
-    load();
+    (async () => {
+      setTags(await getAll<TagType>("tags"));
+    })();
   }, []);
 
   useEffect(() => {

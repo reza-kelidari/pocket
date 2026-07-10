@@ -4,16 +4,18 @@ import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import TransactionItem from "@/components/TransactionItem";
 import Left from "@/icons/Left";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
-import useTransactions from "@/utility/transactions/service/useTransactions";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { AccountColors } from "@/utility/colors";
 import Description from "@/components/Description";
 import Filter from "@/icons/Filter";
 import Button from "@/components/Button";
+import { AccountType } from "@/utility/accounts/types";
+import { TransactionType } from "@/utility/transactions/types";
+import { getAll } from "@/utility/db/Database";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export type transactionsFilterType = {
   timeWindow: number;
@@ -24,11 +26,12 @@ export type transactionsFilterType = {
 
 export default function Transactions() {
   const searchParams = useSearchParams();
-  const { getAccounts } = useAccounts();
   const router = useRouter();
-  const { getTransactions } = useTransactions();
+  const [transactions, setTransactions] = useState<TransactionType[]>([]);
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
   const timeFilter = timeFilters(toJalaliDateArray(new Date()));
   const pathname = usePathname();
+  const { accountsStore, transactionsStore } = DatabaseStores;
 
   const transactionsFilter: transactionsFilterType = useMemo(
     () => ({
@@ -44,7 +47,7 @@ export default function Transactions() {
     const now = Date.now();
     const timeLimit = now - transactionsFilter.timeWindow * 24 * 60 * 60 * 1000;
 
-    return getTransactions()
+    return transactions
       .filter((transaction) => {
         if (transaction.time < timeLimit) return false;
 
@@ -75,16 +78,14 @@ export default function Transactions() {
         return true;
       })
       .sort((a, b) => b.time - a.time);
-  }, [getTransactions, transactionsFilter]);
+  }, [transactions, transactionsFilter]);
 
   useEffect(() => {
-    if (getAccounts().length === 0) {
-      const currentPath = window.location.pathname + window.location.search;
-      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
-    }
-  }, [getAccounts, router]);
-
-  if (getAccounts().length === 0) return null;
+    (async () => {
+      setTransactions(await getAll<TransactionType>(transactionsStore));
+      setAccounts(await getAll<AccountType>(accountsStore));
+    })();
+  }, [accountsStore, transactionsStore]);
 
   return (
     <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden h-screen">
@@ -102,6 +103,7 @@ export default function Transactions() {
               (filter) => filter.time === transactionsFilter.timeWindow,
             )?.name ?? "۳۰ روز گذشته"}
           </Capsule>
+
           <Capsule
             Icon={Left}
             href={`/transactions/filter-account${filterToUrl(transactionsFilter)}`}
@@ -109,7 +111,7 @@ export default function Transactions() {
             primary={transactionsFilter.accounts.length > 0}
             accountColor={
               transactionsFilter.accounts.length === 1
-                ? getAccounts().find(
+                ? accounts.find(
                     (item) => item.id === transactionsFilter.accounts[0],
                   )?.color
                 : undefined
@@ -118,21 +120,21 @@ export default function Transactions() {
               transactionsFilter.accounts.length === 1
                 ? `${
                     AccountColors[
-                      getAccounts().find(
+                      accounts.find(
                         (item) => item.id === transactionsFilter.accounts[0],
                       )?.color ?? "black"
                     ].border
                   }
                   ${
                     AccountColors[
-                      getAccounts().find(
+                      accounts.find(
                         (item) => item.id === transactionsFilter.accounts[0],
                       )?.color ?? "black"
                     ].text
                   }
                   ${
                     AccountColors[
-                      getAccounts().find(
+                      accounts.find(
                         (item) => item.id === transactionsFilter.accounts[0],
                       )?.color ?? "black"
                     ].surface
@@ -143,7 +145,7 @@ export default function Transactions() {
             {transactionsFilter.accounts.length === 0
               ? "همه حساب‌ها"
               : transactionsFilter.accounts.length === 1
-                ? getAccounts().find(
+                ? accounts.find(
                     (item) => item.id === transactionsFilter.accounts[0],
                   )?.name
                 : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
@@ -175,9 +177,20 @@ export default function Transactions() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredTransactions.map((item) => (
-            <TransactionItem key={item.id} transaction={item} />
-          ))}
+          {filteredTransactions.map((item) => {
+            const accountID = item.type === "credit" ? item.credit : item.debit;
+            const account = accounts.find((acc) => acc.id === accountID);
+
+            if (!account) return null;
+
+            return (
+              <TransactionItem
+                key={item.id}
+                transaction={item}
+                account={account}
+              />
+            );
+          })}
         </div>
       )}
     </div>

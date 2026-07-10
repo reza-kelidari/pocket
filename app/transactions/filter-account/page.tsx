@@ -5,16 +5,20 @@ import NavbarTitle from "@/components/NavbarTitle";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { filterToUrl } from "../methods";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import AccountsListElement from "@/components/AccountsListElement";
 import useBalances from "@/utility/balance/service/useBalances";
+import { getAll } from "@/utility/db/Database";
+import { AccountType } from "@/utility/accounts/types";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export default function AccountFilter() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { getAccounts } = useAccounts();
   const { getBalances } = useBalances();
+  const { accountsStore } = DatabaseStores;
 
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [accountFilter, setAccountFilter] = useState<number[]>([]);
 
   const parseNumberArray = (param: string | null): number[] => {
@@ -33,34 +37,38 @@ export default function AccountFilter() {
   };
 
   useEffect(() => {
-    if (getAccounts().length === 0) {
-      const currentPath = window.location.pathname + window.location.search;
-      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
+    async function load() {
+      const accs = (await getAll(accountsStore)) as AccountType[];
+      if (accs.length === 0) {
+        const currentPath = window.location.pathname + window.location.search;
+        router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
+        return;
+      }
+      // مرتب‌سازی بر اساس order
+      accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      setAccounts(accs);
+      setAccountFilter(transactionsFilter.accounts);
+      setIsLoading(false);
     }
-  }, [getAccounts, router]);
-
-  useEffect(() => {
-    setAccountFilter(transactionsFilter.accounts);
-  }, []);
-
-  if (getAccounts().length === 0) return null;
+    load();
+  }, [accountsStore, router]);
 
   const handleApplyFilter = () => {
     const selectedAccounts =
       accountFilter.length === 0
-        ? getAccounts().map((item) => item.id)
+        ? accounts.map((item) => item.id)
         : accountFilter;
 
     const newUrl = `/transactions${filterToUrl({
       ...transactionsFilter,
       accounts:
-        selectedAccounts.length !== getAccounts().length
-          ? selectedAccounts
-          : [],
+        selectedAccounts.length !== accounts.length ? selectedAccounts : [],
     })}`;
 
     router.replace(newUrl);
   };
+
+  if (isLoading) return null;
 
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
@@ -69,25 +77,18 @@ export default function AccountFilter() {
       </div>
 
       <div className="grid gap-4">
-        {getAccounts().map((item) => (
+        {accounts.map((item) => (
           <AccountsListElement
             account={item}
             balances={getBalances()}
             key={item.id}
             disabled={!accountFilter.includes(item.id)}
             onClick={() => {
-              const newArray = [...accountFilter];
-
-              if (accountFilter.includes(item.id)) {
-                const index = accountFilter.indexOf(item.id);
-                if (index > -1) {
-                  newArray.splice(index, 1);
-                }
-              } else {
-                newArray.push(item.id);
-              }
-
-              setAccountFilter(newArray);
+              setAccountFilter((prev) => {
+                if (prev.includes(item.id))
+                  return prev.filter((id) => id !== item.id);
+                return [...prev, item.id];
+              });
             }}
           />
         ))}

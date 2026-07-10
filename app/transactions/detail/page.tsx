@@ -3,41 +3,33 @@
 import Box from "@/components/Box";
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
 import { getCategoryById } from "@/utility/shared/transactionsMethods";
-import useTransactions from "@/utility/transactions/service/useTransactions";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ComponentProps, useEffect, useState } from "react";
 import { TagType } from "@/utility/tags/type";
-import { getAll } from "@/utility/db/Database";
-import { TagItemTypes } from "@/utility/shared/tagTypes";
+import { getAll, getItem } from "@/utility/db/Database";
+import { AccountType } from "@/utility/accounts/types";
+import { TransactionType } from "@/utility/transactions/types";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export default function TransactionDetail() {
   const searchParams = useSearchParams();
-  const { getAccounts } = useAccounts();
-  const { getTransactions } = useTransactions();
+  const [transaction, setTransaction] = useState<TransactionType>();
   const router = useRouter();
-  const [tags, setTags] = useState<TagType[]>([]);
   const [tagName, setTagName] = useState<string>("");
+  const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
+  const [account, setAccount] = useState<AccountType>();
+  const [fromAccount, setFromAccount] = useState<AccountType>();
+  const [toAccount, setToAccount] = useState<AccountType>();
 
   const txID = Number(searchParams.get("id") ?? 0);
-  const transaction = getTransactions().find((item) => item.id === txID);
 
   const isTxDebit =
     transaction?.type === "debit" || transaction?.type === "initial";
-  const accountID = isTxDebit ? transaction?.debit : transaction?.credit;
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;
   const txCategory = getCategoryById(categoryID ?? 0);
-  const account = getAccounts().find((item) => item.id === accountID);
-
-  const fromAccount = getAccounts().find(
-    (item) => item.id === transaction?.credit,
-  );
-  const toAccount = getAccounts().find(
-    (item) => item.id === transaction?.debit,
-  );
 
   const txName =
     transaction?.type === "initial" ? "موجودی اولیه" : transaction?.name;
@@ -45,27 +37,26 @@ export default function TransactionDetail() {
   const txDate = new Date(transaction?.time ?? 0);
 
   useEffect(() => {
-    if (!transaction || !txID) router.back();
-    if (getAccounts().length === 0) {
-      const currentPath = window.location.pathname + window.location.search;
-      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
-    }
-  }, [getAccounts, router]);
+    if (!txID) router.back();
+  }, [router]);
 
   useEffect(() => {
-    const load = async () => {
-      const tagsInDB = (await getAll("tags")) as TagType[];
-      const tagName = tagsInDB.find(
-        (item) => item.id === transaction?.tag,
-      )?.name;
+    (async () => {
+      const tx = (await getItem(transactionsStore, txID)) as TransactionType;
+      setTransaction(tx);
 
-      tagName && setTagName(tagName);
-    };
+      const accountID = tx.type === "credit" ? tx.credit : tx.debit;
+      setAccount(await getItem(accountsStore, accountID));
 
-    load();
+      if (tx?.tag)
+        setTagName((await getItem<TagType>(tagsStore, tx.tag))!.name);
+
+      setFromAccount((await getItem(accountsStore, tx.credit)) as AccountType);
+      setToAccount((await getItem(accountsStore, tx.debit)) as AccountType);
+    })();
   }, []);
 
-  if (getAccounts().length === 0 || !transaction) return null;
+  if (!transaction) return null;
   else
     return (
       <div className="p-7.5 grid gap-15">

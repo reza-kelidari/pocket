@@ -1,16 +1,21 @@
 import { AccountType } from "../accounts/types";
+import { clearStore, putItem } from "../db/Database";
+import { DatabaseStores } from "../keys/database";
 import { getAccountBalances } from "../shared/balancesMethods";
+import { TagType } from "../tags/type";
 import { TransactionType } from "../transactions/types";
 
 export type BackupType = {
   time: string;
   accounts: AccountType[];
   transactions: TransactionType[];
+  tags: TagType[];
 };
 
 export function getBackup(
   accounts: AccountType[],
   transactions: TransactionType[],
+  tags: TagType[],
 ): void {
   const currentDate = new Date();
 
@@ -18,6 +23,7 @@ export function getBackup(
     time: currentDate.toISOString(),
     accounts,
     transactions,
+    tags,
   };
 
   const backup = JSON.stringify(backupData);
@@ -38,18 +44,24 @@ export function getBackup(
   URL.revokeObjectURL(url);
 }
 
-type SetAccountsFn = (accounts: AccountType[]) => void;
-type SetTransactionsFn = (transactions: TransactionType[]) => void;
 type SetBalancesFn = (balances: any[]) => void;
 
-export function restoreBackup(
+export async function restoreBackup(
   backup: BackupType,
-  setAccounts: SetAccountsFn,
-  setTransactions: SetTransactionsFn,
+  put: typeof putItem,
+  clear: typeof clearStore,
   setBalances: SetBalancesFn,
-): void {
-  setAccounts(backup.accounts);
-  setTransactions(backup.transactions);
+): Promise<void> {
+  const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
+
+  clear(accountsStore);
+  await put(accountsStore, backup.accounts);
+
+  clear(transactionsStore);
+  await put(transactionsStore, backup.transactions);
+
+  clear(tagsStore);
+  await put(tagsStore, backup.tags);
 
   setBalances(getAccountBalances(backup.accounts, backup.transactions));
 }

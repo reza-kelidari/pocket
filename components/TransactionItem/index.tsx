@@ -1,19 +1,22 @@
-import { accountsStore } from "@/utility/accounts/service/accountsStore";
+"use client";
+
 import { AccountColors } from "@/utility/colors";
 import { TransactionType } from "@/utility/transactions/types";
 import Wallet from "@/icons/Wallet";
 import Link from "next/link";
+import { AccountType } from "@/utility/accounts/types";
 
 type TransactionItemParamsType = {
   transaction: TransactionType;
+  account: AccountType;
 };
 
 export default function TransactionItem({
   transaction,
+  account,
 }: TransactionItemParamsType) {
-  const { id: txID, name, time, debit, credit, type, value } = transaction;
+  const { id: txID, name, time, type, value } = transaction;
 
-  const accountID = type === "credit" ? credit : debit;
   const txName = type === "initial" ? "موجودی اولیه" : name;
 
   const date = new Date(time);
@@ -26,17 +29,13 @@ export default function TransactionItem({
     year: !isSameYear ? "numeric" : undefined,
   };
 
-  const accountData = accountsStore
-    .getAccounts()
-    .find((item) => item.id === accountID);
-
   return (
     <Link
       href={`/transactions/detail?id=${txID}`}
       className="w-full flex items-center gap-2.5"
     >
       <div
-        className={`w-10 h-10 rounded-2xl grid place-content-center shrink-0 ${AccountColors[accountData?.color ?? "black"].primary}`}
+        className={`w-10 h-10 rounded-2xl grid place-content-center shrink-0 ${AccountColors[account.color ?? "black"].primary}`}
       >
         <Wallet fill="#fff" height={25} width={25} />
       </div>

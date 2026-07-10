@@ -18,7 +18,7 @@ export default function TagSelector() {
 
   useEffect(() => {
     const loadData = async () => {
-      const tagsInDB = (await getAll("tags")) as TagType[];
+      const tagsInDB = await getAll<TagType>("tags");
       const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY) ?? "";
 
       setTags(tagsInDB);

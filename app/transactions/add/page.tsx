@@ -75,7 +75,7 @@ export default function AddTransaction() {
         return;
       }
 
-      const accs = (await getAll("accounts")) as AccountType[];
+      const accs = await getAll<AccountType>("accounts");
       setAccounts(accs);
 
       const txs = (await getAll("transactions")) as TransactionType[];
@@ -84,9 +84,6 @@ export default function AddTransaction() {
           `/splash?from=/transactions/add?type=${transactionType}`,
         );
       }
-
-      
-      
     }
     loadInitialData();
   }, [router, transactionType]);

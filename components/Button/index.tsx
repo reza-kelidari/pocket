@@ -19,7 +19,7 @@ export default function Button({
   href,
   ...props
 }: ButtonParamsType) {
-  const className = `border text-xs h-11.5 w-full grid place-content-center rounded-2xl
+  const className = `border text-xs h-11.5 w-full grid place-content-center rounded-2xl transition-all
     ${
       !secondary && !red && !disabled
         ? PrimaryColors.primary.box
@@ -28,25 +28,19 @@ export default function Button({
           : red
             ? PrimaryColors.red.box
             : PrimaryColors.disabled.box
-    }`;
+    }
+    ${props.className}`;
 
-  // اگر href داشته باشد و غیرفعال نباشد، به عنوان لینک رندر می‌شود
   if (href && !disabled) {
     return (
-      <Link href={href} className="w-full" {...(props as ComponentProps<"a">)}>
+      <Link href={href} className="w-full" {...props}>
         <div className={className}>{children}</div>
       </Link>
     );
   }
 
-  // در غیر این صورت، به عنوان یک دکمه استاندارد رندر می‌شود
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      className="w-full"
-      {...(props as ComponentProps<"button">)}
-    >
+    <button type="button" disabled={disabled} className="w-full" {...props}>
       <div className={className}>{children}</div>
     </button>
   );

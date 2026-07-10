@@ -3,15 +3,13 @@
 import Capsule from "@/components/Capsule";
 import AccountsListElement from "../../components/AccountsListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import useBalances from "@/utility/balance/service/useBalances";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Left from "@/icons/Left";
-import SwipeableAccountItem from "@/components/SwipableAccountElement";
+import SwipeableAccountItem from "@/components/SwipableElement";
 import Right from "@/icons/Right";
-import { accountsStore } from "@/utility/accounts/service/accountsStore";
-import SortableAccountElement from "@/components/SortableAccountElement";
+import SortableAccountElement from "@/components/SortableElement";
 import {
   DndContext,
   closestCenter,
@@ -26,15 +24,18 @@ import {
   arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { AccountType } from "@/utility/accounts/types";
+import { getAll, putItem } from "@/utility/db/Database";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export default function Accounts() {
-  const { getAccounts } = useAccounts();
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const { accountsStore } = DatabaseStores;
   const { getBalances } = useBalances();
   const router = useRouter();
   const [showHint, setShowHint] = useState(true);
   const [openItemId, setOpenItemId] = useState<number | null>(null);
-  const haveUserAccount =
-    getAccounts().filter((item) => !item.default).length > 0;
+  const haveUserAccount = accounts.filter((item) => !item.default).length > 0;
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -45,14 +46,17 @@ export default function Accounts() {
 
   useEffect(() => {
     const timer = setTimeout(() => setShowHint(false), 3000);
+
+    (async () => {
+      setAccounts(
+        ((await getAll<AccountType>(accountsStore))).sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0),
+        ),
+      );
+    })();
+
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (getAccounts().length === 0) {
-      router.replace(`/splash?from=/accounts`);
-    }
-  }, [getAccounts, router]);
 
   useEffect(() => {
     if (openItemId === null) return;
@@ -72,18 +76,26 @@ export default function Accounts() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const accounts = getAccounts();
     const oldIndex = accounts.findIndex((a) => a.id === active.id);
     const newIndex = accounts.findIndex((a) => a.id === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
       const newAccounts = arrayMove(accounts, oldIndex, newIndex);
-      await accountsStore.reorderAccounts(newAccounts);
+
+      const updatedAccounts = newAccounts.map((acc, index) => ({
+        ...acc,
+        order: index,
+      }));
+
+      setAccounts(updatedAccounts);
+
+      for (const acc of updatedAccounts) {
+        await putItem(accountsStore, acc);
+      }
     }
   };
 
-  if (getAccounts().length === 0) return null;
-  const accounts = getAccounts();
+  if (accounts.length === 0) return null;
 
   return (
     <div className="p-7.5 grid gap-15">

@@ -5,14 +5,17 @@ import Box from "@/components/Box";
 import Button from "@/components/Button";
 import Description from "@/components/Description";
 import NavbarTitle from "@/components/NavbarTitle";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
+import { AccountType } from "@/utility/accounts/types";
 import {
   BackupType,
   getBackup,
   restoreBackup,
 } from "@/utility/backup-restore/methods";
 import useBalances from "@/utility/balance/service/useBalances";
-import useTransactions from "@/utility/transactions/service/useTransactions";
+import { clearStore, getAll, putItem } from "@/utility/db/Database";
+import { DatabaseStores } from "@/utility/keys/database";
+import { TagType } from "@/utility/tags/type";
+import { TransactionType } from "@/utility/transactions/types";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 
@@ -22,9 +25,19 @@ export default function Page() {
   const [fileName, setFileName] = useState<string>("");
   const [backupData, setBackupData] = useState<BackupType>();
 
-  const { getAccounts, setAccounts } = useAccounts();
-  const { getTransactions, setTransactions } = useTransactions();
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const [transactions, setTransactions] = useState<TransactionType[]>([]);
+  const [tags, setTags] = useState<TagType[]>([]);
   const { setBalances } = useBalances();
+  const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
+
+  useEffect(() => {
+    (async () => {
+      setAccounts((await getAll<AccountType>(accountsStore)));
+      setTransactions((await getAll<TransactionType>(transactionsStore)));
+      setTags((await getAll<TagType>(tagsStore)));
+    })();
+  }, []);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -48,7 +61,7 @@ export default function Page() {
 
   function handleBackupRestore() {
     if (backupData) {
-      restoreBackup(backupData, setAccounts, setTransactions, setBalances);
+      restoreBackup(backupData, putItem, clearStore, setBalances);
 
       const message: MessageType = {
         title: "بازیابی موفق",
@@ -61,14 +74,6 @@ export default function Page() {
       router.replace("/message");
     }
   }
-
-  useEffect(() => {
-    if (getAccounts().length === 0) {
-      router.replace(`/splash?from=/options/backup-restore`);
-    }
-  }, [getAccounts, router]);
-
-  if (getAccounts().length === 0) return null;
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -93,7 +98,7 @@ export default function Page() {
             <b className="text-primary">تراکنش‌ها</b> هست.
           </Description>
 
-          <Button onClick={() => getBackup(getAccounts(), getTransactions())}>
+          <Button onClick={() => getBackup(accounts, transactions, tags)}>
             بارگیری نسخه پشتیبان
           </Button>
         </Box>

@@ -3,12 +3,10 @@
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import useTransactions from "@/utility/transactions/service/useTransactions";
 import { TransactionType } from "@/utility/transactions/types";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import {
   formatJalaliDate,
@@ -23,41 +21,83 @@ import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { CREATE_TRANSACTION_KEY } from "../add/page";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
 import { TagType } from "@/utility/tags/type";
-import { getAll } from "@/utility/db/Database";
+import { getAll, getItem, putItem } from "@/utility/db/Database";
+import { AccountType } from "@/utility/accounts/types";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export default function TransactionEdit() {
   const searchParams = useSearchParams();
   const txID = searchParams.get("id");
   const router = useRouter();
-  const { getTransactions, updateTransaction } = useTransactions();
-  const { getAccounts } = useAccounts();
+  const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
+
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [tags, setTags] = useState<TagType[]>([]);
 
-  const [transaction, setTransaction] = useState<TransactionType | null>(() => {
-    if (typeof window === "undefined" || !txID) return null;
-    const originalTx = getTransactions().find((t) => t.id === Number(txID));
-    if (!originalTx) return null;
+  // 🟢 استیت تراکنش در ابتدا null است تا از دیتابیس لود شود
+  const [transaction, setTransaction] = useState<TransactionType | null>(null);
+  const [dateInput, setDateInput] = useState("");
+  const [timeInput, setTimeInput] = useState("");
 
-    const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
-    if (data) {
-      try {
-        const parsed = JSON.parse(data) as TransactionType;
-        if (parsed.id === Number(txID)) return parsed;
-      } catch {}
+  // ==================== Initial Data Load ====================
+  useEffect(() => {
+    if (!txID) {
+      router.replace("/transactions");
+      return;
     }
-    return originalTx;
-  });
 
-  const [dateInput, setDateInput] = useState(() =>
-    transaction ? formatJalaliDate(transaction.time) : "",
-  );
-  const [timeInput, setTimeInput] = useState(() =>
-    transaction ? formatTimeInput(transaction.time) : "",
-  );
+    async function loadInitialData() {
+      try {
+        // ۱. خواندن پیش‌نویس از sessionStorage
+        const draftData = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
+        let initialTx: TransactionType | null = null;
 
-  const accounts = getAccounts();
+        if (draftData) {
+          try {
+            const parsed = JSON.parse(draftData) as TransactionType;
+            if (parsed.id === Number(txID)) initialTx = parsed;
+          } catch {}
+        }
+
+        // ۲. اگر پیش‌نویس نبود، خود تراکنش را از دیتابیس بخوان
+        if (!initialTx) {
+          initialTx =
+            (await getItem<TransactionType>(transactionsStore, Number(txID))) ??
+            null;
+        }
+
+        if (!initialTx) {
+          router.replace("/transactions");
+          return;
+        }
+
+        setTransaction(initialTx);
+        setDateInput(formatJalaliDate(initialTx.time));
+        setTimeInput(formatTimeInput(initialTx.time));
+
+        // ۳. لود کردن حساب‌ها و برچسب‌ها به صورت موازی
+        const [accs, tgs] = await Promise.all([
+          getAll<AccountType>(accountsStore),
+          getAll<TagType>(tagsStore),
+        ]);
+
+        // مرتب‌سازی حساب‌ها بر اساس order
+        accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        setAccounts(accs);
+        setTags(tgs);
+      } catch (error) {
+        console.error("Failed to load transaction data:", error);
+        router.replace("/transactions");
+      }
+    }
+
+    loadInitialData();
+  }, [txID, router, accountsStore, transactionsStore, tagsStore]);
+
   const transactionType = transaction?.type;
 
+  // ==================== Derived States ====================
   const toAccountName = useMemo(() => {
     if (!transaction) return "";
     const id =
@@ -72,8 +112,8 @@ export default function TransactionEdit() {
 
   const tagName = useMemo(() => {
     if (!transaction || !transaction.tag) return "";
-    return tags.find((item) => item.id == transaction.tag)?.name;
-  }, [transaction?.tag, tags]);
+    return tags.find((item) => item.id === transaction.tag)?.name ?? "";
+  }, [transaction, tags]);
 
   const categoryName = useMemo(() => {
     if (!transaction) return "";
@@ -86,6 +126,7 @@ export default function TransactionEdit() {
     return id ? (getCategoryById(id)?.name ?? "") : "";
   }, [transaction]);
 
+  // ==================== Validation ====================
   const isValid = useMemo(() => {
     if (!transaction) return false;
     const nameValid = transaction.name.trim().length >= 3;
@@ -112,6 +153,7 @@ export default function TransactionEdit() {
     );
   }, [transaction, dateInput, timeInput]);
 
+  // ==================== State Update & Sync ====================
   const persist = useCallback((data: TransactionType) => {
     sessionStorage.setItem(CREATE_TRANSACTION_KEY, JSON.stringify(data));
   }, []);
@@ -128,32 +170,33 @@ export default function TransactionEdit() {
     [persist],
   );
 
+  // ==================== Handlers ====================
   const handleNameChange = (e: ChangeEvent<HTMLInputElement>) =>
     updateTransactionState({ name: e.target.value });
 
   const handleValueChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const raw = toEnglishDigits(e.target.value).replace(/\D/g, ""); // اضافه شدن toEnglishDigits
+    const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
     updateTransactionState({ value: Number(raw || 0) });
   };
 
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatJalaliInput(e.target.value, dateInput); // اضافه شدن dateInput
+    const formatted = formatJalaliInput(e.target.value, dateInput);
     setDateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
-    if (timestamp > 0) {
+    if (timestamp > 0 && transaction) {
       updateTransactionState({
-        time: mergeDateTime(transaction!.time, timestamp, "date"),
+        time: mergeDateTime(transaction.time, timestamp, "date"),
       });
     }
   };
 
   const handleTimeChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTimeTyping(e.target.value, timeInput); // اضافه شدن timeInput
+    const formatted = formatTimeTyping(e.target.value, timeInput);
     setTimeInput(formatted);
     const timestamp = parseTimeInput(formatted);
-    if (timestamp > 0) {
+    if (timestamp > 0 && transaction) {
       updateTransactionState({
-        time: mergeDateTime(transaction!.time, timestamp, "time"),
+        time: mergeDateTime(transaction.time, timestamp, "time"),
       });
     }
   };
@@ -161,9 +204,9 @@ export default function TransactionEdit() {
   const handleNoteChange = (e: ChangeEvent<HTMLTextAreaElement>) =>
     updateTransactionState({ note: e.target.value });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValid || !transaction) return;
-    updateTransaction(transaction);
+    await putItem(transactionsStore, transaction);
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     router.back();
   };
@@ -173,14 +216,7 @@ export default function TransactionEdit() {
     router.back();
   };
 
-  useEffect(() => {
-    if (!txID || !transaction) router.replace("/transactions");
-  }, [txID, transaction, router]);
-
-  useEffect(() => {
-    if (transaction) persist(transaction);
-  }, []); // eslint-disable-line
-
+  // ==================== Page Show Sync (برای برگشت از صفحات انتخاب) ====================
   usePageShowSync(() => {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data || !txID) return;
@@ -197,14 +233,7 @@ export default function TransactionEdit() {
     } catch {}
   }, [txID]);
 
-  useEffect(() => {
-    async function loadData() {
-      setTags((await getAll("tags")) as TagType[]);
-    }
-
-    loadData();
-  }, []);
-
+  // 🟢 منتظر ماندن برای لود شدن تراکنش از دیتابیس
   if (!txID || !transaction || !transactionType) return null;
 
   return (
@@ -315,7 +344,7 @@ export default function TransactionEdit() {
             href={tags.length ? "/transactions/add/tag" : "#"}
             className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
           >
-            <span>{tagName ?? "نام برچسب"}</span>
+            <span>{tagName || "نام برچسب"}</span>
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>

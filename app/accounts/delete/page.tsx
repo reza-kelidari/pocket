@@ -2,45 +2,63 @@
 
 import Button from "@/components/Button";
 import Info from "@/icons/Info";
-import { useAccounts } from "@/utility/accounts/service/useAccounts";
 import { AccountColors } from "@/utility/colors";
-import useTransactions from "@/utility/transactions/service/useTransactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { deleteItem, getAll, getItem } from "@/utility/db/Database";
+import { AccountType } from "@/utility/accounts/types";
+import { TransactionType } from "@/utility/transactions/types";
+import { DatabaseStores } from "@/utility/keys/database";
+import useBalances from "@/utility/balance/service/useBalances";
 
 export default function AccountDelete() {
   const searchParams = useSearchParams();
   const accountID = Number(searchParams.get("id") ?? "0");
-  const { getAccounts, removeAccount } = useAccounts();
-  const { getTransactions } = useTransactions();
-  const { removeTransactionsByAccountID } = useTransactions();
   const router = useRouter();
+  const { removeBalance } = useBalances();
+  const { accountsStore, transactionsStore } = DatabaseStores;
+
+  const [account, setAccount] = useState<AccountType>();
+  const [transactionsCount, setTransactionsCount] = useState("۰");
+
   const [validate, setValidate] = useState(false);
-  const account = getAccounts().find((acc) => acc.id === accountID);
-  const transactionsCount = getTransactions()
-    .filter((item) => item.credit === accountID || item.debit === accountID)
-    .length.toLocaleString("fa-ir");
 
   useEffect(() => {
-    if (getAccounts().length === 0) {
-      const currentPath = window.location.pathname + window.location.search;
-      router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
-    } else if (!account) {
-      router.replace(`/accounts`);
-    }
-  }, [getAccounts, router, account]);
+    (async () => {
+      setAccount(
+        (await getItem<AccountType>(accountsStore, accountID)) ?? undefined,
+      );
 
-  if (getAccounts().length === 0 || !account) return null;
+      setTransactionsCount(
+        (await getAll<TransactionType>(transactionsStore))
+          .filter(
+            (item) => item.credit === accountID || item.debit === accountID,
+          )
+          .length.toLocaleString("fa-IR"),
+      );
+    })();
+  }, [accountID, accountsStore, transactionsStore, router]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    // 🟢 جلوگیری از اجرای تابع اگر تیک خورده نباشد
     if (!validate) return;
 
-    removeAccount(accountID);
+    const transactions = (await getAll(transactionsStore)) as TransactionType[];
+    const toDelete = transactions.filter(
+      (t) => t.debit === accountID || t.credit === accountID,
+    );
+    for (const tx of toDelete) {
+      await deleteItem(transactionsStore, tx.id);
+    }
 
-    removeTransactionsByAccountID(accountID);
+    await deleteItem(accountsStore, accountID);
+
+    removeBalance(accountID);
 
     router.back();
   };
+
+  if (!account) return null;
 
   return (
     <div className="grid place-content-center gap-7.5 p-15 h-screen">
@@ -65,6 +83,7 @@ export default function AccountDelete() {
         <label className="flex items-center justify-center gap-2 cursor-pointer text-xs">
           <input
             type="checkbox"
+            checked={validate}
             onChange={(e) => setValidate(e.target.checked)}
             className="accent-red p-3 ml-1"
           />
@@ -75,8 +94,8 @@ export default function AccountDelete() {
           red={validate}
           secondary={!validate}
           disabled={!validate}
-          onClick={handleDelete}
           className="transition-all"
+          onClick={handleDelete}
         >
           حذف حساب
         </Button>
