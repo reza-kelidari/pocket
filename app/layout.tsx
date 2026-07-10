@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
@@ -11,6 +11,13 @@ const vazirMatn = Vazirmatn({
 export const metadata: Metadata = {
   title: "جیب",
   description: "حسابداری شخصی",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default async function RootLayout({
@@ -37,10 +44,6 @@ export default async function RootLayout({
       dir="rtl"
       className={`${vazirMatn.variable} h-full antialiased select-none`}
     >
-      <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, user-scalable=no"
-      />
       <body className="min-h-full flex flex-col">
         {/* {isMobile ? children : onlyMobile} */}
         {children}

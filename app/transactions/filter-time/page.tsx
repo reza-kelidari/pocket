@@ -37,7 +37,6 @@ export default function TimeFilter() {
       timeWindow: time,
     })}`;
     
-    // جایگزینی صفحه فعلی با صفحه تراکنش‌های فیلتر شده
     router.replace(newUrl);
   };
 

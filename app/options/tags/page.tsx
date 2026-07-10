@@ -4,7 +4,7 @@ import Capsule from "@/components/Capsule";
 import Description from "@/components/Description";
 import ListElement from "@/components/ListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import SwipeableAccountItem from "@/components/SwipableElement";
+import SwipeableElement from "@/components/SwipeableElement";
 import Left from "@/icons/Left";
 import Tag from "@/icons/Tag";
 import { PrimaryColors } from "@/utility/colors";
@@ -53,7 +53,7 @@ export default function Tags() {
       <div className="flex flex-col gap-5 h-100 w-full">
         {tags.length ? (
           tags.map((item) => (
-            <SwipeableAccountItem
+            <SwipeableElement
               key={item.id}
               isOpen={openItemId === item.id}
               onOpenChange={(open) => setOpenItemId(open ? item.id : null)}
@@ -75,7 +75,7 @@ export default function Tags() {
                   TagItemTypes.find((tag) => tag.value === item.type)?.label
                 }
               />
-            </SwipeableAccountItem>
+            </SwipeableElement>
           ))
         ) : (
           <div className="flex flex-col items-center justify-center gap-10 h-full">

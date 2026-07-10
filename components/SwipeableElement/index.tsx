@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 const ACTION_WIDTH = 100;
 
-export default function SwipeableAccountItem({
+export default function SwipeableElement({
   children,
   isOpen,
   onOpenChange,
@@ -15,8 +15,8 @@ export default function SwipeableAccountItem({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onCloseOthers: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void; 
+  onDelete?: () => void;
   defaultAccount?: boolean;
 }) {
   const [translateX, setTranslateX] = useState(0);
@@ -25,6 +25,14 @@ export default function SwipeableAccountItem({
   const currentX = useRef(0);
   const startTranslateX = useRef(0);
 
+  const canEdit = !!onEdit;
+  const canDelete = !!onDelete && !defaultAccount; 
+
+  const minTranslate = canEdit ? -ACTION_WIDTH : 0;
+  const maxTranslate = canDelete ? ACTION_WIDTH : 0;
+
+  const isSwipeable = canEdit || canDelete;
+
   useEffect(() => {
     if (!isOpen && !isDragging) {
       setTranslateX(0);
@@ -32,6 +40,8 @@ export default function SwipeableAccountItem({
   }, [isOpen, isDragging]);
 
   const handleStart = (clientX: number) => {
+    if (!isSwipeable) return;
+
     if (!isOpen) {
       onCloseOthers();
     }
@@ -48,17 +58,10 @@ export default function SwipeableAccountItem({
     const delta = clientX - startX.current;
     const rawTranslate = startTranslateX.current + delta;
 
-    let clampedDelta;
-    const maxLimit = defaultAccount ? 0 : ACTION_WIDTH;
-
-    if (startTranslateX.current > 0) {
-      clampedDelta = Math.max(0, Math.min(maxLimit, rawTranslate));
-    } else if (startTranslateX.current < 0) {
-      clampedDelta = Math.max(-ACTION_WIDTH, Math.min(0, rawTranslate));
-    } else {
-      clampedDelta = Math.max(-ACTION_WIDTH, Math.min(maxLimit, rawTranslate));
-    }
-
+    const clampedDelta = Math.max(
+      minTranslate,
+      Math.min(maxTranslate, rawTranslate),
+    );
     setTranslateX(clampedDelta);
   };
 
@@ -70,22 +73,15 @@ export default function SwipeableAccountItem({
     const threshold = ACTION_WIDTH / 3;
 
     if (startTranslateX.current === 0) {
-      if (delta > threshold && !defaultAccount) {
-        setTranslateX(ACTION_WIDTH);
-        onOpenChange(true);
-      } else if (delta < -threshold) {
+      if (delta < -threshold && canEdit) {
         setTranslateX(-ACTION_WIDTH);
         onOpenChange(true);
-      } else {
-        setTranslateX(0);
-        onOpenChange(false);
-      }
-    } else if (startTranslateX.current > 0) {
-      if (delta < -threshold) {
-        setTranslateX(0);
-        onOpenChange(false);
-      } else {
+      } else if (delta > threshold && canDelete) {
         setTranslateX(ACTION_WIDTH);
+        onOpenChange(true);
+      } else {
+        setTranslateX(0);
+        onOpenChange(false);
       }
     } else if (startTranslateX.current < 0) {
       if (delta > threshold) {
@@ -94,21 +90,44 @@ export default function SwipeableAccountItem({
       } else {
         setTranslateX(-ACTION_WIDTH);
       }
+    } else if (startTranslateX.current > 0) {
+      if (delta < -threshold) {
+        setTranslateX(0);
+        onOpenChange(false);
+      } else {
+        setTranslateX(ACTION_WIDTH);
+      }
     }
   };
 
+  const dragProps = isSwipeable
+    ? {
+        onMouseDown: (e: React.MouseEvent) => handleStart(e.clientX),
+        onMouseMove: (e: React.MouseEvent) =>
+          isDragging && handleMove(e.clientX),
+        onMouseUp: handleEnd,
+        onMouseLeave: () => isDragging && handleEnd(),
+        onTouchStart: (e: React.TouchEvent) =>
+          handleStart(e.touches[0].clientX),
+        onTouchMove: (e: React.TouchEvent) => handleMove(e.touches[0].clientX),
+        onTouchEnd: handleEnd,
+      }
+    : {};
+
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      <div className="absolute inset-y-0 right-0 w-22.5 bg-primary-background border border-primary-border flex items-center justify-center rounded-2xl me-2">
-        <button
-          onClick={onEdit}
-          className="text-primary text-xs font-medium w-full h-full"
-        >
-          ویرایش
-        </button>
-      </div>
+      {canEdit && (
+        <div className="absolute inset-y-0 right-0 w-22.5 bg-primary-background border border-primary-border flex items-center justify-center rounded-2xl me-2">
+          <button
+            onClick={onEdit}
+            className="text-primary text-xs font-medium w-full h-full"
+          >
+            ویرایش
+          </button>
+        </div>
+      )}
 
-      {!defaultAccount && (
+      {canDelete && (
         <div className="absolute inset-y-0 left-0 w-22.5 bg-red-background border border-red-border flex items-center justify-center rounded-2xl ms-2">
           <button
             onClick={onDelete}
@@ -120,18 +139,13 @@ export default function SwipeableAccountItem({
       )}
 
       <div
-        onMouseDown={(e) => handleStart(e.clientX)}
-        onMouseMove={(e) => isDragging && handleMove(e.clientX)}
-        onMouseUp={handleEnd}
-        onMouseLeave={() => isDragging && handleEnd()}
-        onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-        onTouchMove={(e) => handleMove(e.touches[0].clientX)}
-        onTouchEnd={handleEnd}
+        {...dragProps}
         className="relative z-10 bg-white select-none rounded-2xl"
         style={{
           transform: `translateX(${translateX}px)`,
           transition: isDragging ? "none" : "transform 0.3s ease-out",
-          touchAction: "pan-y",
+          touchAction: isSwipeable ? "pan-y" : "auto",
+          cursor: isSwipeable ? "grab" : "default",
         }}
       >
         {children}

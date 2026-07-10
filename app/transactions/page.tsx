@@ -14,8 +14,9 @@ import Filter from "@/icons/Filter";
 import Button from "@/components/Button";
 import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/transactions/types";
-import { getAll } from "@/utility/db/Database";
+import { deleteItem, getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
+import SwipeableElement from "@/components/SwipeableElement";
 
 export type transactionsFilterType = {
   timeWindow: number;
@@ -32,6 +33,7 @@ export default function Transactions() {
   const timeFilter = timeFilters(toJalaliDateArray(new Date()));
   const pathname = usePathname();
   const { accountsStore, transactionsStore } = DatabaseStores;
+  const [swipedItem, setSwipedItem] = useState<number | null>(null);
 
   const transactionsFilter: transactionsFilterType = useMemo(
     () => ({
@@ -177,18 +179,42 @@ export default function Transactions() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredTransactions.map((item) => {
-            const accountID = item.type === "credit" ? item.credit : item.debit;
+          {filteredTransactions.map((transaction) => {
+            const accountID =
+              transaction.type === "credit"
+                ? transaction.credit
+                : transaction.debit;
             const account = accounts.find((acc) => acc.id === accountID);
 
             if (!account) return null;
 
             return (
-              <TransactionItem
-                key={item.id}
-                transaction={item}
-                account={account}
-              />
+              <SwipeableElement
+                isOpen={transaction.id === swipedItem}
+                onOpenChange={() => setSwipedItem(transaction.id)}
+                onCloseOthers={() => setSwipedItem(null)}
+                onEdit={() =>
+                  transaction.type !== "initial"
+                    ? router.push(`/transactions/edit?id=${transaction.id}`)
+                    : router.push(`/accounts/edit?id=${account.id}`)
+                }
+                onDelete={
+                  transaction.type !== "initial"
+                    ? async () => {
+                        await deleteItem(transactionsStore, transaction.id);
+
+                        setTransactions((prev) =>
+                          prev.filter((t) => t.id !== transaction.id),
+                        );
+
+                        setSwipedItem(null);
+                      }
+                    : undefined
+                }
+                key={transaction.id}
+              >
+                <TransactionItem transaction={transaction} account={account} />
+              </SwipeableElement>
             );
           })}
         </div>

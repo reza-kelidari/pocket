@@ -25,7 +25,6 @@ export default function CategorySelector() {
       : TransactionCategories.expense;
 
   useEffect(() => {
-    // خواندن آیدی حساب فعلی و نوع تراکنش برای تنظیمات اولیه
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data) return;
 
@@ -39,16 +38,14 @@ export default function CategorySelector() {
     } catch (e) {}
   }, [accountParam]);
 
-  // اسکرول کردن به المان انتخاب‌شده پس از رندر شدن لیست
   useEffect(() => {
     if (!!selectedCategory && selectedCategory !== 0) {
       const node = itemRefs.current.get(selectedCategory);
       if (node) {
-        // اسکرول نرم به وسط صفحه
         node.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-  }, [selectedCategory, categories]); // وابستگی به categories چون لیست باید اول رندر شود
+  }, [selectedCategory, categories]);
 
   function handleSelect(id: number): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
@@ -92,12 +89,10 @@ export default function CategorySelector() {
                 return (
                   <div
                     key={sub.id}
-                    // ثبت رفرنس المان در Map
                     ref={(el) => {
                       if (el) itemRefs.current.set(sub.id, el);
                       else itemRefs.current.delete(sub.id);
                     }}
-                    // انتقال onClick به کل کادر برای دسترسی بهتر
                     onClick={() => handleSelect(sub.id)}
                     className={`flex flex-col gap-2 items-center justify-center text-xs rounded-2xl p-2 cursor-pointer transition-all
                     ${

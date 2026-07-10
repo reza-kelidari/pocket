@@ -47,7 +47,11 @@ export default function AccountSelector() {
 
   useEffect(() => {
     ((async () => {
-      setAccounts((await getAll<AccountType>(accountsStore)));
+      setAccounts(
+        (await getAll<AccountType>(accountsStore)).sort(
+          (a, b) => a.order - b.order,
+        ),
+      );
     })(),
       []);
   });

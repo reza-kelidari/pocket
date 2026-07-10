@@ -41,7 +41,7 @@ export default function AccountCard({
         className={`w-58 h-36 border p-5 flex flex-col gap-2 rounded-4xl snap-center shrink-0
           ${AccountColors[color].surface}
           ${AccountColors[color].border}`}
-        style={{ boxShadow: `0 10px 24px ${cardColors.shadow}` }}
+        style={{ boxShadow: `0 12px 24px ${cardColors.shadow}` }}
       >
         <div
           className={`h-6.5 w-6.5 grid place-content-center rounded-4xl mr-auto p-0 m-0

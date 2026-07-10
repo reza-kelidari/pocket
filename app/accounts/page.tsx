@@ -7,7 +7,7 @@ import useBalances from "@/utility/balance/service/useBalances";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Left from "@/icons/Left";
-import SwipeableAccountItem from "@/components/SwipableElement";
+import SwipeableElement from "@/components/SwipeableElement";
 import Right from "@/icons/Right";
 import SortableAccountElement from "@/components/SortableElement";
 import {
@@ -136,7 +136,7 @@ export default function Accounts() {
           >
             {accounts.map((account) => (
               <SortableAccountElement key={account.id} account={account}>
-                <SwipeableAccountItem
+                <SwipeableElement
                   isOpen={openItemId === account.id}
                   onOpenChange={(open) =>
                     setOpenItemId(open ? account.id : null)
@@ -153,7 +153,7 @@ export default function Accounts() {
                     balances={getBalances()}
                     href={`accounts/details?id=${account.id}`}
                   />
-                </SwipeableAccountItem>
+                </SwipeableElement>
               </SortableAccountElement>
             ))}
           </SortableContext>

@@ -49,7 +49,6 @@ export function getDefaultTransactions(): TransactionType[] {
     1,
   ]);
 
-  // کنترل جلوگیری از آیدی تکراری در زمان ایجاد دیتای اولیه
   let currentId = Date.now();
 
   return [

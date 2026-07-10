@@ -44,7 +44,6 @@ export default function AccountFilter() {
         router.replace(`/splash?from=${encodeURIComponent(currentPath)}`);
         return;
       }
-      // مرتب‌سازی بر اساس order
       accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       setAccounts(accs);
       setAccountFilter(transactionsFilter.accounts);

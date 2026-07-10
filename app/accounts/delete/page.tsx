@@ -40,7 +40,6 @@ export default function AccountDelete() {
   }, [accountID, accountsStore, transactionsStore, router]);
 
   const handleDelete = async () => {
-    // 🟢 جلوگیری از اجرای تابع اگر تیک خورده نباشد
     if (!validate) return;
 
     const transactions = (await getAll(transactionsStore)) as TransactionType[];
