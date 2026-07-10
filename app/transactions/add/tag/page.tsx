@@ -13,54 +13,65 @@ import { CREATE_TRANSACTION_KEY } from "../page";
 
 export default function TagSelector() {
   const [tags, setTags] = useState<TagType[]>([]);
-  const [transaction, setTransaction] = useState<TransactionType>();
   const router = useRouter();
+  const [selectedTag, setSelectedTag] = useState<number | undefined>();
 
   useEffect(() => {
-    const loadData = async () => {
-      const tagsInDB = await getAll<TagType>("tags");
-      const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY) ?? "";
+    (async () => {
+      const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY)!;
 
-      setTags(tagsInDB);
-      setTransaction(JSON.parse(data) as TransactionType);
-    };
+      const tx = JSON.parse(data) as TransactionType;
+      console.log(tx);
+      setSelectedTag(tx.tag);
 
-    loadData();
-  }, []);
+      setTags(await getAll<TagType>("tags"));
+    })();
+  }, [router]);
 
   function handleSelect(id: number): void {
+    const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
+    if (!data) {
+      router.back();
+      return;
+    }
+
     try {
-      const newData = JSON.stringify({ ...transaction, tag: id });
+      const tx = JSON.parse(data) as TransactionType;
+      const newData = JSON.stringify({ ...tx, tag: id });
       sessionStorage.setItem(CREATE_TRANSACTION_KEY, newData);
     } catch (e) {}
 
     router.back();
   }
 
+  console.log(selectedTag);
+
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
       <div className="grid gap-7.5">
-        <NavbarTitle title="انتخاب دسته‌بندی" />
+        <NavbarTitle title="انتخاب برچسب" />
       </div>
+
       <div className="grid gap-4">
-        {
+        {!!selectedTag && selectedTag !== 0 && (
           <ListElement
             iconColor={PrimaryColors.primary}
             Icon={Tag}
-            href={"#"}
+            href="٫"
             onClick={() => handleSelect(0)}
-            key={0}
           >
             حذف برچسب
           </ListElement>
-        }
+        )}
+
         {tags.map((item) => (
           <ListElement
             iconColor={PrimaryColors.primary}
             Icon={Tag}
-            href={"#"}
-            onClick={() => handleSelect(item.id)}
+            primary={selectedTag === item.id}
+            href="#"
             key={item.id}
+            onClick={() => handleSelect(item.id)}
           >
             {item.name}
           </ListElement>

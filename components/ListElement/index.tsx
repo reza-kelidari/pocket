@@ -9,6 +9,7 @@ type ListElementProps = ComponentProps<typeof Link> & {
   iconColor: PrimaryColorsItemType;
   Icon: IconComponent;
   desc?: string;
+  primary?: boolean;
 };
 
 export default function ListElement({
@@ -16,12 +17,13 @@ export default function ListElement({
   iconColor,
   Icon,
   desc,
+  primary,
   ...props
 }: ListElementProps) {
   return (
-    <Link className="w-ful relative text-sm" {...props}>
+    <Link {...props} className="w-ful relative text-sm">
       <div
-        className={`${PrimaryColors.secondary.box} p-4 flex items-center gap-2.5 w-full rounded-2xl`}
+        className={`${primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} p-4 flex items-center gap-2.5 w-full rounded-2xl`}
       >
         <div
           className={`h-7.5 w-7.5 ${iconColor.primary} rounded-4xl grid place-content-center`}

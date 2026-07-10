@@ -34,10 +34,14 @@ export default function TransactionEdit() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [tags, setTags] = useState<TagType[]>([]);
 
-  // 🟢 استیت تراکنش در ابتدا null است تا از دیتابیس لود شود
   const [transaction, setTransaction] = useState<TransactionType | null>(null);
   const [dateInput, setDateInput] = useState("");
   const [timeInput, setTimeInput] = useState("");
+
+  // ==================== State Update & Sync ====================
+  const persist = useCallback((data: TransactionType) => {
+    sessionStorage.setItem(CREATE_TRANSACTION_KEY, JSON.stringify(data));
+  }, []);
 
   // ==================== Initial Data Load ====================
   useEffect(() => {
@@ -48,7 +52,6 @@ export default function TransactionEdit() {
 
     async function loadInitialData() {
       try {
-        // ۱. خواندن پیش‌نویس از sessionStorage
         const draftData = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
         let initialTx: TransactionType | null = null;
 
@@ -59,7 +62,6 @@ export default function TransactionEdit() {
           } catch {}
         }
 
-        // ۲. اگر پیش‌نویس نبود، خود تراکنش را از دیتابیس بخوان
         if (!initialTx) {
           initialTx =
             (await getItem<TransactionType>(transactionsStore, Number(txID))) ??
@@ -71,17 +73,17 @@ export default function TransactionEdit() {
           return;
         }
 
+        persist(initialTx);
+
         setTransaction(initialTx);
         setDateInput(formatJalaliDate(initialTx.time));
         setTimeInput(formatTimeInput(initialTx.time));
 
-        // ۳. لود کردن حساب‌ها و برچسب‌ها به صورت موازی
         const [accs, tgs] = await Promise.all([
           getAll<AccountType>(accountsStore),
           getAll<TagType>(tagsStore),
         ]);
 
-        // مرتب‌سازی حساب‌ها بر اساس order
         accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
         setAccounts(accs);
@@ -93,7 +95,7 @@ export default function TransactionEdit() {
     }
 
     loadInitialData();
-  }, [txID, router, accountsStore, transactionsStore, tagsStore]);
+  }, [txID, router, accountsStore, transactionsStore, tagsStore, persist]);
 
   const transactionType = transaction?.type;
 
@@ -152,11 +154,6 @@ export default function TransactionEdit() {
       accountAndCategoryValid
     );
   }, [transaction, dateInput, timeInput]);
-
-  // ==================== State Update & Sync ====================
-  const persist = useCallback((data: TransactionType) => {
-    sessionStorage.setItem(CREATE_TRANSACTION_KEY, JSON.stringify(data));
-  }, []);
 
   const updateTransactionState = useCallback(
     (updated: Partial<TransactionType>) => {
@@ -233,7 +230,6 @@ export default function TransactionEdit() {
     } catch {}
   }, [txID]);
 
-  // 🟢 منتظر ماندن برای لود شدن تراکنش از دیتابیس
   if (!txID || !transaction || !transactionType) return null;
 
   return (

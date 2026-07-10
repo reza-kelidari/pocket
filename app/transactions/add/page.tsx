@@ -22,6 +22,7 @@ import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
 import { getAll, putItem } from "@/utility/db/Database";
 import { TagType } from "@/utility/tags/type";
+import { DatabaseStores } from "@/utility/keys/database";
 
 export const CREATE_TRANSACTION_KEY = "new-transaction";
 
@@ -42,6 +43,7 @@ export default function AddTransaction() {
   const pathname = usePathname();
   const [tags, setTags] = useState<TagType[]>([]);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
   const [transaction, setTransaction] = useState<TransactionType>(() => {
     if (typeof window === "undefined")
@@ -75,10 +77,10 @@ export default function AddTransaction() {
         return;
       }
 
-      const accs = await getAll<AccountType>("accounts");
-      setAccounts(accs);
+      setAccounts(await getAll<AccountType>(accountsStore));
+      setTags(await getAll<TagType>(tagsStore));
 
-      const txs = (await getAll("transactions")) as TransactionType[];
+      const txs = await getAll<TransactionType>(transactionsStore);
       if (txs.length === 0) {
         router.replace(
           `/splash?from=/transactions/add?type=${transactionType}`,
@@ -100,8 +102,9 @@ export default function AddTransaction() {
   }, [accounts, transaction.type, transaction.credit]);
 
   const tagName = useMemo(() => {
-    if (!transaction.tag) return "";
-    return tags.find((item) => item.id == transaction.tag)?.name;
+    if (transaction.tag)
+      return tags.find((item) => item.id == transaction.tag)?.name;
+    else return null;
   }, [transaction.tag, tags]);
 
   const categoryName = useMemo(() => {
@@ -201,7 +204,7 @@ export default function AddTransaction() {
 
   const handleSave = async () => {
     if (!isValid) return;
-    await putItem("transactions", transaction);
+    await putItem(transactionsStore, transaction);
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     resetFormState();
     router.back();
@@ -302,7 +305,7 @@ export default function AddTransaction() {
         )}
         <div className="grid gap-2">
           <span className="text-xs">
-            {transactionType === "transfer" ? "حساب مقصد" : "انتخاب حساب"}
+            {transactionType === "transfer" ? "حساب مقصد" : "حساب"}
           </span>
           <Link
             href={`${pathname}/account?type=toAccount`}
