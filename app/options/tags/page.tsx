@@ -62,8 +62,7 @@ export default function Tags() {
                 router.push(`${pathname}/add?id=${item.id}`);
               }}
               onDelete={async () => {
-                await deleteItem("tags", item.id);
-                setTags((prev) => prev.filter((t) => t.id !== item.id));
+                router.push(`${pathname}/delete?id=${item.id}`);
               }}
             >
               <ListElement
