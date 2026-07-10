@@ -1,5 +1,5 @@
 import { AccountType } from "@/utility/accounts/types";
-import { TagType } from "../tags/type";
+import { TagType } from "./tagTypes";
 
 export const generateNextAccountId = (
   existingAccounts: AccountType[],

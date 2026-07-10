@@ -21,7 +21,7 @@ import {
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
 import { getAll, putItem } from "@/utility/db/Database";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { DatabaseStores } from "@/utility/keys/database";
 
 export const CREATE_TRANSACTION_KEY = "new-transaction";

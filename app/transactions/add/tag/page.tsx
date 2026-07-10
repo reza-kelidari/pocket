@@ -5,7 +5,7 @@ import NavbarTitle from "@/components/NavbarTitle";
 import Tag from "@/icons/Tag";
 import { PrimaryColors } from "@/utility/colors";
 import { getAll } from "@/utility/db/Database";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { TransactionType } from "@/utility/transactions/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

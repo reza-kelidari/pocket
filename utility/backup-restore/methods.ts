@@ -2,7 +2,7 @@ import { AccountType } from "../accounts/types";
 import { clearStore, putItem } from "../db/Database";
 import { DatabaseStores } from "../keys/database";
 import { getAccountBalances } from "../shared/balancesMethods";
-import { TagType } from "../tags/type";
+import { TagType } from "../shared/tagTypes";
 import { TransactionType } from "../transactions/types";
 
 export type BackupType = {

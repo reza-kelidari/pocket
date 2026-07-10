@@ -9,7 +9,7 @@ import { deleteItem, getAll, getItem, putItem } from "@/utility/db/Database";
 import { TransactionType } from "@/utility/transactions/types";
 import { DatabaseStores } from "@/utility/keys/database";
 import useBalances from "@/utility/balance/service/useBalances";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 
 export default function TagDelete() {
   const searchParams = useSearchParams();

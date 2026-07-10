@@ -10,7 +10,7 @@ import Tag from "@/icons/Tag";
 import { PrimaryColors } from "@/utility/colors";
 import { deleteItem, getAll } from "@/utility/db/Database";
 import { TagItemTypes } from "@/utility/shared/tagTypes";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 

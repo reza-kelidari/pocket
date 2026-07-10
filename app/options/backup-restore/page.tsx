@@ -14,7 +14,7 @@ import {
 import useBalances from "@/utility/balance/service/useBalances";
 import { clearStore, getAll, putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { TransactionType } from "@/utility/transactions/types";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useEffect, useRef, useState } from "react";

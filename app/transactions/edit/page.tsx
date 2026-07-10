@@ -20,7 +20,7 @@ import {
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { CREATE_TRANSACTION_KEY } from "../add/page";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { getAll, getItem, putItem } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { DatabaseStores } from "@/utility/keys/database";

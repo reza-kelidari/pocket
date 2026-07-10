@@ -8,7 +8,7 @@ import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ComponentProps, useEffect, useState } from "react";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { getAll, getItem } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/transactions/types";

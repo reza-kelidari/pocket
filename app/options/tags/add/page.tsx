@@ -4,7 +4,7 @@ import { generateNextTagId } from "@/utility/shared/idGenerationMethods";
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import { TagType } from "@/utility/tags/type";
+import { TagType } from "@/utility/shared/tagTypes";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { getAll, putItem } from "@/utility/db/Database";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -59,7 +59,7 @@ export default function AddTag() {
         </NavbarTitle>
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-7.5">
         <div className="flex flex-col gap-2">
           <span className="text-xs">نام برچسب</span>
           <input
@@ -73,11 +73,11 @@ export default function AddTag() {
 
         <div className="flex flex-col gap-2">
           <span className="text-xs">نوع برچسب</span>
-          <div className="bg-elements-border/75 flex w-fit mx-auto gap-2 p-2 rounded-2xl">
+          <div className="bg-elements-border/75 grid grid-cols-3 justify-between w-fit mx-auto gap-2 p-2 rounded-2xl">
             {TagItemTypes.map((item) => (
               <div
                 key={item.value}
-                className={`text-xs py-2 px-4 rounded-xl transition-all ${item.value === tagDetails.type ? "bg-primary text-white" : "bg-white"}`}
+                className={`text-xs text-center p-2.5 rounded-xl transition-all text-nowrap ${item.value === tagDetails.type ? "bg-primary text-white" : "bg-white"}`}
                 onClick={() =>
                   setTagDetails((prevTag) => ({ ...prevTag, type: item.value }))
                 }
