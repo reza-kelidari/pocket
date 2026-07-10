@@ -5,11 +5,14 @@ import Capsule from "@/components/Capsule";
 import ChartView from "@/components/ChartView";
 import NavbarTitle from "@/components/NavbarTitle";
 import SectionTitle from "@/components/SectionTitle";
+import SwipeableElement from "@/components/SwipeableElement";
 import TransactionItem from "@/components/TransactionItem";
 import Pen from "@/icons/Pen";
 import { AccountType } from "@/utility/accounts/types";
-import { getAll, getItem } from "@/utility/db/Database";
+import useBalances from "@/utility/balance/service/useBalances";
+import { deleteItem, getAll, getItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
+import { getAccountBalances } from "@/utility/shared/balancesMethods";
 import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
 import { TransactionType } from "@/utility/transactions/types";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,6 +25,9 @@ export default function AccountsDetails() {
   const [account, setAccount] = useState<AccountType>();
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const accountID = Number(searchParams.get("id"));
+  const [swipedItem, setSwipedItem] = useState<number | null>(null);
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const { setBalances } = useBalances();
 
   useEffect(() => {
     if (isNaN(accountID)) router.replace("/accounts");
@@ -29,11 +35,26 @@ export default function AccountsDetails() {
 
   useEffect(() => {
     (async () => {
-      setAccount((await getItem<AccountType>(accountsStore, accountID)));
+      const [acc, accs, txs] = await Promise.all([
+        getItem<AccountType>(accountsStore, accountID),
+        getAll<AccountType>(accountsStore),
+        getAll<TransactionType>(transactionsStore),
+      ]);
 
-      setTransactions((await getAll<TransactionType>(transactionsStore)));
+      setAccount(acc);
+      setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+      setTransactions(txs);
     })();
   }, [accountID]);
+
+  const handleDeleteTransaction = async (id: number) => {
+    await deleteItem(transactionsStore, id);
+    const newTxs = transactions.filter((t) => t.id !== id);
+    setTransactions(newTxs);
+
+    setBalances(getAccountBalances(accounts, newTxs));
+    setSwipedItem(null);
+  };
 
   if (isNaN(accountID) || !account) return null;
   else
@@ -65,11 +86,24 @@ export default function AccountsDetails() {
               ),
               5,
             ).map((transaction) => (
-              <TransactionItem
+              <SwipeableElement
+                isOpen={transaction.id === swipedItem}
+                onOpenChange={() => setSwipedItem(transaction.id)}
+                onCloseOthers={() => setSwipedItem(null)}
+                onEdit={() =>
+                  transaction.type !== "initial"
+                    ? router.push(`/transactions/edit?id=${transaction.id}`)
+                    : router.push(`/accounts/edit?id=${account.id}`)
+                }
+                onDelete={
+                  transaction.type !== "initial"
+                    ? () => handleDeleteTransaction(transaction.id)
+                    : undefined
+                }
                 key={transaction.id}
-                account={account}
-                transaction={transaction}
-              />
+              >
+                <TransactionItem account={account} transaction={transaction} />
+              </SwipeableElement>
             ))}
           </div>
           <Button href={`/transactions?accounts=${accountID}`}>

@@ -9,6 +9,7 @@ import {
   getTotalBalanceHistory,
 } from "@/utility/shared/balancesMethods";
 import { TransactionType } from "@/utility/transactions/types";
+import Box from "../Box";
 
 type ChartParamsType = {
   title: string;
@@ -45,7 +46,7 @@ export default function Chart({
   const [activeFilter, setActiveFilter] = useState(filters[1]);
 
   return (
-    <div className="w-full bg-elements-background border border-elements-border rounded-4xl p-5 flex flex-col gap-2.5 shadow-xl shadow-zinc-100">
+    <Box className="overflow-hidden">
       <div className="flex items-center justify-between">
         <h3
           className={`${titlePrimary ? "forground" : "text-secondary"} text-xs`}
@@ -78,6 +79,7 @@ export default function Chart({
         daysFilter={activeFilter}
         color={color}
         lastBalance={chartBalance}
+        minPointDistance={20}
       />
 
       <div className="flex gap-1.5 mr-auto items-center">
@@ -85,6 +87,6 @@ export default function Chart({
         <span className="text-xs">﷼</span>
       </div>
       {link ? <Button href={link}>{linkTitle || ""}</Button> : ""}
-    </div>
+    </Box>
   );
 }

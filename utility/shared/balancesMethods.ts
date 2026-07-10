@@ -3,85 +3,106 @@ import { TransactionType } from "../transactions/types";
 import { AccountBalanceType, BalanceType } from "../balance/types";
 
 /**
- * Calculates the balance history for a specific account.
- *
- * Transactions are processed in chronological order. For each transaction:
- * - If the account is the debit account, the transaction value is added.
- * - If the account is the credit account, the transaction value is subtracted.
- *
- * After processing each transaction, a balance snapshot is recorded, allowing
- * the balance to be reconstructed at any point in time.
- *
- * @param transactions Collection of transactions to process.
- * @param accID Identifier of the account whose balance history should be calculated.
- *
- * @returns An array of balance snapshots sorted by transaction time.
+ * Calculates the daily balance history for a specific account.
  */
 export function getAccountBalanceHistory(
   transactions: TransactionType[],
   accID: number,
 ): AccountBalanceType {
-  /**
-   * Balance snapshots generated while processing transactions.
-   */
-  const balances: BalanceType[] = [];
+  const accTxs = transactions
+    .filter((t) => t.debit === accID || t.credit === accID)
+    .sort((a, b) => a.time - b.time);
 
-  /**
-   * Running balance of the account.
-   */
+  if (accTxs.length === 0) return { id: accID, history: [] };
+
+  const balances: BalanceType[] = [];
   let balance = 0;
 
-  transactions.forEach((transaction) => {
-    if (transaction.debit === accID) {
-      balance += transaction.value;
-    } else if (transaction.credit === accID) {
-      balance -= transaction.value;
+  // پیدا کردن روز اولین تراکنش
+  const startDay = new Date(accTxs[0].time);
+  startDay.setHours(0, 0, 0, 0);
+
+  // روز امروز
+  const endDay = new Date();
+  endDay.setHours(0, 0, 0, 0);
+
+  let currentDay = startDay.getTime();
+  let txIndex = 0;
+
+  // حلقه روز به روز تا رسیدن به امروز
+  while (currentDay <= endDay.getTime()) {
+    // اعمال تمام تراکنش‌هایی که در این روز (currentDay) رخ داده‌اند
+    while (
+      txIndex < accTxs.length &&
+      new Date(accTxs[txIndex].time).setHours(0, 0, 0, 0) === currentDay
+    ) {
+      const tx = accTxs[txIndex];
+      if (tx.debit === accID) balance += tx.value;
+      else if (tx.credit === accID) balance -= tx.value;
+      txIndex++;
     }
 
+    // ثبت موجودی برای این روز
     balances.push({
-      time: transaction.time,
+      time: currentDay,
       balance,
     });
-  });
 
-  return {
-    id: accID,
-    history: balances,
-  };
+    // رفتن به روز بعد (۲۴ ساعت)
+    currentDay += 24 * 60 * 60 * 1000;
+  }
+
+  return { id: accID, history: balances };
 }
 
+/**
+ * Calculates the daily total balance history across all accounts.
+ */
 export function getTotalBalanceHistory(
   transactions: TransactionType[],
 ): BalanceType[] {
-  if (!transactions?.length) return [];
+  if (!transactions || transactions.length === 0) return [];
 
-  let balance: number = 0;
-  let historyDate: number;
-  let history: BalanceType[] = [];
+  // فیلتر کردن تراکنش‌هایی که روی موجودی کلی تاثیر دارند (transfer تاثیر روی کل ندارد)
+  const validTxs = transactions
+    .filter((t) => ["initial", "debit", "credit"].includes(t.type))
+    .sort((a, b) => a.time - b.time);
 
-  transactions.forEach((transaction, index) => {
-    if (!["initial", "debit", "credit"].includes(transaction.type)) {
-      return;
+  if (validTxs.length === 0) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return [{ time: today.getTime(), balance: 0 }];
+  }
+
+  const history: BalanceType[] = [];
+  let balance = 0;
+
+  const startDay = new Date(validTxs[0].time);
+  startDay.setHours(0, 0, 0, 0);
+
+  const endDay = new Date();
+  endDay.setHours(0, 0, 0, 0);
+
+  let currentDay = startDay.getTime();
+  let txIndex = 0;
+
+  while (currentDay <= endDay.getTime()) {
+    while (
+      txIndex < validTxs.length &&
+      new Date(validTxs[txIndex].time).setHours(0, 0, 0, 0) === currentDay
+    ) {
+      const tx = validTxs[txIndex];
+      if (tx.type === "initial" || tx.type === "debit") {
+        balance += tx.value;
+      } else if (tx.type === "credit") {
+        balance -= tx.value;
+      }
+      txIndex++;
     }
 
-    const txDateLocale = new Date(transaction.time).toLocaleDateString("fa-ir");
-
-    if (!historyDate) historyDate = transaction.time;
-    const historyDateLocale = new Date(historyDate).toLocaleDateString("fa-ir");
-
-    if (historyDateLocale !== txDateLocale) {
-      history.push({ time: historyDate, balance: balance });
-    }
-
-    ["initial", "debit"].includes(transaction.type)
-      ? (balance += transaction.value)
-      : (balance -= transaction.value);
-
-    historyDate = transaction.time;
-
-    if (index === transactions.length - 1)
-      history.push({ time: historyDate, balance: balance });
-  });
+    history.push({ time: currentDay, balance });
+    currentDay += 24 * 60 * 60 * 1000;
+  }
 
   return history;
 }
@@ -91,7 +112,6 @@ export function getAccountBalances(
   transactions: TransactionType[],
 ): AccountBalanceType[] {
   let balances: AccountBalanceType[] = [];
-
   accounts.forEach((account) => {
     const calculatedbalances = getAccountBalanceHistory(
       transactions.filter(
@@ -104,16 +124,8 @@ export function getAccountBalances(
   return balances;
 }
 
-/**
- * Calculates the total balance across all accounts.
- *
- * @param balancePoints Map of account IDs to their latest balances.
- * @returns The sum of all account balances.
- */
-
 export function getTotalBalances(balancePoints: AccountBalanceType[]): number {
   let balance = 0;
-
   balancePoints.forEach(
     (item) => (balance += item.history?.at(-1)?.balance ?? 0),
   );
