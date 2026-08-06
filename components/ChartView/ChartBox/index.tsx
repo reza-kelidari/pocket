@@ -1,7 +1,7 @@
 "use client";
 
 import { AccountColorType } from "@/utility/accounts/types";
-import { AccountColors, PrimaryColors } from "@/utility/colors";
+import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 import { useRef, useState, useEffect } from "react";
 
 type BalancePoint = {
@@ -57,7 +57,6 @@ export default function BalanceChart({
         setContainerWidth(wrapperRef.current.clientWidth);
       }
       if (innerRef.current && wrapperRef.current) {
-        // 🟢 محاسبه فاصله دقیق محتوای چارت از لبه کادر، بدون استفاده از scrollLeft
         setContentLeft(
           innerRef.current.getBoundingClientRect().left -
             wrapperRef.current.getBoundingClientRect().left,
@@ -70,39 +69,59 @@ export default function BalanceChart({
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
-  let chartData = data.filter(
-    (item) => item.time > Date.now() - 1000 * 3600 * 24 * daysFilter,
-  );
+  const ONE_DAY = 1000 * 3600 * 24;
+  const filterStartTime = Date.now() - ONE_DAY * daysFilter;
 
-  if (!chartData || chartData.length === 0) {
-    chartData = [
-      {
-        time: Date.now() - 1000 * 3600 * 24 * daysFilter,
-        balance: lastBalance,
-      },
-      {
-        time: Date.now(),
-        balance: lastBalance,
-      },
-    ];
-  } else if (chartData.length === 1) {
-    chartData = [
-      {
-        time: Date.now() - 1000 * 3600 * 24 * daysFilter,
-        balance: chartData[0].balance,
-      },
-      chartData[0],
-    ];
+  // پیدا کردن موجودی روز قبل از شروع بازه فیلتر (برای پر کردن روزهای خالی)
+  let startingBalance = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].time < filterStartTime) {
+      startingBalance = data[i].balance;
+    } else {
+      break;
+    }
   }
 
-  const paddingX = minPointDistance / 4;
+  // 🟢 ساخت آرایه‌ای که برای هر روز یک نقطه دارد
+  const chartData: BalancePoint[] = [];
+  const filteredData = data.filter((item) => item.time >= filterStartTime);
+
+  let dataIdx = 0;
+  let currentDay = filterStartTime;
+  const today = Date.now();
+  let currentBalance = startingBalance;
+
+  while (currentDay <= today) {
+    // اگر در این روز تراکنشی بود، موجودی را با آخرین موجودی آن روز آپدیت کن
+    while (
+      dataIdx < filteredData.length &&
+      new Date(filteredData[dataIdx].time).setHours(0, 0, 0, 0) ===
+        new Date(currentDay).setHours(0, 0, 0, 0)
+    ) {
+      currentBalance = filteredData[dataIdx].balance;
+      dataIdx++;
+    }
+
+    // اضافه کردن نقطه برای این روز
+    chartData.push({ time: currentDay, balance: currentBalance });
+    currentDay += ONE_DAY;
+  }
+
+  if (chartData.length === 0) {
+    chartData.push(
+      { time: filterStartTime, balance: lastBalance },
+      { time: Date.now(), balance: lastBalance },
+    );
+  }
+
+  // محاسبه عرض بر اساس تعداد روزها (چون هر روز یک نقطه دارد)
+  const paddingX = minPointDistance / 2;
   const requiredWidth =
     (chartData.length - 1) * minPointDistance + paddingX * 2;
   const svgWidth = Math.max(containerWidth, requiredWidth);
-  const usableWidth = svgWidth - paddingX * 2;
+  const usableWidth = Math.max(1, svgWidth - paddingX * 2);
 
-  const values = [...chartData].map((item) => item.balance);
-
+  const values = chartData.map((item) => item.balance);
   let minBalance = Math.min(...values);
   let maxBalance = Math.max(...values);
 
@@ -115,8 +134,10 @@ export default function BalanceChart({
     maxBalance += padding;
   }
 
+  // چون هر روز یک نقطه دارد، می‌توانیم ایندکس را برای محور X استفاده کنیم
   const points = chartData.map((item, index) => {
-    const x = paddingX + (index / (chartData.length - 1)) * usableWidth;
+    const x =
+      paddingX + (index / Math.max(1, chartData.length - 1)) * usableWidth;
     const y =
       height -
       ((item.balance - minBalance) / (maxBalance - minBalance)) * height;
@@ -125,12 +146,11 @@ export default function BalanceChart({
       x: x,
       y: y,
       balance: item.balance,
-      date: new Date(item.time).toLocaleDateString("fa-ir"),
+      date: new Date(item.time).toLocaleDateString("fa-IR"),
     };
   });
 
   let path = `M ${points[0].x}, ${points[0].y}`;
-
   for (let index = 0; index < points.length - 1; index++) {
     const p0 = index > 0 ? points[index - 1] : points[index];
     const p1 = points[index];
@@ -194,6 +214,7 @@ export default function BalanceChart({
             <path d={areaPath} fill="url(#grad)" />
             <path d={path} stroke={chartColor} strokeWidth={2.5} fill="none" />
 
+            {/* رندر کردن نقطه (دایره) برای هر روز */}
             {points.map((p, i) => (
               <g key={i}>
                 <circle
@@ -231,7 +252,7 @@ export default function BalanceChart({
             transform: "translateX(-50%)",
           }}
         >
-          {tooltip.value.toLocaleString("fa-ir")} ﷼
+          {tooltip.value.toLocaleString("fa-IR")} ﷼
           <span className="text-secondary">{tooltip.date}</span>
         </div>
       )}

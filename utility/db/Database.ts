@@ -51,7 +51,7 @@ export async function getAll<T>(storeName: DatabaseStoreType): Promise<T[]> {
 
 export async function getItem<T>(
   storeName: DatabaseStoreType,
-  id: number,
+  id: string,
 ): Promise<T | undefined> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -80,7 +80,7 @@ export async function putItem<T>(
 
 export async function deleteItem(
   storeName: DatabaseStoreType,
-  id: number,
+  id: string,
 ): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { IconComponent } from "@/icons/types";
-import { PrimaryColors, PrimaryColorsItemType } from "@/utility/colors";
+import { PrimaryColors, PrimaryColorsItemType } from "@/utility/shared/colors";
 import Link from "next/link";
 import { ComponentProps } from "react";
 
@@ -28,7 +28,7 @@ export default function ListElement({
         <div
           className={`h-7.5 w-7.5 ${iconColor.primary} rounded-4xl grid place-content-center`}
         >
-          <Icon height={17} width={17} fill="#fff" />
+          <Icon height={20} width={20} fill="#fff" />
         </div>
 
         <span

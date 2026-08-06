@@ -8,7 +8,8 @@ export const TagItemTypes: { value: TagType["type"]; label: string }[] = [
 ];
 
 export type TagType = {
-  id: number;
+  id: string;
   name: string;
   type: "Person" | "Firm" | "Broker" | "Place" | "Object" | "Other";
+  order: number;
 };

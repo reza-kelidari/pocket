@@ -2,7 +2,7 @@ import { useState } from "react";
 import Button from "../Button";
 import { AccountBalanceType, BalanceType } from "@/utility/balance/types";
 import { AccountColorType } from "@/utility/accounts/types";
-import { AccountColors, PrimaryColors } from "@/utility/colors";
+import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 import ChartBox from "./ChartBox";
 import {
   getAccountBalanceHistory,
@@ -14,7 +14,7 @@ import Box from "../Box";
 type ChartParamsType = {
   title: string;
   titlePrimary?: boolean;
-  accountID?: number;
+  accountID?: string;
   timeSelector?: boolean;
   link?: string;
   linkTitle?: string;

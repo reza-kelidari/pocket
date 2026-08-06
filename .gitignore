@@ -42,3 +42,4 @@ next-env.d.ts
 
 # My ignores
 launch.json
+dump-files.sh

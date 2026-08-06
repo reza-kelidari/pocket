@@ -13,8 +13,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { generateNextAccountId } from "../../../utility/shared/idGenerationMethods";
-import { AccountColors } from "@/utility/colors";
+import { AccountColors } from "@/utility/shared/colors";
 import useBalances from "@/utility/balance/service/useBalances";
 import {
   formatJalaliDate,
@@ -50,14 +49,14 @@ export default function AddAccount() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [account, setAccount] = useState<NewAccountType>(() => {
-    if (typeof window === "undefined") return { ...defaultAccount, id: 0 };
+    if (typeof window === "undefined") return { ...defaultAccount, id: "" };
     const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
     try {
       const parsed = JSON.parse(data!) as Partial<NewAccountType>;
-      const id = parsed.id && parsed.id !== 0 ? parsed.id : 0;
+      const id = parsed.id && parsed.id !== "" ? parsed.id : "";
       return { ...defaultAccount, ...parsed, id };
     } catch {
-      return { ...defaultAccount, id: 0 };
+      return { ...defaultAccount, id: "" };
     }
   });
 
@@ -72,11 +71,10 @@ export default function AddAccount() {
         router.replace("/splash?from=/accounts/add");
         return;
       }
-      
+
       setAccount((prev) => {
-        if (prev.id === 0) {
-          const newId = generateNextAccountId(accounts);
-          const updated = { ...prev, id: newId };
+        if (prev.id === "") {
+          const updated = { ...prev, id: crypto.randomUUID() };
           sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(updated));
           return updated;
         }
@@ -105,15 +103,20 @@ export default function AddAccount() {
 
   const resetFormState = useCallback(async () => {
     const accounts = (await getAll(accountsStore)) as AccountType[];
-    const newId = generateNextAccountId(accounts);
-    const clearedAccount = { ...defaultAccount, id: newId, create: Date.now() };
+    const clearedAccount = {
+      ...defaultAccount,
+      id: crypto.randomUUID(),
+      create: Date.now(),
+    };
     setAccount(clearedAccount);
     setCreateInput(formatJalaliDate(clearedAccount.create));
   }, [accountsStore]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     updateAccount({ name: e.target.value });
-  const handleInitialBalanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInitialBalanceChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
     updateAccount({ initialBalance: Number(raw || 0) });
   };
@@ -123,33 +126,38 @@ export default function AddAccount() {
     const timestamp = parseJalaliInput(formatted);
     if (timestamp > 0) updateAccount({ create: timestamp });
   };
-  const handleColorChange = (color: AccountColorType) => updateAccount({ color });
+  const handleColorChange = (color: AccountColorType) =>
+    updateAccount({ color });
 
   const handleSave = async () => {
     if (!isValid) return;
 
     const accounts = (await getAll(accountsStore)) as AccountType[];
-    const maxOrder = accounts.reduce((max, a) => Math.max(max, a.order ?? 0), 0);
+    const maxOrder = accounts.reduce(
+      (max, a) => Math.max(max, a.order ?? 0),
+      0,
+    );
     const finalAccount = { ...account, order: maxOrder + 1 };
 
     await putItem(accountsStore, finalAccount);
 
     const initialTransaction: TransactionType = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       type: "initial",
       name: "موجودی اولیه",
       time: finalAccount.create,
       value: finalAccount.initialBalance,
       debit: finalAccount.id,
-      credit: 0,
-      note: "",
+      credit: "",
     } as TransactionType;
 
     await putItem(transactionsStore, initialTransaction);
 
     addBalance({
       id: finalAccount.id,
-      history: [{ time: finalAccount.create, balance: finalAccount.initialBalance }],
+      history: [
+        { time: finalAccount.create, balance: finalAccount.initialBalance },
+      ],
     });
 
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
@@ -192,11 +200,20 @@ export default function AddAccount() {
       <div className="grid gap-10">
         <div className="grid gap-2">
           <span className="text-xs">نام حساب</span>
-          <input type="text" value={account.name} onChange={handleNameChange} placeholder="بانک فلان" className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all" />
+          <input
+            type="text"
+            value={account.name}
+            onChange={handleNameChange}
+            placeholder="بانک فلان"
+            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+          />
         </div>
         <div className="grid gap-2">
           <span className="text-xs">نوع حساب</span>
-          <Link href={`${pathname}/type`} className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors">
+          <Link
+            href={`${pathname}/type`}
+            className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
+          >
             <span>{AccountTypes[account.type].name}</span>
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
@@ -204,19 +221,44 @@ export default function AddAccount() {
         <div className="grid gap-2">
           <span className="text-xs">موجودی اولیه</span>
           <div className="relative">
-            <input type="text" inputMode="numeric" value={account.initialBalance ? account.initialBalance.toLocaleString("fa-IR") : ""} onChange={handleInitialBalanceChange} placeholder="۰" className="h-12 w-full text-sm border border-elements-border bg-elements-background px-4 pl-10 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all" />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-[10px] pointer-events-none">﷼</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={
+                account.initialBalance
+                  ? account.initialBalance.toLocaleString("fa-IR")
+                  : ""
+              }
+              onChange={handleInitialBalanceChange}
+              placeholder="۰"
+              className="h-12 w-full text-sm border border-elements-border bg-elements-background px-4 pl-10 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+            />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-[10px] pointer-events-none">
+              ﷼
+            </span>
           </div>
         </div>
         <div className="grid gap-2">
           <span className="text-xs">تاریخ افتتاح حساب</span>
-          <input type="text" inputMode="numeric" value={createInput} onChange={handleCreateChange} placeholder="۱۴۰۵/۰۱/۰۱" className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all" />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={createInput}
+            onChange={handleCreateChange}
+            placeholder="۱۴۰۵/۰۱/۰۱"
+            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+          />
         </div>
         <div className="grid gap-2">
           <span className="text-xs">رنگ حساب</span>
           <div className="grid grid-cols-4 gap-7.5 w-full p-5">
             {Object.entries(AccountColors).map(([key, color]) => (
-              <button type="button" key={key} onClick={() => handleColorChange(key as AccountColorType)} className={`${color.primary} h-11 w-11 rounded-3xl cursor-pointer transition-all duration-200 justify-self-center border-4 border-transparent ${account.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}`} />
+              <button
+                type="button"
+                key={key}
+                onClick={() => handleColorChange(key as AccountColorType)}
+                className={`${color.primary} h-11 w-11 rounded-3xl cursor-pointer transition-all duration-200 justify-self-center border-4 border-transparent ${account.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}`}
+              />
             ))}
           </div>
         </div>

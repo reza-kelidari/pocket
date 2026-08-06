@@ -3,7 +3,7 @@
 import Box from "@/components/Box";
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
-import { AccountColors } from "@/utility/colors";
+import { AccountColors } from "@/utility/shared/colors";
 import { getCategoryById } from "@/utility/shared/transactionsMethods";
 import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,12 +24,12 @@ export default function TransactionDetail() {
   const [fromAccount, setFromAccount] = useState<AccountType>();
   const [toAccount, setToAccount] = useState<AccountType>();
 
-  const txID = Number(searchParams.get("id") ?? 0);
+  const txID = searchParams.get("id") ?? "";
 
   const isTxDebit =
     transaction?.type === "debit" || transaction?.type === "initial";
   const categoryID = isTxDebit ? transaction?.credit : transaction?.debit;
-  const txCategory = getCategoryById(categoryID ?? 0);
+  const txCategory = getCategoryById(categoryID ?? "");
 
   const txName =
     transaction?.type === "initial" ? "موجودی اولیه" : transaction?.name;

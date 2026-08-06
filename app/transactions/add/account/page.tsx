@@ -23,7 +23,7 @@ export default function AccountSelector() {
     | "fromAccount"
     | null;
 
-  const [selectedId, setSelectedId] = useState<number>(0);
+  const [selectedId, setSelectedId] = useState<string>();
   const [transactionType, setTransactionType] = useState<
     TransactionType["type"] | null
   >(null);
@@ -41,7 +41,7 @@ export default function AccountSelector() {
           : parsed.type === "credit"
             ? parsed.credit
             : parsed.debit;
-      setSelectedId(currentSelected || 0);
+      setSelectedId(currentSelected || "");
     } catch (e) {}
   }, [accountParam]);
 
@@ -56,7 +56,7 @@ export default function AccountSelector() {
       []);
   });
 
-  function handleSelect(id: number): void {
+  function handleSelect(id: string): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data) {
       router.back();
@@ -104,15 +104,18 @@ export default function AccountSelector() {
       <div className="grid gap-4">
         {accounts.map((item) => {
           const isSelected = selectedId === item.id;
+          const isTransfer = transactionType === "transfer";
 
           return (
-            <AccountsListElement
-              key={item.id}
-              onClick={() => handleSelect(item.id)}
-              account={item}
-              balances={getBalances()}
-              desaturated={!!selectedId && !isSelected}
-            />
+            (!item.hidden || isTransfer) && (
+              <AccountsListElement
+                key={item.id}
+                onClick={() => handleSelect(item.id)}
+                account={item}
+                balances={getBalances()}
+                desaturated={!!selectedId && !isSelected}
+              />
+            )
           );
         })}
       </div>

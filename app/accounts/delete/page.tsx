@@ -2,7 +2,7 @@
 
 import Button from "@/components/Button";
 import Info from "@/icons/Info";
-import { AccountColors } from "@/utility/colors";
+import { AccountColors } from "@/utility/shared/colors";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { deleteItem, getAll, getItem } from "@/utility/db/Database";
@@ -13,7 +13,7 @@ import useBalances from "@/utility/balance/service/useBalances";
 
 export default function AccountDelete() {
   const searchParams = useSearchParams();
-  const accountID = Number(searchParams.get("id") ?? "0");
+  const accountID = searchParams.get("id") ?? "";
   const router = useRouter();
   const { removeBalance } = useBalances();
   const { accountsStore, transactionsStore } = DatabaseStores;

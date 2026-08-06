@@ -24,13 +24,13 @@ export default function AccountsDetails() {
   const { accountsStore, transactionsStore } = DatabaseStores;
   const [account, setAccount] = useState<AccountType>();
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
-  const accountID = Number(searchParams.get("id"));
-  const [swipedItem, setSwipedItem] = useState<number | null>(null);
+  const accountID = searchParams.get("id") ?? "";
+  const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const { setBalances } = useBalances();
 
   useEffect(() => {
-    if (isNaN(accountID)) router.replace("/accounts");
+    if (!accountID) router.replace("/accounts");
   }, [accountID, router]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function AccountsDetails() {
     })();
   }, [accountID]);
 
-  const handleDeleteTransaction = async (id: number) => {
+  const handleDeleteTransaction = async (id: string) => {
     await deleteItem(transactionsStore, id);
     const newTxs = transactions.filter((t) => t.id !== id);
     setTransactions(newTxs);
@@ -56,7 +56,7 @@ export default function AccountsDetails() {
     setSwipedItem(null);
   };
 
-  if (isNaN(accountID) || !account) return null;
+  if (!accountID || !account) return null;
   else
     return (
       <div className="p-7.5 grid gap-15">

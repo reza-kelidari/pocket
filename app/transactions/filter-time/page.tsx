@@ -3,8 +3,8 @@
 import NavbarTitle from "@/components/NavbarTitle";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { useRouter, useSearchParams } from "next/navigation";
-import { filterToUrl, timeFilters } from "../methods";
-import { PrimaryColors } from "@/utility/colors";
+import { filterToUrl, parseStringArray, timeFilters } from "../methods";
+import { PrimaryColors } from "@/utility/shared/colors";
 
 export default function TimeFilter() {
   const searchParams = useSearchParams();
@@ -16,19 +16,11 @@ export default function TimeFilter() {
   };
   const today = date.toLocaleDateString("fa-ir", dateOptions);
 
-  const parseNumberArray = (param: string | null): number[] => {
-    if (!param) return [];
-    return param
-      .split(",")
-      .map(Number)
-      .filter((n) => !isNaN(n) && n !== 0);
-  };
-
   const transactionsFilter = {
     timeWindow: Number(searchParams.get("time") ?? 29) || 29,
-    accounts: parseNumberArray(searchParams.get("accounts")),
-    categories: parseNumberArray(searchParams.get("categories")),
-    tags: parseNumberArray(searchParams.get("tags")),
+    accounts: parseStringArray(searchParams.get("accounts")),
+    categories: parseStringArray(searchParams.get("categories")),
+    tags: parseStringArray(searchParams.get("tags")),
   };
 
   const handleSelectTime = (time: number) => {
@@ -36,7 +28,7 @@ export default function TimeFilter() {
       ...transactionsFilter,
       timeWindow: time,
     })}`;
-    
+
     router.replace(newUrl);
   };
 

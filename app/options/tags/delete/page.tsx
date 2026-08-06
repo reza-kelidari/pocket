@@ -2,18 +2,16 @@
 
 import Button from "@/components/Button";
 import Info from "@/icons/Info";
-import { AccountColors, PrimaryColors } from "@/utility/colors";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { deleteItem, getAll, getItem, putItem } from "@/utility/db/Database";
 import { TransactionType } from "@/utility/transactions/types";
 import { DatabaseStores } from "@/utility/keys/database";
-import useBalances from "@/utility/balance/service/useBalances";
 import { TagType } from "@/utility/shared/tagTypes";
 
 export default function TagDelete() {
   const searchParams = useSearchParams();
-  const tagID = Number(searchParams.get("id") ?? "0");
+  const tagID = searchParams.get("id") ?? "";
   const router = useRouter();
   const { tagsStore, transactionsStore } = DatabaseStores;
 

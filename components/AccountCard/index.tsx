@@ -1,6 +1,6 @@
 import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { AccountType } from "@/utility/accounts/types";
-import { AccountColors } from "@/utility/colors";
+import { AccountColors } from "@/utility/shared/colors";
 import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 

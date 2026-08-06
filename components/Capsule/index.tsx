@@ -1,6 +1,6 @@
 "use client";
 
-import { AccountColors, PrimaryColors } from "@/utility/colors";
+import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

@@ -54,14 +54,35 @@ export async function restoreBackup(
 ): Promise<void> {
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
-  clear(accountsStore);
-  await put(accountsStore, backup.accounts);
+  await clear(accountsStore);
+  await clear(transactionsStore);
+  await clear(tagsStore);
 
-  clear(transactionsStore);
-  await put(transactionsStore, backup.transactions);
+  if (backup.accounts && Array.isArray(backup.accounts)) {
+    for (const acc of backup.accounts) {
+      if (acc && acc.id) {
+        await put(accountsStore, acc);
+      }
+    }
+  }
 
-  clear(tagsStore);
-  await put(tagsStore, backup.tags);
+  if (backup.transactions && Array.isArray(backup.transactions)) {
+    for (const tx of backup.transactions) {
+      if (tx && tx.id) {
+        await put(transactionsStore, tx);
+      }
+    }
+  }
 
-  setBalances(getAccountBalances(backup.accounts, backup.transactions));
+  if (backup.tags && Array.isArray(backup.tags)) {
+    for (const tag of backup.tags) {
+      if (tag && tag.id) {
+        await put(tagsStore, tag);
+      }
+    }
+  }
+
+  setBalances(
+    getAccountBalances(backup.accounts || [], backup.transactions || []),
+  );
 }

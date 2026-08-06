@@ -6,9 +6,14 @@ import TransactionItem from "@/components/TransactionItem";
 import Left from "@/icons/Left";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { parseNumberArray, filterToUrl, timeFilters } from "./methods";
+import {
+  filterToUrl,
+  parseStringArray,
+  timeFilters,
+  TransactionsFilterType,
+} from "./methods";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
-import { AccountColors } from "@/utility/colors";
+import { AccountColors } from "@/utility/shared/colors";
 import Description from "@/components/Description";
 import Filter from "@/icons/Filter";
 import Button from "@/components/Button";
@@ -20,9 +25,9 @@ import SwipeableElement from "@/components/SwipeableElement";
 
 export type transactionsFilterType = {
   timeWindow: number;
-  accounts: number[];
-  categories: number[];
-  tags: number[];
+  accounts: string[];
+  categories: string[];
+  tags: string[];
 };
 
 export default function Transactions() {
@@ -33,14 +38,14 @@ export default function Transactions() {
   const timeFilter = timeFilters(toJalaliDateArray(new Date()));
   const pathname = usePathname();
   const { accountsStore, transactionsStore } = DatabaseStores;
-  const [swipedItem, setSwipedItem] = useState<number | null>(null);
+  const [swipedItem, setSwipedItem] = useState<string | null>(null);
 
-  const transactionsFilter: transactionsFilterType = useMemo(
+  const transactionsFilter: TransactionsFilterType = useMemo(
     () => ({
       timeWindow: Number(searchParams.get("time") ?? 29),
-      accounts: parseNumberArray(searchParams.get("accounts")),
-      categories: parseNumberArray(searchParams.get("categories")),
-      tags: parseNumberArray(searchParams.get("tags")),
+      accounts: parseStringArray(searchParams.get("accounts")),
+      categories: parseStringArray(searchParams.get("categories")),
+      tags: parseStringArray(searchParams.get("tags")),
     }),
     [searchParams],
   );
@@ -90,7 +95,7 @@ export default function Transactions() {
   }, [accountsStore, transactionsStore]);
 
   return (
-    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden h-screen">
+    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen">
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
         <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-fill scrollbar-none">

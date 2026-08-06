@@ -34,7 +34,7 @@ export default function Accounts() {
   const { getBalances } = useBalances();
   const router = useRouter();
   const [showHint, setShowHint] = useState(true);
-  const [openItemId, setOpenItemId] = useState<number | null>(null);
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
   const haveUserAccount = accounts.filter((item) => !item.default).length > 0;
 
   const sensors = useSensors(
@@ -49,7 +49,7 @@ export default function Accounts() {
 
     (async () => {
       setAccounts(
-        ((await getAll<AccountType>(accountsStore))).sort(
+        (await getAll<AccountType>(accountsStore)).sort(
           (a, b) => (a.order ?? 0) - (b.order ?? 0),
         ),
       );
@@ -76,17 +76,31 @@ export default function Accounts() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = accounts.findIndex((a) => a.id === active.id);
-    const newIndex = accounts.findIndex((a) => a.id === over.id);
+    const visibleAccounts = accounts.filter((a) => !a.hidden);
+    const hiddenAccounts = accounts.filter((a) => a.hidden);
+
+    const oldIndex = visibleAccounts.findIndex((a) => a.id === active.id);
+    const newIndex = visibleAccounts.findIndex((a) => a.id === over.id);
 
     if (oldIndex !== -1 && newIndex !== -1) {
-      const newAccounts = arrayMove(accounts, oldIndex, newIndex);
+      const newVisibleAccounts = arrayMove(visibleAccounts, oldIndex, newIndex);
 
-      const updatedAccounts = newAccounts.map((acc, index) => ({
+      const updatedVisibleAccounts = newVisibleAccounts.map((acc, index) => ({
         ...acc,
         order: index,
       }));
 
+      const updatedHiddenAccounts = hiddenAccounts.map((acc) => ({
+        ...acc,
+        order: 999,
+      }));
+
+      const updatedAccounts = [
+        ...updatedVisibleAccounts,
+        ...updatedHiddenAccounts,
+      ];
+
+      updatedAccounts.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       setAccounts(updatedAccounts);
 
       for (const acc of updatedAccounts) {
@@ -131,31 +145,36 @@ export default function Accounts() {
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={accounts.map((a) => a.id)}
+            items={accounts.filter((a) => !a.hidden).map((a) => a.id)}
             strategy={verticalListSortingStrategy}
           >
-            {accounts.map((account) => (
-              <SortableAccountElement key={account.id} account={account}>
-                <SwipeableElement
-                  isOpen={openItemId === account.id}
-                  onOpenChange={(open) =>
-                    setOpenItemId(open ? account.id : null)
-                  }
-                  onCloseOthers={() => setOpenItemId(null)}
-                  onEdit={() => router.push(`/accounts/edit?id=${account.id}`)}
-                  onDelete={() =>
-                    router.push(`/accounts/delete?id=${account.id}`)
-                  }
-                  defaultAccount={account.default}
-                >
-                  <AccountsListElement
-                    account={account}
-                    balances={getBalances()}
-                    href={`accounts/details?id=${account.id}`}
-                  />
-                </SwipeableElement>
-              </SortableAccountElement>
-            ))}
+            {accounts.map(
+              (account) =>
+                !account.hidden && (
+                  <SortableAccountElement key={account.id} account={account}>
+                    <SwipeableElement
+                      isOpen={openItemId === account.id}
+                      onOpenChange={(open) =>
+                        setOpenItemId(open ? account.id : null)
+                      }
+                      onCloseOthers={() => setOpenItemId(null)}
+                      onEdit={() =>
+                        router.push(`/accounts/edit?id=${account.id}`)
+                      }
+                      onDelete={() =>
+                        router.push(`/accounts/delete?id=${account.id}`)
+                      }
+                      defaultAccount={account.default}
+                    >
+                      <AccountsListElement
+                        account={account}
+                        balances={getBalances()}
+                        href={`accounts/details?id=${account.id}`}
+                      />
+                    </SwipeableElement>
+                  </SortableAccountElement>
+                ),
+            )}
           </SortableContext>
         </DndContext>
       </div>

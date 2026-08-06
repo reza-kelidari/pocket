@@ -34,7 +34,7 @@ export default function Home() {
   const { getBalances, setBalances } = useBalances();
 
   const [splashGuard, setSplashGuard] = useState<boolean>(true);
-  const [swipedItem, setSwipedItem] = useState<number | null>(null);
+  const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [headerDate, setHeaderDate] = useState("");
   const pathname = usePathname();
 
@@ -89,7 +89,7 @@ export default function Home() {
 
   if (splashGuard) return null;
 
-  const handleDeleteTransaction = async (id: number) => {
+  const handleDeleteTransaction = async (id: string) => {
     await deleteItem(transactionsStore, id);
     const newTxs = transactions.filter((t) => t.id !== id);
     setTransactions(newTxs);
@@ -118,19 +118,20 @@ export default function Home() {
           </Title>
         </Link>
         <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
-          {accounts.map((account) => {
-            return (
-              <AccountCard
-                key={account.id}
-                lastBalance={
-                  getBalances()
-                    .find((item) => item.id === account.id)
-                    ?.history?.at(-1)?.balance ?? 0
-                }
-                {...account}
-              />
-            );
-          })}
+          {accounts.map(
+            (account) =>
+              !account.hidden && (
+                <AccountCard
+                  key={account.id}
+                  lastBalance={
+                    getBalances()
+                      .find((item) => item.id === account.id)
+                      ?.history?.at(-1)?.balance ?? 0
+                  }
+                  {...account}
+                />
+              ),
+          )}
         </div>
       </div>
 

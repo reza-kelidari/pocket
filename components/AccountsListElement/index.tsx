@@ -1,5 +1,5 @@
 import { AccountType } from "@/utility/accounts/types";
-import { AccountColors, PrimaryColors } from "@/utility/colors";
+import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 import Link from "next/link";
 import { ComponentProps } from "react";
 import { AccountBalanceType, BalanceType } from "@/utility/balance/types";

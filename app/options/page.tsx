@@ -2,12 +2,10 @@
 
 import ListElement from "@/components/ListElement";
 import NavbarTitle from "@/components/NavbarTitle";
-import Capsule from "../../components/Capsule";
-import { PrimaryColors } from "@/utility/colors";
+import { PrimaryColors } from "@/utility/shared/colors";
 import Database from "@/icons/Database";
 import Forbidden from "@/icons/Forbidden";
 import Tag from "@/icons/Tag";
-import Restart from "@/icons/Restart";
 import { usePathname } from "next/navigation";
 
 export default function Options() {
@@ -30,6 +28,18 @@ export default function Options() {
       color: PrimaryColors.red,
       Icon: Forbidden,
       link: `${pathname}/delete-all`,
+    },
+    {
+      name: "ورود اطلاعات از فایل اکسل",
+      color: PrimaryColors.primary,
+      Icon: Database,
+      link: `${pathname}/import`,
+    },
+    {
+      name: "حریم خصوصی",
+      color: PrimaryColors.primary,
+      Icon: Database,
+      link: `${pathname}/privacy`,
     },
   ];
 

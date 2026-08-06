@@ -33,9 +33,9 @@ export default function Page() {
 
   useEffect(() => {
     (async () => {
-      setAccounts((await getAll<AccountType>(accountsStore)));
-      setTransactions((await getAll<TransactionType>(transactionsStore)));
-      setTags((await getAll<TagType>(tagsStore)));
+      setAccounts(await getAll<AccountType>(accountsStore));
+      setTransactions(await getAll<TransactionType>(transactionsStore));
+      setTags(await getAll<TagType>(tagsStore));
     })();
   }, []);
 
@@ -66,7 +66,9 @@ export default function Page() {
       const message: MessageType = {
         title: "بازیابی موفق",
         type: "done",
-        message: `اطلاعات ${backupData.accounts.length.toLocaleString("fa-ir")} حساب با موفقیت بازیابی‌شد.`,
+        message: [
+          `اطلاعات ${backupData.accounts.length.toLocaleString("fa-ir")} حساب با موفقیت بازیابی‌شد.`,
+        ],
       };
 
       sessionStorage.setItem("message", JSON.stringify(message));
@@ -83,15 +85,15 @@ export default function Page() {
 
       <div className="grid gap-10">
         <Box className="gap-5">
-          <h1 className="text-sm text-center">پشتیبان‌گیری از اطلاعات</h1>
+          <h1 className="text-sm">پشتیبان‌گیری از اطلاعات</h1>
 
-          <Description className="[text-align-last:center]">
+          <Description>
             باتوجه به این‌که اطلاعات در دستگاه به صورت محلی ذخیره میشه و در هیچ
             سرویس ابری‌ای پشتیبان گرفته نمیشه، توصیه میشه به صورت دوره‌ای نسخه
             پشتیبان تهیه کنین.
           </Description>
 
-          <Description className="[text-align-last:center]">
+          <Description>
             اطلاعاتی که در نسخه پشتیبان ذخیره میشه شامل{" "}
             <b className="text-primary">حساب‌ها</b>،{" "}
             <b className="text-primary">برچسب‌ها</b> و{" "}
@@ -104,8 +106,8 @@ export default function Page() {
         </Box>
 
         <Box className="gap-5">
-          <h1 className="text-sm text-center">بازیابی اطلاعات</h1>
-          <Description className="[text-align-last:center]">
+          <h1 className="text-sm">بازیابی اطلاعات</h1>
+          <Description>
             اگه یه نسخه پشتیبان دارید، میتونید اون‌رو بارگذاری کنید تا
             اطلاعات‌تون بازیابی بشه؛ درنظر داشته باشید که اگه تا الان اطلاعاتی
             رو در برنامه وارد کردین، این اطلاعات در ابتدا{" "}

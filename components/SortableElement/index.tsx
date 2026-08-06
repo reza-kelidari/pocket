@@ -8,7 +8,7 @@ export default function SortableAccountItem({
   account,
   children,
 }: {
-  account: { id: number };
+  account: { id: string };
   children: ReactNode;
 }) {
   const {

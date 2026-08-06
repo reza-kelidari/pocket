@@ -1,4 +1,4 @@
-import { PrimaryColors } from "@/utility/colors";
+import { PrimaryColors } from "@/utility/shared/colors";
 import Link from "next/link";
 import { ComponentProps } from "react";
 

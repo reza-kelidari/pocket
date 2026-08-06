@@ -26,13 +26,14 @@ import { DatabaseStores } from "@/utility/keys/database";
 
 export const CREATE_TRANSACTION_KEY = "new-transaction";
 
-const defaultTransaction: Omit<TransactionType, "id"> = {
+const defaultTransaction: TransactionType = {
+  id: crypto.randomUUID(),
   type: "credit",
   name: "",
   time: Date.now(),
   value: 0,
-  debit: 0,
-  credit: 0,
+  debit: "",
+  credit: "",
   note: "",
 };
 
@@ -47,18 +48,27 @@ export default function AddTransaction() {
 
   const [transaction, setTransaction] = useState<TransactionType>(() => {
     if (typeof window === "undefined")
-      return { ...defaultTransaction, id: 0, type: transactionType };
+      return { ...defaultTransaction, id: "", type: transactionType };
 
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data)
-      return { ...defaultTransaction, id: Date.now(), type: transactionType };
+      return {
+        ...defaultTransaction,
+        id: crypto.randomUUID(),
+        type: transactionType,
+      };
 
     try {
       const parsed = JSON.parse(data) as Partial<TransactionType>;
-      const id = parsed.id && parsed.id !== 0 ? parsed.id : Date.now();
+      const id =
+        parsed.id && parsed.id !== "" ? parsed.id : crypto.randomUUID();
       return { ...defaultTransaction, ...parsed, id, type: transactionType };
     } catch {
-      return { ...defaultTransaction, id: Date.now(), type: transactionType };
+      return {
+        ...defaultTransaction,
+        id: crypto.randomUUID(),
+        type: transactionType,
+      };
     }
   });
 
@@ -125,13 +135,13 @@ export default function AddTransaction() {
     let accountAndCategoryValid = false;
     if (transaction.type === "transfer") {
       accountAndCategoryValid =
-        transaction.debit > 0 &&
-        transaction.credit > 0 &&
+        !!transaction.debit &&
+        !!transaction.credit &&
         transaction.debit !== transaction.credit;
     } else if (transaction.type === "debit") {
-      accountAndCategoryValid = transaction.debit > 0 && transaction.credit > 0;
+      accountAndCategoryValid = !!transaction.debit && !!transaction.credit;
     } else if (transaction.type === "credit") {
-      accountAndCategoryValid = transaction.credit > 0 && transaction.debit > 0;
+      accountAndCategoryValid = !!transaction.credit && !!transaction.debit;
     }
     return (
       nameValid &&
@@ -160,7 +170,7 @@ export default function AddTransaction() {
   const resetFormState = useCallback(() => {
     const cleared: TransactionType = {
       ...defaultTransaction,
-      id: Date.now(),
+      id: crypto.randomUUID(),
       type: transactionType,
       time: Date.now(),
     };
@@ -255,22 +265,24 @@ export default function AddTransaction() {
         </NavbarTitle>
       </div>
       <div className="grid gap-7.5">
-        <div className="grid gap-2">
-          <span className="text-xs">نام تراکنش</span>
-          <input
-            type="text"
-            value={transaction.name}
-            onChange={handleNameChange}
-            placeholder={
-              transactionType === "debit"
-                ? "حقوق ماهانه"
-                : transactionType === "credit"
-                  ? "خرید خونه"
-                  : "انتقال بین بانکی"
-            }
-            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-          />
-        </div>
+        {transactionType !== "transfer" && (
+          <div className="grid gap-2">
+            <span className="text-xs">نام تراکنش</span>
+            <input
+              type="text"
+              value={transaction.name}
+              onChange={handleNameChange}
+              placeholder={
+                transactionType === "debit"
+                  ? "حقوق ماهانه"
+                  : transactionType === "credit"
+                    ? "خرید خونه"
+                    : "انتقال بین بانکی"
+              }
+              className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+            />
+          </div>
+        )}
         <div className="grid gap-2">
           <span className="text-xs">مبلغ</span>
           <div className="relative">

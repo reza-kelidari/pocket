@@ -41,7 +41,7 @@ export type AccountBalanceType = {
   /**
    * Unique identifier of the account.
    */
-  id: number;
+  id: string;
 
   /**
    * Chronological balance history of the account.

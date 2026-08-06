@@ -12,9 +12,9 @@ export default function DeleteAll() {
 
       <div className="grid gap-10">
         <Box className="gap-5">
-          <h1 className="text-sm text-center text-red">حذف همه‌ی اطلاعات</h1>
+          <h1 className="text-sm text-red">حذف همه‌ی اطلاعات</h1>
 
-          <Description className="[text-align-last:center]">
+          <Description>
             در این‌بخش میتونین <span className="text-red">همه‌ی</span> اطلاعاتی
             که در برنامه وارد کردین رو <span className="text-red">حذف</span>{" "}
             کنین. اکیداً توصیه میشه قبل از این‌کار یه نسخه‌ی{" "}

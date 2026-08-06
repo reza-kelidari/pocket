@@ -1,4 +1,3 @@
-
 /**
  * Represents the kind of financial transaction.
  *
@@ -7,18 +6,14 @@
  * - `transfer` : Money transferred between two accounts.
  * - `initial`  : Initial account balance.
  */
-export type TransactionKindType =
-  | "debit"
-  | "credit"
-  | "transfer"
-  | "initial";
+export type TransactionKindType = "debit" | "credit" | "transfer" | "initial";
 
 /**
  * Represents a financial transaction.
  */
 export type TransactionType = {
   /** Unique transaction identifier. */
-  id: number;
+  id: string;
 
   /** Unix timestamp representing when the transaction occurred. */
   time: number;
@@ -27,10 +22,10 @@ export type TransactionType = {
   name: string;
 
   /** Identifier of the debit (destination) account. */
-  debit: number;
+  debit: string;
 
   /** Identifier of the credit (source) account. */
-  credit: number;
+  credit: string;
 
   /** Transaction amount. */
   value: number;
@@ -38,8 +33,7 @@ export type TransactionType = {
   /** Transaction kind. */
   type: TransactionKindType;
 
-  tag?: number;
+  tag?: string;
 
   note?: string;
 };
-

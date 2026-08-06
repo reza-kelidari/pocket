@@ -2,11 +2,11 @@
 
 import NavbarTitle from "@/components/NavbarTitle";
 import { AccountTypes } from "@/utility/shared/accountsTypes";
-import { PrimaryColors } from "@/utility/colors";
+import { PrimaryColors } from "@/utility/shared/colors";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { CREATE_ACCOUNT_KEY } from "../page";
 import { AccountTypesType } from "@/utility/accounts/types";
+import ListElement from "@/components/ListElement";
 
 export default function Page() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function Page() {
 
       <div className="grid gap-5">
         {Object.keys(AccountTypes).map((item, index) => (
-          <Link
+          <ListElement
             href="/accounts/add"
             key={index}
             onClick={(e) => {
@@ -37,9 +37,11 @@ export default function Page() {
               handleSelectType(item);
             }}
             className={`${PrimaryColors.secondary.box} px-5 py-4 rounded-2xl text-sm flex items-center justify-between cursor-pointer`}
+            iconColor={PrimaryColors.primary}
+            Icon={AccountTypes[item as AccountTypesType].icon}
           >
             {AccountTypes[item as AccountTypesType].name}
-          </Link>
+          </ListElement>
         ))}
       </div>
     </div>

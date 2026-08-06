@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/Button";
+import Description from "@/components/Description";
 import Info from "@/icons/Info";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -8,7 +9,7 @@ import { useEffect } from "react";
 export type MessageType = {
   title: string;
   type: "done" | "error";
-  message: string;
+  message: string[];
 };
 
 export default function Message() {
@@ -33,7 +34,11 @@ export default function Message() {
           />
           <h1 className="text-xl">{message.title}</h1>
         </div>
-        <p className="text-center text-xs">{message.message}</p>
+        <div className="grid gap-5">
+          {message.message.map((item, index) => (
+            <Description key={index}>- {item}</Description>
+          ))}
+        </div>
 
         <Button href="/">باشه</Button>
       </div>

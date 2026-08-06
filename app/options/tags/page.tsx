@@ -7,8 +7,8 @@ import NavbarTitle from "@/components/NavbarTitle";
 import SwipeableElement from "@/components/SwipeableElement";
 import Left from "@/icons/Left";
 import Tag from "@/icons/Tag";
-import { PrimaryColors } from "@/utility/colors";
-import { deleteItem, getAll } from "@/utility/db/Database";
+import { PrimaryColors } from "@/utility/shared/colors";
+import { getAll } from "@/utility/db/Database";
 import { TagItemTypes } from "@/utility/shared/tagTypes";
 import { TagType } from "@/utility/shared/tagTypes";
 import { usePathname, useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 export default function Tags() {
   const pathname = usePathname();
   const [tags, setTags] = useState<TagType[]>([]);
-  const [openItemId, setOpenItemId] = useState<number | null>(null);
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function Tags() {
         </NavbarTitle>
       </div>
 
-      <div className="flex flex-col gap-5 h-100 w-full">
+      <div className="flex flex-col gap-5 min-h-100 w-full">
         {tags.length ? (
           tags.map((item) => (
             <SwipeableElement

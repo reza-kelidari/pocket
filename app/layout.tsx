@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
+import localFont from "next/font/local";
 
-const vazirMatn = Vazirmatn({
-  variable: "--font-vazirmatn",
-  subsets: ["arabic"],
+const vazirMatn = localFont({
+  src: "../public/vazirmatn.ttf",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -42,7 +44,7 @@ export default async function RootLayout({
     <html
       lang="fa"
       dir="rtl"
-      className={`${vazirMatn.variable} h-full antialiased select-none`}
+      className={`${vazirMatn.className} h-full antialiased select-none`}
     >
       <body className="min-h-full flex flex-col">
         {/* {isMobile ? children : onlyMobile} */}

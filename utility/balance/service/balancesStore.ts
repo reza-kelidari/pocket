@@ -34,7 +34,7 @@ class BalancesStore {
     }
   }
 
-  removeBalance(id: number) {
+  removeBalance(id: string) {
     this.balances = this.balances.filter((b) => b.id !== id);
     this.notify();
   }

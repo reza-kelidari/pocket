@@ -4,7 +4,7 @@ import Button from "@/components/Button";
 import NavbarTitle from "@/components/NavbarTitle";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { filterToUrl } from "../methods";
+import { filterToUrl, parseStringArray } from "../methods";
 import AccountsListElement from "@/components/AccountsListElement";
 import useBalances from "@/utility/balance/service/useBalances";
 import { getAll } from "@/utility/db/Database";
@@ -19,21 +19,13 @@ export default function AccountFilter() {
 
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [accountFilter, setAccountFilter] = useState<number[]>([]);
-
-  const parseNumberArray = (param: string | null): number[] => {
-    if (!param) return [];
-    return param
-      .split(",")
-      .map(Number)
-      .filter((n) => !isNaN(n) && n !== 0);
-  };
+  const [accountFilter, setAccountFilter] = useState<string[]>([]);
 
   const transactionsFilter = {
     timeWindow: Number(searchParams.get("time") ?? 29),
-    accounts: parseNumberArray(searchParams.get("accounts")),
-    categories: parseNumberArray(searchParams.get("categories")),
-    tags: parseNumberArray(searchParams.get("tags")),
+    accounts: parseStringArray(searchParams.get("accounts")),
+    categories: parseStringArray(searchParams.get("categories")),
+    tags: parseStringArray(searchParams.get("tags")),
   };
 
   useEffect(() => {

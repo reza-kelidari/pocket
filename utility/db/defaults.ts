@@ -4,6 +4,9 @@ import {
   jalaliToTimestamp,
   toJalaliDateArray,
 } from "@/utility/shared/timeMethods";
+import { generateUUId } from "../shared/idGenerationMethods";
+
+const walletID = generateUUId();
 
 export function getDefaultAccounts(): AccountType[] {
   const startOfYear = jalaliToTimestamp([
@@ -11,30 +14,41 @@ export function getDefaultAccounts(): AccountType[] {
     1,
     1,
   ]);
+
   return [
     {
-      id: 0x01020000,
-      order: 0,
-      name: "کیف پول نقدی",
-      color: "orange",
-      type: "Wallet",
-      create: startOfYear,
-      default: true,
-    },
-    {
-      id: 0x01010000,
+      id: "00000000-0000-4000-0000-000000000001",
       order: 1,
       name: "طلب‌ها",
-      color: "green1",
+      color: "green2",
       type: "Wallet",
       create: startOfYear,
       default: true,
     },
     {
-      id: 0x01010001,
+      id: "00000000-0000-4000-0000-000000000002",
       order: 2,
       name: "بدهی‌ها",
       color: "red",
+      type: "Wallet",
+      create: startOfYear,
+      default: true,
+    },
+    {
+      id: "00000000-0000-4000-0000-000000000003",
+      order: 999,
+      name: "وجوه در راه",
+      color: "black",
+      type: "Wallet",
+      create: startOfYear,
+      default: true,
+      hidden: true,
+    },
+    {
+      id: walletID,
+      order: 0,
+      name: "کیف پول نقدی",
+      color: "orange",
       type: "Wallet",
       create: startOfYear,
       default: true,
@@ -49,35 +63,33 @@ export function getDefaultTransactions(): TransactionType[] {
     1,
   ]);
 
-  let currentId = Date.now();
-
   return [
     {
-      id: currentId++,
+      id: crypto.randomUUID(),
       time: startOfYear,
       name: "موجودی اولیه",
-      debit: 0x01020000,
-      credit: 0,
+      debit: walletID,
+      credit: "",
       value: 0,
       type: "initial",
       note: "",
     },
     {
-      id: currentId++,
+      id: crypto.randomUUID(),
       time: startOfYear,
       name: "موجودی اولیه",
-      debit: 0x01010000,
-      credit: 0,
+      debit: "00000000-0000-4000-0000-000000000001",
+      credit: "",
       value: 0,
       type: "initial",
       note: "",
     },
     {
-      id: currentId++,
+      id: crypto.randomUUID(),
       time: startOfYear,
       name: "موجودی اولیه",
-      debit: 0x01010001,
-      credit: 0,
+      debit: "00000000-0000-4000-0000-000000000002",
+      credit: "",
       value: 0,
       type: "initial",
       note: "",

@@ -1,6 +1,5 @@
 "use client";
 
-import { generateNextTagId } from "@/utility/shared/idGenerationMethods";
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
@@ -13,23 +12,24 @@ import { TagItemTypes } from "@/utility/shared/tagTypes";
 export default function AddTag() {
   const router = useRouter();
   const [tagDetails, setTagDetails] = useState<TagType>({
-    id: 0,
+    id: crypto.randomUUID(),
     name: "",
     type: "Person",
+    order: 0,
   });
   const searchParams = useSearchParams();
-  const id = Number(searchParams.get("id"));
+  const id = searchParams.get("id");
 
   useEffect(() => {
     (async () => {
+      const tags = await getAll<TagType>("tags");
+
       if (!!id) {
-        const tagInDB = (await getAll<TagType>("tags")).find(
-          (item) => item.id === id,
-        );
+        const tagInDB = tags.find((item) => item.id === id);
         setTagDetails(tagInDB!);
       } else {
-        const nextId = generateNextTagId(await getAll<TagType>("tags"));
-        setTagDetails((prev) => ({ ...prev, id: nextId }));
+        const nextId = crypto.randomUUID();
+        setTagDetails((prev) => ({ ...prev, id: nextId, order: tags.length }));
       }
     })();
   }, []);

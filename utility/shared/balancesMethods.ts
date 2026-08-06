@@ -7,13 +7,13 @@ import { AccountBalanceType, BalanceType } from "../balance/types";
  */
 export function getAccountBalanceHistory(
   transactions: TransactionType[],
-  accID: number,
+  accountID: string,
 ): AccountBalanceType {
   const accTxs = transactions
-    .filter((t) => t.debit === accID || t.credit === accID)
+    .filter((t) => t.debit === accountID || t.credit === accountID)
     .sort((a, b) => a.time - b.time);
 
-  if (accTxs.length === 0) return { id: accID, history: [] };
+  if (accTxs.length === 0) return { id: accountID, history: [] };
 
   const balances: BalanceType[] = [];
   let balance = 0;
@@ -37,8 +37,8 @@ export function getAccountBalanceHistory(
       new Date(accTxs[txIndex].time).setHours(0, 0, 0, 0) === currentDay
     ) {
       const tx = accTxs[txIndex];
-      if (tx.debit === accID) balance += tx.value;
-      else if (tx.credit === accID) balance -= tx.value;
+      if (tx.debit === accountID) balance += tx.value;
+      else if (tx.credit === accountID) balance -= tx.value;
       txIndex++;
     }
 
@@ -52,7 +52,7 @@ export function getAccountBalanceHistory(
     currentDay += 24 * 60 * 60 * 1000;
   }
 
-  return { id: accID, history: balances };
+  return { id: accountID, history: balances };
 }
 
 /**

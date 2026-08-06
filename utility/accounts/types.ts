@@ -1,4 +1,4 @@
-import { AccountColors } from "../colors";
+import { AccountColors } from "../shared/colors";
 import { AccountTypes } from "../shared/accountsTypes";
 
 /**
@@ -29,11 +29,12 @@ export type AccountTypesType = keyof typeof AccountTypes;
  */
 
 export type AccountType = {
-  id: number;
+  id: string;
   order: number;
   name: string;
   color: AccountColorType;
   type: AccountTypesType;
   create: number;
   default?: boolean;
+  hidden?: boolean;
 };

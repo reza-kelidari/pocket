@@ -1,26 +1,29 @@
 import { pastDaysInYear } from "@/utility/shared/timeMethods";
-import { transactionsFilterType } from "./page";
 
-export const filterToUrl: (
-  transactionsFilter: transactionsFilterType,
-) => string = (transactionsFilter: transactionsFilterType) => {
-  const { timeWindow, accounts, categories, tags } = transactionsFilter;
+export type TransactionsFilterType = {
+  timeWindow: number;
+  accounts: string[];
+  categories: string[];
+  tags: string[];
+};
+
+export const filterToUrl = (filter: TransactionsFilterType): string => {
+  const { timeWindow, accounts, categories, tags } = filter;
   let result = "?";
 
   result += `time=${timeWindow}&`;
-  if (accounts) result += `accounts=${accounts.join(",")}&`;
-  if (categories) result += `categories=${categories.join(",")}&`;
-  if (tags) result += `tags=${tags.join(",")}&`;
+  if (accounts && accounts.length > 0)
+    result += `accounts=${accounts.join(",")}&`;
+  if (categories && categories.length > 0)
+    result += `categories=${categories.join(",")}&`;
+  if (tags && tags.length > 0) result += `tags=${tags.join(",")}&`;
 
   return result;
 };
 
-export const parseNumberArray = (param: string | null): number[] => {
+export const parseStringArray = (param: string | null): string[] => {
   if (!param) return [];
-  return param
-    .split(",")
-    .map(Number)
-    .filter((n) => !isNaN(n) && n !== 0);
+  return param.split(",").filter((s) => s !== "");
 };
 
 export const timeFilters = (dateArray: number[]) => [

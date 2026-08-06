@@ -1,10 +1,13 @@
 "use client";
 
-import { AccountColors } from "@/utility/colors";
+import { AccountColors } from "@/utility/shared/colors";
 import { TransactionType } from "@/utility/transactions/types";
 import Wallet from "@/icons/Wallet";
 import Link from "next/link";
 import { AccountType } from "@/utility/accounts/types";
+import { useEffect, useState } from "react";
+import { getItem } from "@/utility/db/Database";
+import { DatabaseStores } from "@/utility/keys/database";
 
 type TransactionItemParamsType = {
   transaction: TransactionType;
@@ -15,9 +18,17 @@ export default function TransactionItem({
   transaction,
   account,
 }: TransactionItemParamsType) {
-  const { id: txID, name, time, type, value } = transaction;
+  const { id: txID, name, time, type, value, debit, credit } = transaction;
+  const { accountsStore } = DatabaseStores;
 
-  const txName = type === "initial" ? "موجودی اولیه" : name;
+  const [transferNames, setTransferNames] = useState<string[]>(["", ""]);
+
+  const txName =
+    type === "initial"
+      ? "موجودی اولیه"
+      : type === "transfer"
+        ? transferNames[0] + " › " + transferNames[1]
+        : name;
 
   const date = new Date(time);
   const isSameYear =
@@ -28,6 +39,19 @@ export default function TransactionItem({
     month: "long",
     year: !isSameYear ? "numeric" : undefined,
   };
+
+  useEffect(() => {
+    (async () => {
+      if (type !== "transfer") return;
+
+      const [creditAcc, debitAcc] = (await Promise.all([
+        getItem(accountsStore, credit),
+        getItem(accountsStore, debit),
+      ])) as (AccountType | undefined)[];
+
+      setTransferNames([creditAcc?.name ?? "", debitAcc?.name ?? ""]);
+    })();
+  }, [type, debit, credit]);
 
   return (
     <Link
@@ -40,8 +64,8 @@ export default function TransactionItem({
         <Wallet fill="#fff" height={25} width={25} />
       </div>
 
-      <div className="flex flex-col gap-2.5 w-full">
-        <h1 className="text-sm">{txName}</h1>
+      <div className="flex flex-col gap-2 w-full">
+        <h1 className="text-xs">{txName}</h1>
         <p className="text-xs text-secondary">
           {date.toLocaleDateString("fa-ir", dateOptions)}
         </p>

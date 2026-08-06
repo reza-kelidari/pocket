@@ -32,8 +32,9 @@ export default function CategorySelector() {
       const parsed = JSON.parse(data) as TransactionType;
       setTransactionType(parsed.type);
 
-      const currentSelected =
-        accountParam === "debit" ? parsed.credit : parsed.debit;
+      const currentSelected = Number(
+        accountParam === "debit" ? parsed.credit : parsed.debit,
+      );
       setSelectedCategory(currentSelected || 0);
     } catch (e) {}
   }, [accountParam]);
@@ -47,7 +48,7 @@ export default function CategorySelector() {
     }
   }, [selectedCategory, categories]);
 
-  function handleSelect(id: number): void {
+  function handleSelect(id: string): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data) {
       router.back();
@@ -93,7 +94,7 @@ export default function CategorySelector() {
                       if (el) itemRefs.current.set(sub.id, el);
                       else itemRefs.current.delete(sub.id);
                     }}
-                    onClick={() => handleSelect(sub.id)}
+                    onClick={() => handleSelect(sub.id.toString())}
                     className={`flex flex-col gap-2 items-center justify-center text-xs rounded-2xl p-2 cursor-pointer transition-all
                     ${
                       transactionType === "debit"

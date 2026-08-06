@@ -27,7 +27,7 @@ import { DatabaseStores } from "@/utility/keys/database";
 
 export default function TransactionEdit() {
   const searchParams = useSearchParams();
-  const txID = searchParams.get("id");
+  const txID = searchParams.get("id") ?? "";
   const router = useRouter();
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
@@ -58,14 +58,13 @@ export default function TransactionEdit() {
         if (draftData) {
           try {
             const parsed = JSON.parse(draftData) as TransactionType;
-            if (parsed.id === Number(txID)) initialTx = parsed;
+            if (parsed.id === txID) initialTx = parsed;
           } catch {}
         }
 
         if (!initialTx) {
           initialTx =
-            (await getItem<TransactionType>(transactionsStore, Number(txID))) ??
-            null;
+            (await getItem<TransactionType>(transactionsStore, txID)) ?? null;
         }
 
         if (!initialTx) {
@@ -89,7 +88,6 @@ export default function TransactionEdit() {
         setAccounts(accs);
         setTags(tgs);
       } catch (error) {
-        console.error("Failed to load transaction data:", error);
         router.replace("/transactions");
       }
     }
@@ -138,13 +136,13 @@ export default function TransactionEdit() {
     let accountAndCategoryValid = false;
     if (transaction.type === "transfer") {
       accountAndCategoryValid =
-        transaction.debit > 0 &&
-        transaction.credit > 0 &&
+        !!transaction.debit &&
+        !!transaction.credit &&
         transaction.debit !== transaction.credit;
     } else if (transaction.type === "debit") {
-      accountAndCategoryValid = transaction.debit > 0 && transaction.credit > 0;
+      accountAndCategoryValid = !!transaction.debit && !!transaction.credit;
     } else if (transaction.type === "credit") {
-      accountAndCategoryValid = transaction.credit > 0 && transaction.debit > 0;
+      accountAndCategoryValid = !!transaction.credit && !!transaction.debit;
     }
     return (
       nameValid &&
@@ -173,7 +171,7 @@ export default function TransactionEdit() {
 
   const handleValueChange = (e: ChangeEvent<HTMLInputElement>) => {
     const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
-    updateTransactionState({ value: Number(raw || 0) });
+    updateTransactionState({ value: Number(raw) || 0 });
   };
 
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -219,7 +217,7 @@ export default function TransactionEdit() {
     if (!data || !txID) return;
     try {
       const parsed = JSON.parse(data) as TransactionType;
-      if (parsed.id !== Number(txID)) return;
+      if (parsed.id !== txID) return;
       setTransaction((prev) => {
         if (!prev || JSON.stringify(prev) === JSON.stringify(parsed))
           return prev;
