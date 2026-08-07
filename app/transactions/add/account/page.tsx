@@ -11,11 +11,29 @@ import { AccountType } from "@/utility/accounts/types";
 import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 
+function AccountSelectorSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex items-center justify-between p-4 rounded-2xl border border-elements-border bg-elements-background animate-pulse"
+    >
+      <div className="grid gap-2.5">
+        <div className="text-sm w-28 rounded-md bg-elements-border text-transparent select-none">
+          {"\u00A0"}
+        </div>
+        <div className="text-xs w-16 rounded-md bg-elements-border text-transparent select-none">
+          {"\u00A0"}
+        </div>
+      </div>
+
+      <div className="h-7.5 w-7.5 rounded-4xl bg-elements-border" />
+    </div>
+  );
+}
+
 export default function AccountSelector() {
   const { getBalances } = useBalances();
   const router = useRouter();
-  const [accounts, setAccounts] = useState<AccountType[]>([]);
-  const [isLoading, setIsLoading] = useState(true); 
   const searchParams = useSearchParams();
   const { accountsStore } = DatabaseStores;
 
@@ -24,28 +42,35 @@ export default function AccountSelector() {
     | "fromAccount"
     | null;
 
-  const [selectedId, setSelectedId] = useState<string>();
-  const [transactionType, setTransactionType] = useState<
-    TransactionType["type"] | null
-  >(null);
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const [draftTransaction] = useState<TransactionType | null>(() => {
+    if (typeof window === "undefined") return null;
+
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
-    if (!data) return;
+    if (!data) return null;
 
     try {
-      const parsed = JSON.parse(data) as TransactionType;
-      setTransactionType(parsed.type);
+      return JSON.parse(data) as TransactionType;
+    } catch {
+      return null;
+    }
+  });
 
-      const currentSelected =
-        accountParam === "fromAccount"
-          ? parsed.credit
-          : parsed.type === "credit"
-            ? parsed.credit
-            : parsed.debit;
-      setSelectedId(currentSelected || "");
-    } catch (e) {}
-  }, [accountParam]);
+  const transactionType = draftTransaction?.type ?? null;
+
+  const selectedId = (() => {
+    if (!draftTransaction) return "";
+
+    if (accountParam === "fromAccount") {
+      return draftTransaction.credit || "";
+    }
+
+    return draftTransaction.type === "credit"
+      ? draftTransaction.credit || ""
+      : draftTransaction.debit || "";
+  })();
 
   useEffect(() => {
     (async () => {
@@ -63,6 +88,7 @@ export default function AccountSelector() {
 
   function handleSelect(id: string): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
+
     if (!data) {
       router.back();
       return;
@@ -83,12 +109,13 @@ export default function AccountSelector() {
 
       const newData = JSON.stringify({ ...currentTransaction, ...update });
       sessionStorage.setItem(CREATE_TRANSACTION_KEY, newData);
-    } catch (e) {}
+    } catch {}
 
     router.back();
   }
 
   let navbarTitle = "انتخاب حساب";
+
   if (
     transactionType === "debit" ||
     (transactionType === "transfer" && accountParam === "toAccount")
@@ -101,38 +128,46 @@ export default function AccountSelector() {
     navbarTitle = "حساب مبدأ";
   }
 
+  const visibleAccounts = accounts.filter(
+    (item) => transactionType === "transfer" || !item.hidden,
+  );
+
+  const balancesCount = getBalances().length;
+
+  const skeletonCount =
+    transactionType === "transfer"
+      ? Math.max(balancesCount, 4)
+      : Math.max(balancesCount - 1, 3);
+
   return (
-    <div className="p-7.5 grid gap-15 w-screen overflow-hidden animate-fade-in">
+    <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
       <div className="grid gap-7.5">
         <NavbarTitle title={navbarTitle} disabled />
       </div>
-      <div className="grid gap-4">
-        {isLoading ? (
-          <>
-            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
-            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
-            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
-            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
-          </>
-        ) : (
-          accounts.map((item) => {
+
+      {isLoading ? (
+        <div className="grid gap-4">
+          {Array.from({ length: skeletonCount }).map((_, index) => (
+            <AccountSelectorSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 animate-fade-in">
+          {visibleAccounts.map((item) => {
             const isSelected = selectedId === item.id;
-            const isTransfer = transactionType === "transfer";
 
             return (
-              (!item.hidden || isTransfer) && (
-                <AccountsListElement
-                  key={item.id}
-                  onClick={() => handleSelect(item.id)}
-                  account={item}
-                  balances={getBalances()}
-                  desaturated={!!selectedId && !isSelected}
-                />
-              )
+              <AccountsListElement
+                key={item.id}
+                onClick={() => handleSelect(item.id)}
+                account={item}
+                balances={getBalances()}
+                desaturated={!!selectedId && !isSelected}
+              />
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }

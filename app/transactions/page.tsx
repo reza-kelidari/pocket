@@ -6,7 +6,7 @@ import TransactionItem from "@/components/TransactionItem";
 import TransactionItemLoading from "@/components/TransactionItemLoading";
 import Left from "@/icons/Left";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   filterToUrl,
   parseStringArray,
@@ -24,24 +24,22 @@ import { deleteItem, getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import SwipeableElement from "@/components/SwipeableElement";
 
-export type transactionsFilterType = {
-  timeWindow: number;
-  accounts: string[];
-  categories: string[];
-  tags: string[];
-};
-
 export default function Transactions() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const { accountsStore, transactionsStore } = DatabaseStores;
+
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
-  const timeFilter = timeFilters(toJalaliDateArray(new Date()));
-  const pathname = usePathname();
-  const { accountsStore, transactionsStore } = DatabaseStores;
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isChangingFilter, setIsChangingFilter] = useState(false);
+  const isChangingFilterRef = useRef(false);
+
+  const timeFilter = timeFilters(toJalaliDateArray(new Date()));
 
   const transactionsFilter: TransactionsFilterType = useMemo(
     () => ({
@@ -91,24 +89,70 @@ export default function Transactions() {
   }, [transactions, transactionsFilter]);
 
   useEffect(() => {
+    let isMounted = true;
+
     (async () => {
       try {
-        setTransactions(await getAll<TransactionType>(transactionsStore));
-        setAccounts(await getAll<AccountType>(accountsStore));
+        const [transactionsData, accountsData] = await Promise.all([
+          getAll<TransactionType>(transactionsStore),
+          getAll<AccountType>(accountsStore),
+        ]);
+
+        if (!isMounted) return;
+
+        setTransactions(transactionsData);
+        setAccounts(accountsData);
       } catch (error) {
         console.error("Failed to load transactions:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [accountsStore, transactionsStore]);
 
+  const navigateWithLoading = useCallback(
+    (url: string) => {
+      if (isChangingFilterRef.current) return;
+
+      isChangingFilterRef.current = true;
+      setIsChangingFilter(true);
+
+      window.scrollTo({ top: 0 });
+      router.replace(url);
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (!isChangingFilter) return;
+
+    const timeout = setTimeout(() => {
+      isChangingFilterRef.current = false;
+      setIsChangingFilter(false);
+    }, 450);
+
+    return () => clearTimeout(timeout);
+  }, [isChangingFilter, searchParams]);
+
+  const selectedAccount =
+    transactionsFilter.accounts.length === 1
+      ? accounts.find((item) => item.id === transactionsFilter.accounts[0])
+      : undefined;
+
+  const showSkeleton = isLoading || isChangingFilter;
+
   return (
-    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen animate-fade-in">
+    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen">
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
-        <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-fill scrollbar-none">
+
+        <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-full scrollbar-none">
           <span className="me-2">فیلترها</span>
+
           <Capsule
             Icon={Left}
             href={`/transactions/filter-time${filterToUrl(transactionsFilter)}`}
@@ -125,123 +169,104 @@ export default function Transactions() {
             href={`/transactions/filter-account${filterToUrl(transactionsFilter)}`}
             replace
             primary={transactionsFilter.accounts.length > 0}
-            accountColor={
-              transactionsFilter.accounts.length === 1
-                ? accounts.find(
-                    (item) => item.id === transactionsFilter.accounts[0],
-                  )?.color
-                : undefined
-            }
+            accountColor={selectedAccount?.color}
             className={
-              transactionsFilter.accounts.length === 1
-                ? `${
-                    AccountColors[
-                      accounts.find(
-                        (item) => item.id === transactionsFilter.accounts[0],
-                      )?.color ?? "black"
-                    ].border
-                  }
-                  ${
-                    AccountColors[
-                      accounts.find(
-                        (item) => item.id === transactionsFilter.accounts[0],
-                      )?.color ?? "black"
-                    ].text
-                  }
-                  ${
-                    AccountColors[
-                      accounts.find(
-                        (item) => item.id === transactionsFilter.accounts[0],
-                      )?.color ?? "black"
-                    ].surface
-                  }`
+              selectedAccount
+                ? `${AccountColors[selectedAccount.color].border} ${AccountColors[selectedAccount.color].text} ${AccountColors[selectedAccount.color].surface}`
                 : ""
             }
           >
             {transactionsFilter.accounts.length === 0
               ? "همه حساب‌ها"
               : transactionsFilter.accounts.length === 1
-                ? accounts.find(
-                    (item) => item.id === transactionsFilter.accounts[0],
-                  )?.name
+                ? selectedAccount?.name
                 : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
           </Capsule>
         </div>
       </div>
 
-      {/* ✅ بخش نمایش لودینگ یا لیست تراکنش‌ها */}
-      {isLoading ? (
-        <div className="grid gap-4">
-          <TransactionItemLoading />
-          <TransactionItemLoading />
-          <TransactionItemLoading />
-          <TransactionItemLoading />
-          <TransactionItemLoading />
-        </div>
-      ) : filteredTransactions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-10 h-full">
-          <Filter className="fill-secondary" height={75} width={75} />
-          <Description>با فیلتر‌های انتخابی هیچ تراکنشی یافت نشد.</Description>
-          {transactionsFilter.accounts.length > 0 ||
-          transactionsFilter.categories.length > 0 ||
-          transactionsFilter.tags.length > 0 ||
-          transactionsFilter.timeWindow < 29 ? (
-            <Button onClick={() => router.replace(pathname)}>
-              حذف همه فیلتر‌ها
-            </Button>
-          ) : (
-            (transactionsFilter.accounts.length > 0 ||
-              transactionsFilter.categories.length > 0 ||
-              transactionsFilter.tags.length > 0 ||
-              transactionsFilter.timeWindow >= 29) && (
-              <Button onClick={() => router.replace(`${pathname}?time=36500`)}>
+      <div className="flex-1">
+        {showSkeleton ? (
+          <div className="grid gap-4">
+            <TransactionItemLoading />
+            <TransactionItemLoading />
+            <TransactionItemLoading />
+            <TransactionItemLoading />
+            <TransactionItemLoading />
+          </div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-10 h-full animate-fade-in">
+            <Filter className="fill-secondary" height={75} width={75} />
+            <Description>
+              با فیلتر‌های انتخابی هیچ تراکنشی یافت نشد.
+            </Description>
+
+            {transactionsFilter.accounts.length > 0 ||
+            transactionsFilter.categories.length > 0 ||
+            transactionsFilter.tags.length > 0 ||
+            transactionsFilter.timeWindow < 29 ? (
+              <Button
+                disabled={isChangingFilter}
+                onClick={() => navigateWithLoading(pathname)}
+              >
+                حذف همه فیلتر‌ها
+              </Button>
+            ) : (
+              <Button
+                disabled={isChangingFilter}
+                onClick={() => navigateWithLoading(`${pathname}?time=36500`)}
+              >
                 نمایش همه تراکنش‌ها
               </Button>
-            )
-          )}
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {filteredTransactions.map((transaction) => {
-            const accountID =
-              transaction.type === "credit"
-                ? transaction.credit
-                : transaction.debit;
-            const account = accounts.find((acc) => acc.id === accountID);
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4 animate-fade-in">
+            {filteredTransactions.map((transaction) => {
+              const accountID =
+                transaction.type === "credit"
+                  ? transaction.credit
+                  : transaction.debit;
 
-            if (!account) return null;
+              const account = accounts.find((acc) => acc.id === accountID);
 
-            return (
-              <SwipeableElement
-                isOpen={transaction.id === swipedItem}
-                onOpenChange={() => setSwipedItem(transaction.id)}
-                onCloseOthers={() => setSwipedItem(null)}
-                onEdit={() =>
-                  transaction.type !== "initial"
-                    ? router.push(`/transactions/edit?id=${transaction.id}`)
-                    : router.push(`/accounts/edit?id=${account.id}`)
-                }
-                onDelete={
-                  transaction.type !== "initial"
-                    ? async () => {
-                        await deleteItem(transactionsStore, transaction.id);
+              if (!account) return null;
 
-                        setTransactions((prev) =>
-                          prev.filter((t) => t.id !== transaction.id),
-                        );
+              return (
+                <SwipeableElement
+                  isOpen={transaction.id === swipedItem}
+                  onOpenChange={() => setSwipedItem(transaction.id)}
+                  onCloseOthers={() => setSwipedItem(null)}
+                  onEdit={() =>
+                    transaction.type !== "initial"
+                      ? router.push(`/transactions/edit?id=${transaction.id}`)
+                      : router.push(`/accounts/edit?id=${account.id}`)
+                  }
+                  onDelete={
+                    transaction.type !== "initial"
+                      ? async () => {
+                          await deleteItem(transactionsStore, transaction.id);
 
-                        setSwipedItem(null);
-                      }
-                    : undefined
-                }
-                key={transaction.id}
-              >
-                <TransactionItem transaction={transaction} account={account} />
-              </SwipeableElement>
-            );
-          })}
-        </div>
-      )}
+                          setTransactions((prev) =>
+                            prev.filter((t) => t.id !== transaction.id),
+                          );
+
+                          setSwipedItem(null);
+                        }
+                      : undefined
+                  }
+                  key={transaction.id}
+                >
+                  <TransactionItem
+                    transaction={transaction}
+                    account={account}
+                  />
+                </SwipeableElement>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

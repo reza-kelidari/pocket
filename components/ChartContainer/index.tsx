@@ -46,7 +46,7 @@ export default function ChartContainer({
   const [activeFilter, setActiveFilter] = useState(filters[1]);
 
   return (
-    <Box className="overflow-hidden">
+    <Box className="overflow-hidden animate-fade-in">
       <div className="flex items-center justify-between">
         <h3
           className={`${titlePrimary ? "forground" : "text-secondary"} text-xs`}
