@@ -48,6 +48,8 @@ export default function BalanceChart({
     value: number;
     date: string;
   } | null>(null);
+  const [hintVisible, setHintVisible] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(false);
 
   const height = 140;
 
@@ -72,7 +74,6 @@ export default function BalanceChart({
   const ONE_DAY = 1000 * 3600 * 24;
   const filterStartTime = Date.now() - ONE_DAY * daysFilter;
 
-  // پیدا کردن موجودی روز قبل از شروع بازه فیلتر (برای پر کردن روزهای خالی)
   let startingBalance = 0;
   for (let i = 0; i < data.length; i++) {
     if (data[i].time < filterStartTime) {
@@ -82,7 +83,6 @@ export default function BalanceChart({
     }
   }
 
-  // 🟢 ساخت آرایه‌ای که برای هر روز یک نقطه دارد
   const chartData: BalancePoint[] = [];
   const filteredData = data.filter((item) => item.time >= filterStartTime);
 
@@ -92,7 +92,6 @@ export default function BalanceChart({
   let currentBalance = startingBalance;
 
   while (currentDay <= today) {
-    // اگر در این روز تراکنشی بود، موجودی را با آخرین موجودی آن روز آپدیت کن
     while (
       dataIdx < filteredData.length &&
       new Date(filteredData[dataIdx].time).setHours(0, 0, 0, 0) ===
@@ -102,7 +101,6 @@ export default function BalanceChart({
       dataIdx++;
     }
 
-    // اضافه کردن نقطه برای این روز
     chartData.push({ time: currentDay, balance: currentBalance });
     currentDay += ONE_DAY;
   }
@@ -114,7 +112,6 @@ export default function BalanceChart({
     );
   }
 
-  // محاسبه عرض بر اساس تعداد روزها (چون هر روز یک نقطه دارد)
   const paddingX = minPointDistance / 2;
   const requiredWidth =
     (chartData.length - 1) * minPointDistance + paddingX * 2;
@@ -134,7 +131,6 @@ export default function BalanceChart({
     maxBalance += padding;
   }
 
-  // چون هر روز یک نقطه دارد، می‌توانیم ایندکس را برای محور X استفاده کنیم
   const points = chartData.map((item, index) => {
     const x =
       paddingX + (index / Math.max(1, chartData.length - 1)) * usableWidth;
@@ -181,16 +177,38 @@ export default function BalanceChart({
     }
   };
 
+  const handleUserScroll = () => {
+    handleScroll();
+    if (!hintDismissed) setHintDismissed(true);
+  };
+
   useEffect(() => {
     handleScroll();
   }, [svgWidth, containerWidth]);
+
+  useEffect(() => {
+    const isScrollable = svgWidth > containerWidth;
+    if (!isScrollable || daysFilter <= 7 || hintDismissed) {
+      setHintVisible(false);
+      return;
+    }
+    setHintVisible(true);
+    const timer = setTimeout(() => setHintVisible(false), 5000);
+    return () => clearTimeout(timer);
+  }, [svgWidth, containerWidth, daysFilter, hintDismissed]);
+
+  useEffect(() => {
+    setHintDismissed(false);
+  }, [daysFilter]);
+
+  const showScrollHint = svgWidth > containerWidth && daysFilter > 7;
 
   return (
     <div className="w-full max-w-full min-w-0 relative" ref={wrapperRef}>
       <div
         className="overflow-x-auto scrollbar-none w-full"
         style={{ height: height }}
-        onScroll={handleScroll}
+        onScroll={handleUserScroll}
       >
         <div
           className="relative"
@@ -214,7 +232,6 @@ export default function BalanceChart({
             <path d={areaPath} fill="url(#grad)" />
             <path d={path} stroke={chartColor} strokeWidth={2.5} fill="none" />
 
-            {/* رندر کردن نقطه (دایره) برای هر روز */}
             {points.map((p, i) => (
               <g key={i}>
                 <circle
@@ -242,6 +259,19 @@ export default function BalanceChart({
           </svg>
         </div>
       </div>
+
+      {svgWidth > containerWidth && daysFilter > 7 && (
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 start-2 z-10 pointer-events-none flex
+            items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border shadow-md
+            backdrop-blur-sm text-black text-xs whitespace-nowrap transition-opacity
+            duration-500 ease-out ${tooltipColors.background} ${tooltipColors.border}
+            ${hintVisible ? "opacity-100" : "opacity-0"}`}
+        >
+          <span>اسکرول کنید</span>
+          <span className="text-sm leading-none">←</span>
+        </div>
+      )}
 
       {showTooltip && tooltip && (
         <div
