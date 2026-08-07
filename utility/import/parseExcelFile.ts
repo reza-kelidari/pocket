@@ -116,8 +116,6 @@ export async function parseUploadedExcel(
       const typeTag = getCellVal(row.getCell(11));
 
       if (nameAcc) {
-        if (nameAcc === "وجوه در راه") return;
-
         const existingAcc = existingAccounts.find(
           (a) => a.name === String(nameAcc),
         );
@@ -132,7 +130,7 @@ export async function parseUploadedExcel(
             name: String(nameAcc),
             type: existingAcc.type,
             color: existingAcc.color,
-            order: finalOrderAcc,
+            order: existingAcc.name === "وجوه در راه" ? existingAcc.order : finalOrderAcc,
           });
         } else {
           const typeKey =

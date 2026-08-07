@@ -75,14 +75,10 @@ export async function generateExcelTemplate(
   ws1.getCell("L1").value = "کد نوع برچسب";
   ws1.getCell("N1").value = guideLinesSheet1[0];
 
-  const accountsForExcel = existingAccounts.filter(
-    (a) => a.name !== "وجوه در راه",
-  );
-
   const maxRows1 = 500;
   for (let i = 0; i < maxRows1; i++) {
     const r = i + 2;
-    const acc = accountsForExcel[i];
+    const acc = existingAccounts[i];
     const tag = existingTags[i];
 
     if (acc) {
