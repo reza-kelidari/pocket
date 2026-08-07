@@ -87,11 +87,11 @@ export default function AddTransaction() {
         return;
       }
 
-      setAccounts(await getAll<AccountType>(accountsStore));
+      const accs = await getAll<AccountType>(accountsStore);
+      setAccounts(accs);
       setTags(await getAll<TagType>(tagsStore));
 
-      const txs = await getAll<TransactionType>(transactionsStore);
-      if (txs.length === 0) {
+      if (accs.length === 0) {
         router.replace(
           `/splash?from=/transactions/add?type=${transactionType}`,
         );

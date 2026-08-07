@@ -15,7 +15,6 @@ export async function parseUploadedExcel(
   const ws1 = wb.getWorksheet(1);
   const ws3 = wb.getWorksheet(3);
 
-  // تابع استخراج مقدار با حذف فاصله‌های اضافی (Trim)
   const getCellVal = (cell: any): string | number => {
     if (!cell) return "";
     let val = cell.value;
@@ -25,7 +24,7 @@ export async function parseUploadedExcel(
       else if ("richText" in val)
         val = val.richText.map((t: any) => t.text).join("");
       else if ("text" in val) val = val.text;
-      else if ("formula" in val) val = ""; // نادیده گرفتن فرمول‌های بدون مقدار
+      else if ("formula" in val) val = "";
     }
     if (val === null || val === undefined) return "";
     if (typeof val === "string") return val.trim();
@@ -33,7 +32,6 @@ export async function parseUploadedExcel(
     return String(val).trim();
   };
 
-  // اعتبارسنجی دقیق هدرهای فایل اکسل با استفاده از getCellVal
   if (
     !ws1 ||
     String(getCellVal(ws1.getCell("A1"))) !== "ردیف" ||
@@ -57,7 +55,13 @@ export async function parseUploadedExcel(
   }
 
   const getCellTime = (cell: any): string => {
-    if (!cell) return "";
+    if (
+      !cell ||
+      cell.value === null ||
+      cell.value === undefined ||
+      cell.value === ""
+    )
+      return "";
     let val = cell.value;
     if (val instanceof Date) {
       const h = val.getHours();
@@ -65,7 +69,8 @@ export async function parseUploadedExcel(
       const s = val.getSeconds();
       return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
     }
-    if (typeof val === "number" && val >= 0 && val < 1) {
+    if (val === 0) return ""; // جلوگیری از تبدیل 0 به 00:00:00
+    if (typeof val === "number" && val > 0 && val < 1) {
       const totalSeconds = Math.round(val * 24 * 3600);
       const h = Math.floor(totalSeconds / 3600);
       const m = Math.floor((totalSeconds % 3600) / 60);
@@ -78,11 +83,13 @@ export async function parseUploadedExcel(
       else if ("richText" in val)
         val = val.richText.map((t: any) => t.text).join("");
     }
+    if (val === 0) return "";
     return String(val || "").trim();
   };
 
   const getVal = (row: any, cellIdx: number) => {
     let val = getCellVal(row.getCell(cellIdx));
+    if (val === "" || val === null || val === undefined) return undefined;
     const parsed = Number(val);
     if (!isNaN(parsed) && val !== "") return parsed;
     return val;
@@ -183,21 +190,17 @@ export async function parseUploadedExcel(
 
       const note = getCellVal(row.getCell(11));
       const rawValue = getCellVal(row.getCell(12));
-      const value = rawValue
-        ? Number(faToEn(String(rawValue)).replace(/[^\d]/g, ""))
-        : 0;
 
-      if (
-        !date &&
-        !time &&
-        !accountName &&
-        !tagName &&
-        !typeCode &&
-        !catOrDestCode &&
-        !note &&
-        !value
-      )
-        return;
+      const valueStr = faToEn(String(rawValue || "")).replace(/[^\d]/g, "");
+      const value = valueStr ? parseInt(valueStr, 10) : 0;
+
+      const isDateEmpty =
+        !date || (typeof date === "string" && date.trim() === "");
+      const isAccEmpty =
+        !accountName ||
+        (typeof accountName === "string" && accountName.trim() === "");
+
+      if (isDateEmpty && isAccEmpty) return;
 
       rawTransactions.push({
         excelRow: rowNumber,

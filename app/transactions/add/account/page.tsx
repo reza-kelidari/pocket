@@ -15,6 +15,7 @@ export default function AccountSelector() {
   const { getBalances } = useBalances();
   const router = useRouter();
   const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const [isLoading, setIsLoading] = useState(true); 
   const searchParams = useSearchParams();
   const { accountsStore } = DatabaseStores;
 
@@ -27,6 +28,7 @@ export default function AccountSelector() {
   const [transactionType, setTransactionType] = useState<
     TransactionType["type"] | null
   >(null);
+
   useEffect(() => {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data) return;
@@ -46,15 +48,18 @@ export default function AccountSelector() {
   }, [accountParam]);
 
   useEffect(() => {
-    ((async () => {
-      setAccounts(
-        (await getAll<AccountType>(accountsStore)).sort(
-          (a, b) => a.order - b.order,
-        ),
-      );
-    })(),
-      []);
-  });
+    (async () => {
+      try {
+        setAccounts(
+          (await getAll<AccountType>(accountsStore)).sort(
+            (a, b) => a.order - b.order,
+          ),
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [accountsStore]);
 
   function handleSelect(id: string): void {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
@@ -97,27 +102,36 @@ export default function AccountSelector() {
   }
 
   return (
-    <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
+    <div className="p-7.5 grid gap-15 w-screen overflow-hidden animate-fade-in">
       <div className="grid gap-7.5">
         <NavbarTitle title={navbarTitle} disabled />
       </div>
       <div className="grid gap-4">
-        {accounts.map((item) => {
-          const isSelected = selectedId === item.id;
-          const isTransfer = transactionType === "transfer";
+        {isLoading ? (
+          <>
+            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
+            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
+            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
+            <div className="h-16 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
+          </>
+        ) : (
+          accounts.map((item) => {
+            const isSelected = selectedId === item.id;
+            const isTransfer = transactionType === "transfer";
 
-          return (
-            (!item.hidden || isTransfer) && (
-              <AccountsListElement
-                key={item.id}
-                onClick={() => handleSelect(item.id)}
-                account={item}
-                balances={getBalances()}
-                desaturated={!!selectedId && !isSelected}
-              />
-            )
-          );
-        })}
+            return (
+              (!item.hidden || isTransfer) && (
+                <AccountsListElement
+                  key={item.id}
+                  onClick={() => handleSelect(item.id)}
+                  account={item}
+                  balances={getBalances()}
+                  desaturated={!!selectedId && !isSelected}
+                />
+              )
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -7,38 +7,48 @@ import { useEffect, useState } from "react";
 import { balancesStore } from "@/utility/balance/service/balancesStore";
 import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/transactions/types";
-import { clearStore, getAll } from "@/utility/db/Database";
+import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { SplashShownKey } from "@/utility/keys/sessionStore";
+import ProcessingOverlay from "@/components/ProcessingOverlay";
 
 export default function DeleteAllConfirm() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const router = useRouter();
   const [validate, setValidate] = useState(false);
-  const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { accountsStore, transactionsStore } = DatabaseStores;
 
   useEffect(() => {
     (async () => {
-      setAccounts((await getAll<AccountType>(accountsStore)));
-      setTransactions((await getAll<TransactionType>(transactionsStore)));
+      setAccounts(await getAll<AccountType>(accountsStore));
+      setTransactions(await getAll<TransactionType>(transactionsStore));
     })();
   }, []);
 
   const handleDeleteAll = async () => {
     if (!validate) return;
+    setIsProcessing(true);
 
     try {
-      await clearStore(accountsStore);
-      await clearStore(transactionsStore);
-      await clearStore(tagsStore);
+      await fetch("/api/all", { method: "DELETE" });
       balancesStore.clear();
-
       sessionStorage.removeItem(SplashShownKey);
-
       router.replace("/splash");
-    } catch (error) {}
+    } catch (error) {
+      setIsProcessing(false);
+    }
   };
+
+  if (isProcessing) {
+    return (
+      <ProcessingOverlay
+        title="در حال پاکسازی اطلاعات"
+        subtitle="در حال بازنشایی برنامه..."
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center gap-7.5 p-15 h-screen">
@@ -78,7 +88,6 @@ export default function DeleteAllConfirm() {
       >
         حذف همه اطلاعات
       </Button>
-
       <Button secondary onClick={() => router.back()}>
         لغو
       </Button>

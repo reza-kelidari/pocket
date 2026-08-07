@@ -1,23 +1,18 @@
 "use client";
 
-import { MessageType } from "@/app/message/page";
 import Box from "@/components/Box";
 import Button from "@/components/Button";
 import Description from "@/components/Description";
 import NavbarTitle from "@/components/NavbarTitle";
 import { AccountType } from "@/utility/accounts/types";
-import {
-  BackupType,
-  getBackup,
-  restoreBackup,
-} from "@/utility/backup-restore/methods";
-import useBalances from "@/utility/balance/service/useBalances";
-import { clearStore, getAll, putItem } from "@/utility/db/Database";
+import { BackupType, getBackup } from "@/utility/backup-restore/methods";
+import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { TagType } from "@/utility/shared/tagTypes";
 import { TransactionType } from "@/utility/transactions/types";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { RESTORE_DATA_KEY } from "./restore/page";
 
 export default function Page() {
   const router = useRouter();
@@ -28,16 +23,25 @@ export default function Page() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const [tags, setTags] = useState<TagType[]>([]);
-  const { setBalances } = useBalances();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
   useEffect(() => {
     (async () => {
-      setAccounts(await getAll<AccountType>(accountsStore));
-      setTransactions(await getAll<TransactionType>(transactionsStore));
-      setTags(await getAll<TagType>(tagsStore));
+      try {
+        setAccounts(await getAll<AccountType>(accountsStore));
+        setTransactions(await getAll<TransactionType>(transactionsStore));
+        setTags(await getAll<TagType>(tagsStore));
+      } catch (err: any) {
+        console.error("Backup load error:", err);
+        setError(err.message || "خطا در خواندن اطلاعات از دیتابیس");
+      } finally {
+        setIsLoading(false);
+      }
     })();
-  }, []);
+  }, [accountsStore, transactionsStore, tagsStore]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -45,11 +49,15 @@ export default function Page() {
     if (file) {
       const fileReader = new FileReader();
       fileReader.onload = (e) => {
-        const result: BackupType = JSON.parse(fileReader.result as string);
-        const backupTime = new Date(result.time).toLocaleDateString("fa-ir");
+        try {
+          const result: BackupType = JSON.parse(fileReader.result as string);
+          const backupTime = new Date(result.time).toLocaleDateString("fa-ir");
 
-        setFileName("تاریخ نسخه پشتیبان: " + backupTime);
-        setBackupData(result);
+          setFileName("تاریخ نسخه پشتیبان: " + backupTime);
+          setBackupData(result);
+        } catch {
+          setError("فایل پشتیبان انتخاب شده معتبر نیست.");
+        }
       };
       fileReader.readAsText(file);
     }
@@ -59,29 +67,29 @@ export default function Page() {
     fileInputRef.current?.click();
   }
 
-  function handleBackupRestore() {
-    if (backupData) {
-      restoreBackup(backupData, putItem, clearStore, setBalances);
+  const handleBackupRestore = () => {
+    if (!backupData) return;
 
-      const message: MessageType = {
-        title: "بازیابی موفق",
-        type: "done",
-        message: [
-          `اطلاعات ${backupData.accounts.length.toLocaleString("fa-ir")} حساب با موفقیت بازیابی‌شد.`,
-        ],
-      };
-
-      sessionStorage.setItem("message", JSON.stringify(message));
-
-      router.replace("/message");
-    }
-  }
+    sessionStorage.setItem(RESTORE_DATA_KEY, JSON.stringify(backupData));
+    router.push("/options/backup-restore/restore");
+  };
 
   return (
-    <div className="p-7.5 grid gap-15">
+    <div className="p-7.5 grid gap-15 animate-fade-in">
       <div className="grid gap-7.5">
         <NavbarTitle title="پشتیبان‌گیری و بازیابی" />
       </div>
+
+      {error && (
+        <div className="bg-red-background border border-red-border text-red text-xs p-4 rounded-2xl">
+          {error}
+          <br />
+          <span className="text-secondary">
+            (لطفاً مطمئن شوید دستورات تغییر نوع ستون‌ها را در دیتابیس اجرا
+            کرده‌اید)
+          </span>
+        </div>
+      )}
 
       <div className="grid gap-10">
         <Box className="gap-5">
@@ -100,8 +108,11 @@ export default function Page() {
             <b className="text-primary">تراکنش‌ها</b> هست.
           </Description>
 
-          <Button onClick={() => getBackup(accounts, transactions, tags)}>
-            بارگیری نسخه پشتیبان
+          <Button
+            disabled={isLoading}
+            onClick={() => getBackup(accounts, transactions, tags)}
+          >
+            {isLoading ? "در حال آماده‌سازی..." : "بارگیری نسخه پشتیبان"}
           </Button>
         </Box>
 
@@ -126,7 +137,10 @@ export default function Page() {
           <Button secondary onClick={handleFilePicker}>
             {!!fileName ? fileName : "بارگذاری نسخه پشتیبان"}
           </Button>
-          <Button disabled={!backupData} onClick={handleBackupRestore}>
+          <Button
+            disabled={!backupData || isLoading}
+            onClick={handleBackupRestore}
+          >
             بازیابی اطلاعات
           </Button>
         </Box>

@@ -7,6 +7,14 @@ import { jalaliToTimestamp } from "@/utility/shared/timeMethods";
 import { MessageType } from "@/app/message/page";
 import { PreviewData } from "./excelConstants";
 
+const chunkArray = (array: any[], size: number) => {
+  const result = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
+};
+
 export async function importDataToDatabase(
   previewData: PreviewData,
   existingAccounts: AccountType[],
@@ -24,7 +32,13 @@ export async function importDataToDatabase(
   const errors: string[] = [];
   const validTypes = ["debit", "credit", "transfer", "initial"];
 
-  for (const tx of previewData.rawTransactions) {
+  const validTxs = previewData.rawTransactions.filter((tx) => {
+    const hasDate = tx.date && String(tx.date).trim() !== "";
+    const hasAcc = tx.accountName && String(tx.accountName).trim() !== "";
+    return hasDate || hasAcc;
+  });
+
+  for (const tx of validTxs) {
     const missing: string[] = [];
 
     if (!tx.date) missing.push("تاریخ");
@@ -86,12 +100,10 @@ export async function importDataToDatabase(
   try {
     const accIdResolver = new Map<string, string>();
     const tagIdResolver = new Map<string, string>();
-    const accCreateMap = new Map<string, number>();
 
     existingAccounts.forEach((a) => {
       accIdResolver.set(a.name, a.id);
       accIdResolver.set(a.id, a.id);
-      accCreateMap.set(a.id, a.create);
     });
     existingTags.forEach((t) => {
       tagIdResolver.set(t.name, t.id);
@@ -99,7 +111,7 @@ export async function importDataToDatabase(
     });
 
     const accCreateDateMap = new Map<string, number>();
-    previewData.rawTransactions.forEach((tx) => {
+    validTxs.forEach((tx) => {
       const [y, m, d] = String(tx.date).split("/").map(Number);
       const timeStr =
         tx.type === "initial" ? "00:00:00" : String(tx.time || "00:00");
@@ -144,30 +156,28 @@ export async function importDataToDatabase(
       }
     });
 
+    const accountsToSave: AccountType[] = [];
     let newAccountsCount = 0;
     let updatedAccountsCount = 0;
+
     for (const acc of previewData.accounts) {
       if (acc.isNew && !accIdResolver.has(acc.name)) {
         const newId = crypto.randomUUID();
-        const createTs = accCreateDateMap.get(acc.name) || Date.now();
         const newAcc: AccountType = {
           id: newId,
           name: acc.name,
           type: acc.type as any,
           color: acc.color as any,
-          create: createTs,
           default: false,
           order: acc.order,
         };
-        await putItem(DatabaseStores.accountsStore, newAcc);
+        accountsToSave.push(newAcc);
         accIdResolver.set(acc.name, newId);
-        accIdResolver.set(String(newId), newId);
-        accCreateMap.set(newId, createTs);
         newAccountsCount++;
       } else if (acc.needsUpdate && acc.id) {
         const existingAcc = existingAccounts.find((a) => a.id === acc.id);
         if (existingAcc) {
-          await putItem(DatabaseStores.accountsStore, {
+          accountsToSave.push({
             ...existingAcc,
             type: acc.type as any,
             color: acc.color as any,
@@ -177,25 +187,29 @@ export async function importDataToDatabase(
         }
       }
     }
+    for (const chunk of chunkArray(accountsToSave, 50)) {
+      await putItem(DatabaseStores.accountsStore, chunk);
+    }
 
+    const tagsToSave: TagType[] = [];
     let newTagsCount = 0;
     let updatedTagsCount = 0;
+
     for (const tag of previewData.tags) {
       if (tag.isNew && !tagIdResolver.has(tag.name)) {
         const newId = crypto.randomUUID();
-        await putItem(DatabaseStores.tagsStore, {
+        tagsToSave.push({
           id: newId,
           name: tag.name,
           type: tag.type as any,
           order: tag.order,
         });
         tagIdResolver.set(tag.name, newId);
-        tagIdResolver.set(String(newId), newId);
         newTagsCount++;
       } else if (tag.needsUpdate && tag.id) {
         const existingTag = existingTags.find((t) => t.id === tag.id);
         if (existingTag) {
-          await putItem(DatabaseStores.tagsStore, {
+          tagsToSave.push({
             ...existingTag,
             type: tag.type as any,
             order: tag.order,
@@ -204,10 +218,14 @@ export async function importDataToDatabase(
         }
       }
     }
+    for (const chunk of chunkArray(tagsToSave, 50)) {
+      await putItem(DatabaseStores.tagsStore, chunk);
+    }
 
+    const txsToSave: any[] = [];
     const accountsWithInitial = new Set<string>();
 
-    for (const tx of previewData.rawTransactions) {
+    for (const tx of validTxs) {
       const [y, m, d] = String(tx.date).split("/").map(Number);
       const timeStr =
         tx.type === "initial" ? "00:00:00" : String(tx.time || "00:00");
@@ -228,14 +246,13 @@ export async function importDataToDatabase(
           s = totalSeconds % 60;
         }
       }
-      let time =
+      const time =
         jalaliToTimestamp([y, m, d]) + h * 3600000 + min * 60000 + s * 1000;
 
       let debitId = "",
         creditId = "",
-        tagId = "";
-      let catId = "";
-
+        tagId = "",
+        catId = "";
       const accId = accIdResolver.get(tx.accountName) || "";
       const tId = tagIdResolver.get(tx.tagName) || "";
 
@@ -254,7 +271,7 @@ export async function importDataToDatabase(
       }
       tagId = tId;
 
-      await putItem(DatabaseStores.transactionsStore, {
+      txsToSave.push({
         id: crypto.randomUUID(),
         time,
         name: tx.note || "",
@@ -275,7 +292,7 @@ export async function importDataToDatabase(
         if (newAccId && !accountsWithInitial.has(newAccId)) {
           const firstTxTime = accCreateDateMap.get(acc.name) || Date.now();
           const initialTime = firstTxTime - 60000;
-          await putItem(DatabaseStores.transactionsStore, {
+          txsToSave.push({
             id: crypto.randomUUID(),
             time: initialTime,
             name: "موجودی اولیه",
@@ -290,8 +307,11 @@ export async function importDataToDatabase(
       }
     }
 
-    const txCount = previewData.rawTransactions.length;
+    for (const chunk of chunkArray(txsToSave, 50)) {
+      await putItem(DatabaseStores.transactionsStore, chunk);
+    }
 
+    const txCount = validTxs.length;
     const successMessage: MessageType = {
       title: "عملیات با موفقیت انجام شد",
       type: "done",
@@ -306,11 +326,15 @@ export async function importDataToDatabase(
 
     sessionStorage.setItem("message", JSON.stringify(successMessage));
     router.replace("/message");
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Import error:", error);
     const errorMessage: MessageType = {
       title: "خطای سیستم",
       type: "error",
-      message: ["خطایی ناشناخته هنگام ثبت اطلاعات در دیتابیس رخ داده است."],
+      message: [
+        "خطایی هنگام ثبت اطلاعات در دیتابیس رخ داده است.",
+        error.message || "",
+      ],
     };
     sessionStorage.setItem("message", JSON.stringify(errorMessage));
     router.replace("/message");

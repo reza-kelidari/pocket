@@ -1,104 +1,83 @@
-import { DatabaseStoreType } from "../keys/database";
+const NUMERIC_FIELDS: Record<string, string[]> = {
+  accounts: ["order"],
+  transactions: ["time", "value"],
+  tags: ["order"],
+};
 
-const DB_NAME = "pocket-finance-db";
-const DB_VERSION = 1;
-
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-export function getDB(): Promise<IDBDatabase> {
-  if (typeof window === "undefined") {
-    return Promise.reject(
-      new Error("IndexedDB is not available on the server"),
-    );
+function castRow<T>(store: string, row: any): T {
+  if (!row) return row;
+  const fields = NUMERIC_FIELDS[store] || [];
+  for (let key in row) {
+    if (row[key] === null) {
+      row[key] = fields.includes(key) ? 0 : "";
+    } else if (fields.includes(key)) {
+      row[key] = Number(row[key]);
+    }
   }
-
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains("accounts")) {
-          db.createObjectStore("accounts", { keyPath: "id" });
-        }
-
-        if (!db.objectStoreNames.contains("transactions")) {
-          db.createObjectStore("transactions", { keyPath: "id" });
-        }
-
-        if (!db.objectStoreNames.contains("tags")) {
-          db.createObjectStore("tags", { keyPath: "id" });
-        }
-      };
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-  return dbPromise;
+  return row as T;
 }
 
-export async function getAll<T>(storeName: DatabaseStoreType): Promise<T[]> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
-    const store = tx.objectStore(storeName);
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result as T[]);
-    req.onerror = () => reject(req.error);
-  });
+async function handleUnauthorized(res: Response) {
+  if (res.status === 401) {
+    window.location.href = "/splash";
+    throw new Error("Unauthorized");
+  }
+}
+
+export async function getAll<T>(store: string): Promise<T[]> {
+  const res = await fetch(`/api/${store}`);
+  await handleUnauthorized(res);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `خطا در دریافت اطلاعات ${store}`);
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data.map((row: any) => castRow<T>(store, row));
 }
 
 export async function getItem<T>(
-  storeName: DatabaseStoreType,
+  store: string,
   id: string,
 ): Promise<T | undefined> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
-    const store = tx.objectStore(storeName);
-    const req = store.get(id);
-
-    req.onsuccess = () => resolve(req.result as T | undefined);
-    req.onerror = () => reject(req.error);
-  });
+  const res = await fetch(`/api/${store}/${id}`);
+  await handleUnauthorized(res);
+  if (!res.ok) return undefined;
+  const data = await res.json();
+  if (!data) return undefined;
+  return castRow<T>(store, data);
 }
 
-export async function putItem<T>(
-  storeName: DatabaseStoreType,
+export async function putItem<T extends { id: string } | { id: string }[]>(
+  store: string,
   item: T,
 ): Promise<void> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    store.put(item);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+  const res = await fetch(`/api/${store}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(item),
   });
+  await handleUnauthorized(res);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "خطا در ذخیره‌سازی اطلاعات");
+  }
 }
 
-export async function deleteItem(
-  storeName: DatabaseStoreType,
-  id: string,
-): Promise<void> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    store.delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+export async function deleteItem(store: string, id: string): Promise<void> {
+  const res = await fetch(`/api/${store}/${id}`, { method: "DELETE" });
+  await handleUnauthorized(res);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "خطا در حذف اطلاعات");
+  }
 }
 
-export async function clearStore(storeName: DatabaseStoreType): Promise<void> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
-    const store = tx.objectStore(storeName);
-    store.clear();
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+export async function clearStore(store: string): Promise<void> {
+  const res = await fetch(`/api/${store}`, { method: "DELETE" });
+  await handleUnauthorized(res);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || "خطا در پاکسازی اطلاعات");
+  }
 }

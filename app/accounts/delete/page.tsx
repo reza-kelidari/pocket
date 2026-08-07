@@ -10,6 +10,7 @@ import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/transactions/types";
 import { DatabaseStores } from "@/utility/keys/database";
 import useBalances from "@/utility/balance/service/useBalances";
+import ProcessingOverlay from "@/components/ProcessingOverlay";
 
 export default function AccountDelete() {
   const searchParams = useSearchParams();
@@ -20,17 +21,17 @@ export default function AccountDelete() {
 
   const [account, setAccount] = useState<AccountType>();
   const [transactionsCount, setTransactionsCount] = useState("۰");
-
   const [validate, setValidate] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     (async () => {
       setAccount(
         (await getItem<AccountType>(accountsStore, accountID)) ?? undefined,
       );
-
+      const txs = await getAll<TransactionType>(transactionsStore);
       setTransactionsCount(
-        (await getAll<TransactionType>(transactionsStore))
+        txs
           .filter(
             (item) => item.credit === accountID || item.debit === accountID,
           )
@@ -41,21 +42,23 @@ export default function AccountDelete() {
 
   const handleDelete = async () => {
     if (!validate) return;
+    setIsProcessing(true);
 
-    const transactions = (await getAll(transactionsStore)) as TransactionType[];
-    const toDelete = transactions.filter(
-      (t) => t.debit === accountID || t.credit === accountID,
-    );
-    for (const tx of toDelete) {
-      await deleteItem(transactionsStore, tx.id);
+    try {
+      await deleteItem(accountsStore, accountID);
+      removeBalance(accountID);
+      router.back();
+    } catch (error) {
+      setIsProcessing(false);
+      console.error(error);
     }
-
-    await deleteItem(accountsStore, accountID);
-
-    removeBalance(accountID);
-
-    router.back();
   };
+
+  if (isProcessing) {
+    return (
+      <ProcessingOverlay title="در حال حذف حساب" subtitle="لطفاً صبر کنید..." />
+    );
+  }
 
   if (!account) return null;
 
@@ -88,7 +91,6 @@ export default function AccountDelete() {
           />
           بله، مطمئن هستم
         </label>
-
         <Button
           red={validate}
           secondary={!validate}

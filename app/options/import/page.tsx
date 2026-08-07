@@ -15,6 +15,7 @@ import { importDataToDatabase } from "@/utility/import/importToDatabase";
 import { parseUploadedExcel } from "@/utility/import/parseExcelFile";
 import PreviewSection from "./components/ShowDataPreview";
 import { PreviewData } from "@/utility/import/excelConstants";
+import ProcessingOverlay from "@/components/ProcessingOverlay";
 
 export default function ImportExcelPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function ImportExcelPage() {
 
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false); // ✅ استیت لودینگ
   const [fileError, setFileError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,15 +74,27 @@ export default function ImportExcelPage() {
     if (!isConfirmed || !previewData) return;
     setIsImporting(true);
 
-    await importDataToDatabase(
-      previewData,
-      existingAccounts,
-      existingTags,
-      router,
-    );
-
-    setIsImporting(false);
+    try {
+      await importDataToDatabase(
+        previewData,
+        existingAccounts,
+        existingTags,
+        router,
+      );
+    } catch (error) {
+      setIsImporting(false);
+      setFileError("خطایی در هنگام ورود اطلاعات رخ داد.");
+    }
   };
+
+  if (isImporting) {
+    return (
+      <ProcessingOverlay
+        title="در حال وارد کردن اطلاعات"
+        subtitle="لطفاً تا پایان عملیات صبر کنید..."
+      />
+    );
+  }
 
   return (
     <div className="p-7.5 grid gap-15 w-full max-w-full overflow-hidden">

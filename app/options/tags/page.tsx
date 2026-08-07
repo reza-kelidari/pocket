@@ -17,12 +17,19 @@ import { useEffect, useState } from "react";
 export default function Tags() {
   const pathname = usePathname();
   const [tags, setTags] = useState<TagType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     (async () => {
-      setTags(await getAll<TagType>("tags"));
+      try {
+        setTags(await getAll<TagType>("tags"));
+      } catch (error) {
+        console.error("Failed to load tags:", error);
+      } finally {
+        setIsLoading(false);
+      }
     })();
   }, []);
 
@@ -41,7 +48,7 @@ export default function Tags() {
   }, [openItemId]);
 
   return (
-    <div className="p-7.5 flex flex-col items-center gap-15 w-screen min-h-screen">
+    <div className="p-7.5 flex flex-col items-center gap-15 w-screen min-h-screen animate-fade-in">
       <div className="flex flex-col justify-between gap-7.5 w-full">
         <NavbarTitle title="برچسب‌ها">
           <Capsule Icon={Left} href={`${pathname}/add`}>
@@ -51,7 +58,22 @@ export default function Tags() {
       </div>
 
       <div className="flex flex-col gap-5 min-h-100 w-full">
-        {tags.length ? (
+        {isLoading ? (
+          <>
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="w-full p-4 flex items-center gap-2.5 rounded-2xl border border-elements-border bg-elements-background animate-pulse"
+              >
+                <div className="h-7.5 w-7.5 rounded-4xl bg-elements-border shrink-0"></div>
+                <div className="grid gap-2 w-full">
+                  <div className="h-4 w-24 rounded-md bg-elements-border"></div>
+                  <div className="h-3 w-16 rounded-md bg-elements-border"></div>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : tags.length ? (
           tags.map((item) => (
             <SwipeableElement
               key={item.id}

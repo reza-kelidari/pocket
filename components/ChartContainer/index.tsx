@@ -22,7 +22,7 @@ type ChartParamsType = {
   transactions: TransactionType[];
 };
 
-export default function Chart({
+export default function ChartContainer({
   title,
   titlePrimary,
   accountID,

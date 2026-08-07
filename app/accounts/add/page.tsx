@@ -1,4 +1,5 @@
 "use client";
+
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
@@ -26,17 +27,23 @@ import { DatabaseStores } from "@/utility/keys/database";
 
 export const CREATE_ACCOUNT_KEY = "new-account";
 
-type NewAccountType = AccountType & {
+type NewAccountFormType = {
+  id: string;
+  name: string;
+  type: AccountType["type"];
+  color: AccountColorType;
   initialBalance: number;
+  order: number;
+  createTimestamp: number;
 };
 
-const defaultAccount: Omit<NewAccountType, "id"> = {
+const defaultForm: Omit<NewAccountFormType, "id"> = {
   name: "",
   type: "Bank",
   color: "black",
   initialBalance: 0,
   order: 0,
-  create: jalaliToTimestamp(
+  createTimestamp: jalaliToTimestamp(
     toJalaliDateArray(new Date()) as [number, number, number],
   ),
 };
@@ -46,22 +53,21 @@ export default function AddAccount() {
   const pathname = usePathname();
   const { addBalance } = useBalances();
   const { accountsStore, transactionsStore } = DatabaseStores;
-  const [isLoading, setIsLoading] = useState(true);
 
-  const [account, setAccount] = useState<NewAccountType>(() => {
-    if (typeof window === "undefined") return { ...defaultAccount, id: "" };
+  const [isLoading, setIsLoading] = useState(true);
+  const [form, setForm] = useState<NewAccountFormType>(() => {
+    if (typeof window === "undefined") return { ...defaultForm, id: "" };
     const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
     try {
-      const parsed = JSON.parse(data!) as Partial<NewAccountType>;
+      const parsed = JSON.parse(data!) as Partial<NewAccountFormType>;
       const id = parsed.id && parsed.id !== "" ? parsed.id : "";
-      return { ...defaultAccount, ...parsed, id };
+      return { ...defaultForm, ...parsed, id };
     } catch {
-      return { ...defaultAccount, id: "" };
+      return { ...defaultForm, id: "" };
     }
   });
-
   const [createInput, setCreateInput] = useState(() =>
-    formatJalaliDate(account.create),
+    formatJalaliDate(form.createTimestamp),
   );
 
   useEffect(() => {
@@ -71,8 +77,7 @@ export default function AddAccount() {
         router.replace("/splash?from=/accounts/add");
         return;
       }
-
-      setAccount((prev) => {
+      setForm((prev) => {
         if (prev.id === "") {
           const updated = { ...prev, id: crypto.randomUUID() };
           sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(updated));
@@ -86,48 +91,49 @@ export default function AddAccount() {
   }, [accountsStore, router]);
 
   const isValid = useMemo(() => {
-    const nameValid = account.name.trim().length >= 3;
+    const nameValid = form.name.trim().length >= 3;
     const dateValid = createInput.trim().length === 10;
-    const typeValid = !!account.type;
-    const colorValid = !!account.color;
+    const typeValid = !!form.type;
+    const colorValid = !!form.color;
     return nameValid && dateValid && typeValid && colorValid;
-  }, [account.name, createInput, account.type, account.color]);
+  }, [form.name, createInput, form.type, form.color]);
 
-  const updateAccount = useCallback((updated: Partial<NewAccountType>) => {
-    setAccount((prev) => {
-      const newAccount = { ...prev, ...updated };
-      sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(newAccount));
-      return newAccount;
+  const updateForm = useCallback((updated: Partial<NewAccountFormType>) => {
+    setForm((prev) => {
+      const newForm = { ...prev, ...updated };
+      sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(newForm));
+      return newForm;
     });
   }, []);
 
-  const resetFormState = useCallback(async () => {
-    const accounts = (await getAll(accountsStore)) as AccountType[];
-    const clearedAccount = {
-      ...defaultAccount,
+  const resetFormState = useCallback(() => {
+    const clearedForm: NewAccountFormType = {
+      ...defaultForm,
       id: crypto.randomUUID(),
-      create: Date.now(),
+      createTimestamp: Date.now(),
     };
-    setAccount(clearedAccount);
-    setCreateInput(formatJalaliDate(clearedAccount.create));
-  }, [accountsStore]);
+    setForm(clearedForm);
+    setCreateInput(formatJalaliDate(clearedForm.createTimestamp));
+  }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    updateAccount({ name: e.target.value });
+    updateForm({ name: e.target.value });
+
   const handleInitialBalanceChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
-    updateAccount({ initialBalance: Number(raw || 0) });
+    updateForm({ initialBalance: Number(raw || 0) });
   };
+
   const handleCreateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatJalaliInput(e.target.value, createInput);
     setCreateInput(formatted);
     const timestamp = parseJalaliInput(formatted);
-    if (timestamp > 0) updateAccount({ create: timestamp });
+    if (timestamp > 0) updateForm({ createTimestamp: timestamp });
   };
-  const handleColorChange = (color: AccountColorType) =>
-    updateAccount({ color });
+
+  const handleColorChange = (color: AccountColorType) => updateForm({ color });
 
   const handleSave = async () => {
     if (!isValid) return;
@@ -137,37 +143,40 @@ export default function AddAccount() {
       (max, a) => Math.max(max, a.order ?? 0),
       0,
     );
-    const finalAccount = { ...account, order: maxOrder + 1 };
 
-    await putItem(accountsStore, finalAccount);
+    const accountToSave: AccountType = {
+      id: form.id,
+      name: form.name,
+      type: form.type,
+      color: form.color,
+      order: maxOrder + 1,
+    };
+    await putItem(accountsStore, accountToSave);
 
     const initialTransaction: TransactionType = {
       id: crypto.randomUUID(),
       type: "initial",
       name: "موجودی اولیه",
-      time: finalAccount.create,
-      value: finalAccount.initialBalance,
-      debit: finalAccount.id,
+      time: form.createTimestamp,
+      value: form.initialBalance,
+      debit: form.id,
       credit: "",
     } as TransactionType;
-
     await putItem(transactionsStore, initialTransaction);
 
     addBalance({
-      id: finalAccount.id,
-      history: [
-        { time: finalAccount.create, balance: finalAccount.initialBalance },
-      ],
+      id: form.id,
+      history: [{ time: form.createTimestamp, balance: form.initialBalance }],
     });
 
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
-    await resetFormState();
+    resetFormState();
     router.back();
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
-    await resetFormState();
+    resetFormState();
     router.back();
   };
 
@@ -175,10 +184,10 @@ export default function AddAccount() {
     const data = sessionStorage.getItem(CREATE_ACCOUNT_KEY);
     if (!data) return;
     try {
-      const parsed = JSON.parse(data) as NewAccountType;
-      setAccount((prev) => {
+      const parsed = JSON.parse(data) as NewAccountFormType;
+      setForm((prev) => {
         if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-          setCreateInput(formatJalaliDate(parsed.create));
+          setCreateInput(formatJalaliDate(parsed.createTimestamp));
           return parsed;
         }
         return prev;
@@ -197,27 +206,30 @@ export default function AddAccount() {
           </Capsule>
         </NavbarTitle>
       </div>
+
       <div className="grid gap-10">
         <div className="grid gap-2">
           <span className="text-xs">نام حساب</span>
           <input
             type="text"
-            value={account.name}
+            value={form.name}
             onChange={handleNameChange}
             placeholder="بانک فلان"
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">نوع حساب</span>
           <Link
             href={`${pathname}/type`}
             className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
           >
-            <span>{AccountTypes[account.type].name}</span>
+            <span>{AccountTypes[form.type].name}</span>
             <Left width={16} height={16} className="fill-secondary" />
           </Link>
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">موجودی اولیه</span>
           <div className="relative">
@@ -225,8 +237,8 @@ export default function AddAccount() {
               type="text"
               inputMode="numeric"
               value={
-                account.initialBalance
-                  ? account.initialBalance.toLocaleString("fa-IR")
+                form.initialBalance
+                  ? form.initialBalance.toLocaleString("fa-IR")
                   : ""
               }
               onChange={handleInitialBalanceChange}
@@ -238,6 +250,7 @@ export default function AddAccount() {
             </span>
           </div>
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">تاریخ افتتاح حساب</span>
           <input
@@ -249,6 +262,7 @@ export default function AddAccount() {
             className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
           />
         </div>
+
         <div className="grid gap-2">
           <span className="text-xs">رنگ حساب</span>
           <div className="grid grid-cols-4 gap-7.5 w-full p-5">
@@ -257,7 +271,7 @@ export default function AddAccount() {
                 type="button"
                 key={key}
                 onClick={() => handleColorChange(key as AccountColorType)}
-                className={`${color.primary} h-11 w-11 rounded-3xl cursor-pointer transition-all duration-200 justify-self-center border-4 border-transparent ${account.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}`}
+                className={`${color.primary} h-11 w-11 rounded-3xl cursor-pointer transition-all duration-200 justify-self-center border-4 border-transparent ${form.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}`}
               />
             ))}
           </div>

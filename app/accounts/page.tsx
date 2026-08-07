@@ -27,6 +27,7 @@ import {
 import { AccountType } from "@/utility/accounts/types";
 import { getAll, putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
+import AccountsListElementLoading from "@/components/AccountsListElementLoading"; // ✅ ایمپورت لودینگ
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
@@ -35,6 +36,9 @@ export default function Accounts() {
   const router = useRouter();
   const [showHint, setShowHint] = useState(true);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+
   const haveUserAccount = accounts.filter((item) => !item.default).length > 0;
 
   const sensors = useSensors(
@@ -48,11 +52,14 @@ export default function Accounts() {
     const timer = setTimeout(() => setShowHint(false), 3000);
 
     (async () => {
-      setAccounts(
-        (await getAll<AccountType>(accountsStore)).sort(
-          (a, b) => (a.order ?? 0) - (b.order ?? 0),
-        ),
-      );
+      try {
+        const accs = await getAll<AccountType>(accountsStore);
+        setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+      } catch (error) {
+        console.error("Failed to load accounts:", error);
+      } finally {
+        setIsLoading(false);
+      }
     })();
 
     return () => clearTimeout(timer);
@@ -109,7 +116,7 @@ export default function Accounts() {
     }
   };
 
-  if (accounts.length === 0) return null;
+  if (!isLoading && accounts.length === 0) return null;
 
   return (
     <div className="p-7.5 grid gap-15">
@@ -123,7 +130,7 @@ export default function Accounts() {
 
       <div className="grid gap-5">
         <div
-          className={`absolute top-16 z-20 right-1/2 translate-x-1/2 w-screen p-7.5 transition-all duration-700 ${showHint ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`absolute top-16 z-20 right-1/2 translate-x-1/2 w-screen p-7.5 transition-all duration-700 ${showHint && !isLoading ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         >
           <div className="flex items-center justify-end">
             {haveUserAccount && (
@@ -139,44 +146,58 @@ export default function Accounts() {
           </div>
         </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={accounts.filter((a) => !a.hidden).map((a) => a.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {accounts.map(
-              (account) =>
-                !account.hidden && (
-                  <SortableAccountElement key={account.id} account={account}>
-                    <SwipeableElement
-                      isOpen={openItemId === account.id}
-                      onOpenChange={(open) =>
-                        setOpenItemId(open ? account.id : null)
-                      }
-                      onCloseOthers={() => setOpenItemId(null)}
-                      onEdit={() =>
-                        router.push(`/accounts/edit?id=${account.id}`)
-                      }
-                      onDelete={() =>
-                        router.push(`/accounts/delete?id=${account.id}`)
-                      }
-                      defaultAccount={account.default}
-                    >
-                      <AccountsListElement
+        {isLoading ? (
+          <div className="grid gap-5">
+            <AccountsListElementLoading />
+            <AccountsListElementLoading />
+            <AccountsListElementLoading />
+            <AccountsListElementLoading />
+          </div>
+        ) : (
+          <div className="grid gap-5 animate-fade-in">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={accounts.filter((a) => !a.hidden).map((a) => a.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {accounts.map(
+                  (account) =>
+                    !account.hidden && (
+                      <SortableAccountElement
+                        key={account.id}
                         account={account}
-                        balances={getBalances()}
-                        href={`accounts/details?id=${account.id}`}
-                      />
-                    </SwipeableElement>
-                  </SortableAccountElement>
-                ),
-            )}
-          </SortableContext>
-        </DndContext>
+                      >
+                        <SwipeableElement
+                          isOpen={openItemId === account.id}
+                          onOpenChange={(open) =>
+                            setOpenItemId(open ? account.id : null)
+                          }
+                          onCloseOthers={() => setOpenItemId(null)}
+                          onEdit={() =>
+                            router.push(`/accounts/edit?id=${account.id}`)
+                          }
+                          onDelete={() =>
+                            router.push(`/accounts/delete?id=${account.id}`)
+                          }
+                          defaultAccount={account.default}
+                        >
+                          <AccountsListElement
+                            account={account}
+                            balances={getBalances()}
+                            href={`accounts/details?id=${account.id}`}
+                          />
+                        </SwipeableElement>
+                      </SortableAccountElement>
+                    ),
+                )}
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ export default function TransactionItem({
         className={`text-xs flex items-center gap-1 font-medium
           ${type === "debit" ? "text-income-primary" : type === "credit" ? "text-expense-primary" : ""}`}
       >
-        {value.toLocaleString("fa-ir")}
+        {Number(value).toLocaleString("fa-ir")}
         <span
           className="grid place-content-center"
           style={{

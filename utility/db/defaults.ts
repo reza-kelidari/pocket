@@ -9,12 +9,6 @@ import { generateUUId } from "../shared/idGenerationMethods";
 const walletID = generateUUId();
 
 export function getDefaultAccounts(): AccountType[] {
-  const startOfYear = jalaliToTimestamp([
-    toJalaliDateArray(new Date())[0],
-    1,
-    1,
-  ]);
-
   return [
     {
       id: "00000000-0000-4000-0000-000000000001",
@@ -22,7 +16,6 @@ export function getDefaultAccounts(): AccountType[] {
       name: "طلب‌ها",
       color: "green2",
       type: "Wallet",
-      create: startOfYear,
       default: true,
     },
     {
@@ -31,7 +24,6 @@ export function getDefaultAccounts(): AccountType[] {
       name: "بدهی‌ها",
       color: "red",
       type: "Wallet",
-      create: startOfYear,
       default: true,
     },
     {
@@ -40,7 +32,6 @@ export function getDefaultAccounts(): AccountType[] {
       name: "وجوه در راه",
       color: "black",
       type: "Wallet",
-      create: startOfYear,
       default: true,
       hidden: true,
     },
@@ -50,7 +41,6 @@ export function getDefaultAccounts(): AccountType[] {
       name: "کیف پول نقدی",
       color: "orange",
       type: "Wallet",
-      create: startOfYear,
       default: true,
     },
   ];
@@ -62,7 +52,6 @@ export function getDefaultTransactions(): TransactionType[] {
     1,
     1,
   ]);
-
   return [
     {
       id: crypto.randomUUID(),

@@ -3,6 +3,7 @@
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import TransactionItem from "@/components/TransactionItem";
+import TransactionItemLoading from "@/components/TransactionItemLoading";
 import Left from "@/icons/Left";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -39,6 +40,8 @@ export default function Transactions() {
   const pathname = usePathname();
   const { accountsStore, transactionsStore } = DatabaseStores;
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const transactionsFilter: TransactionsFilterType = useMemo(
     () => ({
@@ -89,13 +92,19 @@ export default function Transactions() {
 
   useEffect(() => {
     (async () => {
-      setTransactions(await getAll<TransactionType>(transactionsStore));
-      setAccounts(await getAll<AccountType>(accountsStore));
+      try {
+        setTransactions(await getAll<TransactionType>(transactionsStore));
+        setAccounts(await getAll<AccountType>(accountsStore));
+      } catch (error) {
+        console.error("Failed to load transactions:", error);
+      } finally {
+        setIsLoading(false);
+      }
     })();
   }, [accountsStore, transactionsStore]);
 
   return (
-    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen">
+    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen animate-fade-in">
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
         <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-fill scrollbar-none">
@@ -160,7 +169,16 @@ export default function Transactions() {
         </div>
       </div>
 
-      {filteredTransactions.length === 0 ? (
+      {/* ✅ بخش نمایش لودینگ یا لیست تراکنش‌ها */}
+      {isLoading ? (
+        <div className="grid gap-4">
+          <TransactionItemLoading />
+          <TransactionItemLoading />
+          <TransactionItemLoading />
+          <TransactionItemLoading />
+          <TransactionItemLoading />
+        </div>
+      ) : filteredTransactions.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-10 h-full">
           <Filter className="fill-secondary" height={75} width={75} />
           <Description>با فیلتر‌های انتخابی هیچ تراکنشی یافت نشد.</Description>

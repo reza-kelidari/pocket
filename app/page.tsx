@@ -2,7 +2,7 @@
 
 import AccountCard from "@/components/AccountCard";
 import Button from "@/components/Button";
-import Chart from "@/components/ChartView";
+import ChartContainer from "@/components/ChartContainer";
 import QuickAccess from "@/app/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import useBalances from "@/utility/balance/service/useBalances";
@@ -16,7 +16,7 @@ import ThreeDots from "@/icons/ThreeDots";
 import Transfer from "@/icons/Transfer";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { deleteItem, getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { AccountType } from "@/utility/accounts/types";
@@ -25,6 +25,9 @@ import { SplashShownKey } from "@/utility/keys/sessionStore";
 import SwipeableElement from "@/components/SwipeableElement";
 import TransactionItem from "@/components/TransactionItem";
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
+import AccountCardLoading from "@/components/AccountCardLoading";
+import TransactionItemLoading from "@/components/TransactionItemLoading";
+import ChartContainerLoading from "@/components/ChartContainerLoading";
 
 export default function Home() {
   const router = useRouter();
@@ -36,30 +39,55 @@ export default function Home() {
   const [splashGuard, setSplashGuard] = useState<boolean>(true);
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [headerDate, setHeaderDate] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
+
+  const accountsScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sessionStorage.getItem(SplashShownKey)) router.replace("/splash");
     else setSplashGuard(false);
   }, [router]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   const loadData = async () => {
+    const isFirstLoad = accounts.length === 0 && transactions.length === 0;
+    if (isFirstLoad) setIsLoading(true);
+
     const [accs, txs] = await Promise.all([
       getAll<AccountType>(accountsStore),
       getAll<TransactionType>(transactionsStore),
     ]);
+
     setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
     setTransactions(txs);
-
     setBalances(getAccountBalances(accs, txs));
+
+    if (isFirstLoad) setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
   }, [accountsStore, transactionsStore]);
 
+  const resetAccountsScroll = () => {
+    if (accountsScrollRef.current) {
+      accountsScrollRef.current.scrollTo({ left: 0, behavior: "auto" });
+    }
+  };
+
+  useLayoutEffect(() => {
+    resetAccountsScroll();
+    const raf = requestAnimationFrame(resetAccountsScroll);
+    return () => cancelAnimationFrame(raf);
+  }, [isLoading, accounts]);
+
   usePageShowSync(() => {
     loadData();
+    requestAnimationFrame(resetAccountsScroll);
   }, []);
 
   useEffect(() => {
@@ -93,7 +121,6 @@ export default function Home() {
     await deleteItem(transactionsStore, id);
     const newTxs = transactions.filter((t) => t.id !== id);
     setTransactions(newTxs);
-
     setBalances(getAccountBalances(accounts, newTxs));
     setSwipedItem(null);
   };
@@ -117,20 +144,28 @@ export default function Home() {
             </div>
           </Title>
         </Link>
-        <div className="flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5">
-          {accounts.map(
-            (account) =>
-              !account.hidden && (
-                <AccountCard
-                  key={account.id}
-                  lastBalance={
-                    getBalances()
-                      .find((item) => item.id === account.id)
-                      ?.history?.at(-1)?.balance ?? 0
-                  }
-                  {...account}
-                />
-              ),
+
+        <div
+          ref={accountsScrollRef}
+          className={`flex gap-10 overflow-x-auto snap-x snap-mandatory px-[calc(50vw)] scrollbar-none -m-7.5 mb-0 py-7.5 ${!isLoading ? "animate-fade-in" : ""}`}
+        >
+          {isLoading ? (
+            <AccountCardLoading />
+          ) : (
+            accounts.map(
+              (account) =>
+                !account.hidden && (
+                  <AccountCard
+                    key={account.id}
+                    lastBalance={
+                      getBalances()
+                        .find((item) => item.id === account.id)
+                        ?.history?.at(-1)?.balance ?? 0
+                    }
+                    {...account}
+                  />
+                ),
+            )
           )}
         </div>
       </div>
@@ -143,50 +178,66 @@ export default function Home() {
         ))}
       </div>
 
-      <Chart
-        title={"روند موجودی"}
-        transactions={transactions}
-        timeSelector
-        link="/analyze"
-        linkTitle="تحلیل و بررسی پیشرفته"
-      />
+      {isLoading ? (
+        <ChartContainerLoading />
+      ) : (
+        <ChartContainer
+          title={"روند موجودی"}
+          transactions={transactions}
+          timeSelector
+          link="/analyze"
+          linkTitle="تحلیل و بررسی پیشرفته"
+        />
+      )}
 
-      <div className="grid gap-7.5">
+      <div className={`grid gap-7.5 ${!isLoading ? "animate-fade-in" : ""}`}>
         <Title>تراکنش‌های اخیر</Title>
 
         <div className="flex flex-col w-full gap-5">
-          {latestTransactions.map((transaction) => {
-            const accountID =
-              transaction.type === "credit"
-                ? transaction.credit
-                : transaction.debit;
+          {isLoading ? (
+            <>
+              <TransactionItemLoading />
+              <TransactionItemLoading />
+              <TransactionItemLoading />
+            </>
+          ) : (
+            latestTransactions.map((transaction) => {
+              const accountID =
+                transaction.type === "credit"
+                  ? transaction.credit
+                  : transaction.debit;
+              const account = accounts.find((acc) => acc.id === accountID);
+              if (!account) return null;
 
-            const account = accounts.find((acc) => acc.id === accountID);
-            if (!account) return null;
-
-            return (
-              <SwipeableElement
-                isOpen={transaction.id === swipedItem}
-                onOpenChange={() => setSwipedItem(transaction.id)}
-                onCloseOthers={() => setSwipedItem(null)}
-                onEdit={() =>
-                  transaction.type !== "initial"
-                    ? router.push(`/transactions/edit?id=${transaction.id}`)
-                    : router.push(`/accounts/edit?id=${account.id}`)
-                }
-                onDelete={
-                  transaction.type !== "initial"
-                    ? () => handleDeleteTransaction(transaction.id)
-                    : undefined
-                }
-                key={transaction.id}
-              >
-                <TransactionItem transaction={transaction} account={account} />
-              </SwipeableElement>
-            );
-          })}
+              return (
+                <SwipeableElement
+                  isOpen={transaction.id === swipedItem}
+                  onOpenChange={() => setSwipedItem(transaction.id)}
+                  onCloseOthers={() => setSwipedItem(null)}
+                  onEdit={() =>
+                    transaction.type !== "initial"
+                      ? router.push(`/transactions/edit?id=${transaction.id}`)
+                      : router.push(`/accounts/edit?id=${account.id}`)
+                  }
+                  onDelete={
+                    transaction.type !== "initial"
+                      ? () => handleDeleteTransaction(transaction.id)
+                      : undefined
+                  }
+                  key={transaction.id}
+                >
+                  <TransactionItem
+                    transaction={transaction}
+                    account={account}
+                  />
+                </SwipeableElement>
+              );
+            })
+          )}
         </div>
-        <Button href="/transactions">مشاهده همه تراکنش‌ها</Button>
+        {!isLoading && (
+          <Button href="/transactions">مشاهده همه تراکنش‌ها</Button>
+        )}
       </div>
     </div>
   );
