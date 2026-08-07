@@ -2,17 +2,21 @@
 
 import Button from "@/components/Button";
 import Capsule from "@/components/Capsule";
+import CapsuleLoading from "@/components/CapsuleLoading";
 import ChartView from "@/components/ChartContainer";
+import ChartContainerLoading from "@/components/ChartContainerLoading";
 import NavbarTitle from "@/components/NavbarTitle";
 import SectionTitle from "@/components/SectionTitle";
 import SwipeableElement from "@/components/SwipeableElement";
 import TransactionItem from "@/components/TransactionItem";
+import TransactionItemLoading from "@/components/TransactionItemLoading";
 import Pen from "@/icons/Pen";
 import { AccountType } from "@/utility/accounts/types";
 import useBalances from "@/utility/balance/service/useBalances";
 import { deleteItem, getAll, getItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { getAccountBalances } from "@/utility/shared/balancesMethods";
+import { PrimaryColors } from "@/utility/shared/colors";
 import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
 import { TransactionType } from "@/utility/transactions/types";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -27,6 +31,7 @@ export default function AccountsDetails() {
   const accountID = searchParams.get("id") ?? "";
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { setBalances } = useBalances();
 
   useEffect(() => {
@@ -34,7 +39,10 @@ export default function AccountsDetails() {
   }, [accountID, router]);
 
   useEffect(() => {
+    if (!accountID) return;
+
     (async () => {
+      setIsLoading(true);
       const [acc, accs, txs] = await Promise.all([
         getItem<AccountType>(accountsStore, accountID),
         getAll<AccountType>(accountsStore),
@@ -44,8 +52,9 @@ export default function AccountsDetails() {
       setAccount(acc);
       setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
       setTransactions(txs);
+      setIsLoading(false);
     })();
-  }, [accountID]);
+  }, [accountID, accountsStore, transactionsStore]);
 
   const handleDeleteTransaction = async (id: string) => {
     await deleteItem(transactionsStore, id);
@@ -56,51 +65,55 @@ export default function AccountsDetails() {
     setSwipedItem(null);
   };
 
-  if (!accountID || !account) {
-    return (
-      <div className="p-7.5 grid gap-15">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <div className="h-5 w-5 bg-elements-border rounded-md animate-pulse"></div>
-            <div className="h-6 w-24 bg-elements-border rounded-md animate-pulse"></div>
-          </div>
-          <div className="h-8 w-28 bg-elements-border rounded-4xl animate-pulse"></div>
-        </div>
-        <div className="h-56 w-full bg-elements-background border border-elements-border rounded-4xl animate-pulse p-5 flex flex-col gap-4">
-          <div className="h-4 w-1/4 bg-elements-border rounded-md"></div>
-          <div className="flex-1"></div>
-          <div className="h-8 w-1/3 bg-elements-border rounded-md"></div>
-        </div>
-        <div className="grid gap-5">
-          <div className="h-5 w-32 bg-elements-border rounded-md animate-pulse"></div>
-          <div className="h-14 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
-          <div className="h-14 w-full bg-elements-background border border-elements-border rounded-2xl animate-pulse"></div>
-        </div>
-      </div>
-    );
-  } else
-    return (
-      <div className="p-7.5 grid gap-15 animate-fade-in">
-        <div className="grid gap-7.5">
-          <NavbarTitle title={account.name}>
-            <Capsule Icon={Pen} href={`/accounts/edit?id=${account.id}`}>
+  if (!accountID) return null;
+
+  return (
+    <div className="p-7.5 grid gap-15 w-full max-w-full min-w-0 overflow-x-hidden">
+      <div className="grid gap-7.5">
+        <NavbarTitle title={isLoading ? "جزئیات حساب" : (account?.name ?? "")}>
+          {isLoading ? (
+            <CapsuleLoading />
+          ) : (
+            <Capsule
+              Icon={Pen}
+              href={`/accounts/edit?id=${account?.id}`}
+              className={`${PrimaryColors.secondary.box} animate-fade-in`}
+            >
               اصلاح حساب
             </Capsule>
-          </NavbarTitle>
+          )}
+        </NavbarTitle>
+      </div>
+
+      {isLoading ? (
+        <ChartContainerLoading />
+      ) : (
+        <div className="animate-fade-in w-full min-w-0">
+          <ChartView
+            title={`موجودی ${account?.name}`}
+            color={account?.color}
+            timeSelector
+            accountID={account?.id}
+            transactions={transactions}
+          />
         </div>
+      )}
 
-        <ChartView
-          title={`موجودی ${account.name}`}
-          color={account.color}
-          timeSelector
-          accountID={account.id}
-          transactions={transactions}
-        />
+      <div className="grid gap-7.5 w-full min-w-0">
+        {isLoading ? (
+          <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
+        ) : (
+          <SectionTitle>{`تراکنش‌های اخیر ${account?.name}`}</SectionTitle>
+        )}
 
-        <div className="grid gap-7.5">
-          <SectionTitle>{`تراکنش‌های اخیر ${account.name}`}</SectionTitle>
-
+        {isLoading ? (
           <div className="flex flex-col w-full gap-2.5">
+            {[0, 1, 2, 3].map((item) => (
+              <TransactionItemLoading key={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col w-full gap-2.5 animate-fade-in">
             {getLatestTransactions(
               transactions.filter((item) =>
                 [item.debit, item.credit].includes(accountID),
@@ -114,7 +127,7 @@ export default function AccountsDetails() {
                 onEdit={() =>
                   transaction.type !== "initial"
                     ? router.push(`/transactions/edit?id=${transaction.id}`)
-                    : router.push(`/accounts/edit?id=${account.id}`)
+                    : router.push(`/accounts/edit?id=${account?.id}`)
                 }
                 onDelete={
                   transaction.type !== "initial"
@@ -123,14 +136,20 @@ export default function AccountsDetails() {
                 }
                 key={transaction.id}
               >
-                <TransactionItem account={account} transaction={transaction} />
+                <TransactionItem account={account!} transaction={transaction} />
               </SwipeableElement>
             ))}
           </div>
-          <Button href={`/transactions?accounts=${accountID}`}>
-            مشاهده همه تراکنش‌ها
-          </Button>
-        </div>
+        )}
       </div>
-    );
+
+      {isLoading ? (
+        <div className="h-11.5 w-full rounded-2xl bg-elements-border animate-pulse"></div>
+      ) : (
+        <Button href={`/transactions?accounts=${accountID}`}>
+          مشاهده همه تراکنش‌ها
+        </Button>
+      )}
+    </div>
+  );
 }

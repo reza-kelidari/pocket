@@ -1,15 +1,17 @@
 "use client";
 
-import Button from "@/components/Button";
+import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
+import AccountsListElement from "@/components/AccountsListElement";
+import Left from "@/icons/Left";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { filterToUrl, parseStringArray } from "../methods";
-import AccountsListElement from "@/components/AccountsListElement";
 import useBalances from "@/utility/balance/service/useBalances";
 import { getAll } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { DatabaseStores } from "@/utility/keys/database";
+import AccountSelectorLoading from "@/components/AccountSelectorLoading";
 
 export default function AccountFilter() {
   const searchParams = useSearchParams();
@@ -44,48 +46,52 @@ export default function AccountFilter() {
     load();
   }, [accountsStore, router]);
 
-  const handleApplyFilter = () => {
-    const selectedAccounts =
-      accountFilter.length === 0
-        ? accounts.map((item) => item.id)
-        : accountFilter;
+  const selectedAccounts =
+    accountFilter.length === 0
+      ? accounts.map((item) => item.id)
+      : accountFilter;
 
-    const newUrl = `/transactions${filterToUrl({
-      ...transactionsFilter,
-      accounts:
-        selectedAccounts.length !== accounts.length ? selectedAccounts : [],
-    })}`;
-
-    router.replace(newUrl);
-  };
-
-  if (isLoading) return null;
+  const applyHref = `/transactions${filterToUrl({
+    ...transactionsFilter,
+    accounts:
+      selectedAccounts.length !== accounts.length ? selectedAccounts : [],
+  })}`;
 
   return (
     <div className="p-7.5 grid gap-15 w-screen overflow-hidden">
       <div className="grid gap-7.5">
-        <NavbarTitle title="حساب‌ها" disabled />
+        <NavbarTitle title="حساب‌ها" disabled>
+          <Capsule Icon={Left} primary href={applyHref} replace>
+            اعمال فیلتر
+          </Capsule>
+        </NavbarTitle>
       </div>
 
-      <div className="grid gap-4">
-        {accounts.map((item) => (
-          <AccountsListElement
-            account={item}
-            balances={getBalances()}
-            key={item.id}
-            disabled={!accountFilter.includes(item.id)}
-            onClick={() => {
-              setAccountFilter((prev) => {
-                if (prev.includes(item.id))
-                  return prev.filter((id) => id !== item.id);
-                return [...prev, item.id];
-              });
-            }}
-          />
-        ))}
-      </div>
-
-      <Button onClick={handleApplyFilter}>اعمال فیلتر</Button>
+      {isLoading ? (
+        <div className="grid gap-4">
+          {[0, 1, 2, 3].map((item) => (
+            <AccountSelectorLoading key={item} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 animate-fade-in">
+          {accounts.map((item) => (
+            <AccountsListElement
+              account={item}
+              balances={getBalances()}
+              key={item.id}
+              disabled={!accountFilter.includes(item.id)}
+              onClick={() => {
+                setAccountFilter((prev) => {
+                  if (prev.includes(item.id))
+                    return prev.filter((id) => id !== item.id);
+                  return [...prev, item.id];
+                });
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

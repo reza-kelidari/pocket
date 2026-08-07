@@ -4,16 +4,21 @@ import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 import { IconComponent } from "@/icons/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ComponentProps } from "react";
-import { AccountColorType } from "@/utility/accounts/types";
+import type {
+  ComponentProps,
+  MouseEvent as ReactMouseEvent,
+  MouseEventHandler,
+} from "react";
+import type { AccountColorType } from "@/utility/accounts/types";
 
-type CapsulePropsType = ComponentProps<"a"> & {
+type CapsulePropsType = Omit<ComponentProps<"a">, "onClick"> & {
   Icon: IconComponent;
   children: React.ReactNode;
   href?: string;
   primary?: boolean;
   accountColor?: AccountColorType;
   replace?: boolean;
+  onClick?: MouseEventHandler<HTMLElement>;
 };
 
 export default function Capsule({
@@ -28,30 +33,16 @@ export default function Capsule({
 }: CapsulePropsType) {
   const router = useRouter();
 
-  const className = `${props.className ? props.className : primary ? PrimaryColors.primary.box : PrimaryColors.secondary.box} border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap`;
+  const className = `${
+    props.className
+      ? props.className
+      : primary
+        ? PrimaryColors.primary.box
+        : PrimaryColors.secondary.box
+  } border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap`;
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (onClick) {
-      onClick(e);
-    }
-
-    if (e.defaultPrevented || !href || href === "#") {
-      return;
-    }
-
-    if (replace) {
-      e.preventDefault();
-      router.replace(href);
-    }
-  };
-
-  return (
-    <Link
-      {...props}
-      href={href ?? "#"}
-      className={className}
-      onClick={handleClick}
-    >
+  const content = (
+    <>
       {children}
       <Icon
         height={15}
@@ -59,6 +50,42 @@ export default function Capsule({
         fill={accountColor ? AccountColors[accountColor].primaryValue : ""}
         className={!props.className && primary ? "fill-primary" : ""}
       />
+    </>
+  );
+
+  const hasValidHref = Boolean(href && href !== "#");
+
+  if (!hasValidHref) {
+    return (
+      <button
+        type="button"
+        {...(props as ComponentProps<"button">)}
+        className={className}
+        onClick={onClick as unknown as MouseEventHandler<HTMLButtonElement>}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (onClick) onClick(event);
+    if (event.defaultPrevented) return;
+
+    if (replace) {
+      event.preventDefault();
+      router.replace(href as string);
+    }
+  };
+
+  return (
+    <Link
+      {...props}
+      href={href as string}
+      className={className}
+      onClick={handleClick}
+    >
+      {content}
     </Link>
   );
 }

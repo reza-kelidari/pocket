@@ -1,6 +1,7 @@
 "use client";
 
 import Capsule from "@/components/Capsule";
+import CapsuleLoading from "@/components/CapsuleLoading";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
 import { TransactionType } from "@/utility/transactions/types";
@@ -33,22 +34,22 @@ export default function TransactionEdit() {
 
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [tags, setTags] = useState<TagType[]>([]);
-
   const [transaction, setTransaction] = useState<TransactionType | null>(null);
   const [dateInput, setDateInput] = useState("");
   const [timeInput, setTimeInput] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ==================== State Update & Sync ====================
   const persist = useCallback((data: TransactionType) => {
     sessionStorage.setItem(CREATE_TRANSACTION_KEY, JSON.stringify(data));
   }, []);
 
-  // ==================== Initial Data Load ====================
   useEffect(() => {
     if (!txID) {
       router.replace("/transactions");
       return;
     }
+
+    setIsLoading(true);
 
     async function loadInitialData() {
       try {
@@ -73,7 +74,6 @@ export default function TransactionEdit() {
         }
 
         persist(initialTx);
-
         setTransaction(initialTx);
         setDateInput(formatJalaliDate(initialTx.time));
         setTimeInput(formatTimeInput(initialTx.time));
@@ -84,11 +84,12 @@ export default function TransactionEdit() {
         ]);
 
         accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
         setAccounts(accs);
         setTags(tgs);
       } catch (error) {
         router.replace("/transactions");
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -97,7 +98,6 @@ export default function TransactionEdit() {
 
   const transactionType = transaction?.type;
 
-  // ==================== Derived States ====================
   const toAccountName = useMemo(() => {
     if (!transaction) return "";
     const id =
@@ -126,7 +126,6 @@ export default function TransactionEdit() {
     return id ? (getCategoryById(id)?.name ?? "") : "";
   }, [transaction]);
 
-  // ==================== Validation ====================
   const isValid = useMemo(() => {
     if (!transaction) return false;
     const nameValid = transaction.name.trim().length >= 3;
@@ -165,7 +164,6 @@ export default function TransactionEdit() {
     [persist],
   );
 
-  // ==================== Handlers ====================
   const handleNameChange = (e: ChangeEvent<HTMLInputElement>) =>
     updateTransactionState({ name: e.target.value });
 
@@ -211,7 +209,6 @@ export default function TransactionEdit() {
     router.back();
   };
 
-  // ==================== Page Show Sync (برای برگشت از صفحات انتخاب) ====================
   usePageShowSync(() => {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data || !txID) return;
@@ -228,157 +225,171 @@ export default function TransactionEdit() {
     } catch {}
   }, [txID]);
 
-  if (!txID || !transaction || !transactionType) return null;
+  const navbarTitle = isLoading
+    ? "ویرایش تراکنش"
+    : transactionType === "debit"
+      ? "ویرایش دریافت"
+      : transactionType === "credit"
+        ? "ویرایش پرداخت"
+        : "ویرایش انتقال";
+
+  if (!txID) return null;
 
   return (
     <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
-        <NavbarTitle
-          title={
-            transactionType === "debit"
-              ? "ویرایش دریافت"
-              : transactionType === "credit"
-                ? "ویرایش پرداخت"
-                : "ویرایش انتقال"
-          }
-          onClick={handleCancel}
-        >
-          <Capsule Icon={Left} primary={isValid} onClick={handleSave}>
-            ذخیره تغییرات
-          </Capsule>
+        <NavbarTitle title={navbarTitle} onClick={handleCancel}>
+          {isLoading ? (
+            <CapsuleLoading />
+          ) : (
+            <Capsule Icon={Left} primary={isValid} onClick={handleSave}>
+              ذخیره تغییرات
+            </Capsule>
+          )}
         </NavbarTitle>
       </div>
 
-      <div className="grid gap-7.5">
-        <div className="grid gap-2">
-          <span className="text-xs">نام تراکنش</span>
-          <input
-            type="text"
-            value={transaction.name}
-            onChange={handleNameChange}
-            placeholder={
-              transactionType === "debit"
-                ? "حقوق ماهانه"
-                : transactionType === "credit"
-                  ? "خرید خونه"
-                  : "انتقال بین بانکی"
-            }
-            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-          />
+      {isLoading || !transaction ? (
+        <div className="grid gap-7.5 animate-pulse">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div key={i} className="grid gap-2">
+              <div className="h-3 w-16 rounded-md bg-elements-border"></div>
+              <div className="h-12 w-full rounded-2xl border border-elements-border bg-elements-background"></div>
+            </div>
+          ))}
         </div>
+      ) : (
+        <div className="grid gap-7.5">
+          <div className="grid gap-2">
+            <span className="text-xs">نام تراکنش</span>
+            <input
+              type="text"
+              value={transaction.name}
+              onChange={handleNameChange}
+              placeholder={
+                transactionType === "debit"
+                  ? "حقوق ماهانه"
+                  : transactionType === "credit"
+                    ? "خرید خونه"
+                    : "انتقال بین بانکی"
+              }
+              className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+            />
+          </div>
 
-        <div className="grid gap-2">
-          <span className="text-xs">مبلغ</span>
-          <div className="relative">
+          <div className="grid gap-2">
+            <span className="text-xs">مبلغ</span>
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={
+                  transaction.value
+                    ? transaction.value.toLocaleString("fa-IR")
+                    : ""
+                }
+                onChange={handleValueChange}
+                placeholder="۰"
+                className="h-12 w-full text-sm border border-elements-border bg-elements-background px-4 pl-10 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+              />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-[10px] pointer-events-none">
+                ﷼
+              </span>
+            </div>
+          </div>
+
+          {transactionType === "transfer" && (
+            <div className="grid gap-2">
+              <span className="text-xs">حساب مبدأ</span>
+              <Link
+                href={`/transactions/add/account?type=fromAccount`}
+                className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
+              >
+                <span>{fromAccountName || "انتخاب حساب مبدأ"}</span>
+                <Left width={16} height={16} className="fill-secondary" />
+              </Link>
+            </div>
+          )}
+
+          <div className="grid gap-2">
+            <span className="text-xs">
+              {transactionType === "transfer" ? "حساب مقصد" : "انتخاب حساب"}
+            </span>
+            <Link
+              href={`/transactions/add/account?type=toAccount`}
+              className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
+            >
+              <span>
+                {toAccountName ||
+                  (transactionType === "transfer"
+                    ? "انتخاب حساب مقصد"
+                    : "انتخاب حساب")}
+              </span>
+              <Left width={16} height={16} className="fill-secondary" />
+            </Link>
+          </div>
+
+          {["debit", "credit"].includes(transactionType!) && (
+            <div className="grid gap-2">
+              <span className="text-xs">دسته‌بندی</span>
+              <Link
+                href={`/transactions/add/category?type=${transactionType}`}
+                className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
+              >
+                <span>{categoryName || "انتخاب دسته‌بندی"}</span>
+                <Left width={16} height={16} className="fill-secondary" />
+              </Link>
+            </div>
+          )}
+
+          <div className="grid gap-2">
+            <span className="text-xs">برچسب (اختیاری)</span>
+            <Link
+              href={tags.length ? "/transactions/add/tag" : "#"}
+              className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
+            >
+              <span>{tagName || "نام برچسب"}</span>
+              <Left width={16} height={16} className="fill-secondary" />
+            </Link>
+          </div>
+
+          <div className="grid gap-2">
+            <span className="text-xs">تاریخ</span>
             <input
               type="text"
               inputMode="numeric"
-              value={
-                transaction.value
-                  ? transaction.value.toLocaleString("fa-IR")
-                  : ""
-              }
-              onChange={handleValueChange}
-              placeholder="۰"
-              className="h-12 w-full text-sm border border-elements-border bg-elements-background px-4 pl-10 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-            />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-[10px] pointer-events-none">
-              ﷼
-            </span>
-          </div>
-        </div>
-
-        {transactionType === "transfer" && (
-          <div className="grid gap-2">
-            <span className="text-xs">حساب مبدأ</span>
-            <Link
-              href={`/transactions/add/account?type=fromAccount`}
-              className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
-            >
-              <span>{fromAccountName || "انتخاب حساب مبدأ"}</span>
-              <Left width={16} height={16} className="fill-secondary" />
-            </Link>
-          </div>
-        )}
-
-        <div className="grid gap-2">
-          <span className="text-xs">
-            {transactionType === "transfer" ? "حساب مقصد" : "انتخاب حساب"}
-          </span>
-          <Link
-            href={`/transactions/add/account?type=toAccount`}
-            className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
-          >
-            <span>
-              {toAccountName ||
-                (transactionType === "transfer"
-                  ? "انتخاب حساب مقصد"
-                  : "انتخاب حساب")}
-            </span>
-            <Left width={16} height={16} className="fill-secondary" />
-          </Link>
-        </div>
-
-        {["debit", "credit"].includes(transactionType) && (
-          <div className="grid gap-2">
-            <span className="text-xs">دسته‌بندی</span>
-            <Link
-              href={`/transactions/add/category?type=${transactionType}`}
-              className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
-            >
-              <span>{categoryName || "انتخاب دسته‌بندی"}</span>
-              <Left width={16} height={16} className="fill-secondary" />
-            </Link>
-          </div>
-        )}
-
-        <div className="grid gap-2">
-          <span className="text-xs">برچسب (اختیاری)</span>
-          <Link
-            href={tags.length ? "/transactions/add/tag" : "#"}
-            className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
-          >
-            <span>{tagName || "نام برچسب"}</span>
-            <Left width={16} height={16} className="fill-secondary" />
-          </Link>
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-xs">تاریخ</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={dateInput}
-            onChange={handleDateChange}
-            placeholder="۱۴۰۵/۰۱/۰۱"
-            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-          />
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-xs">ساعت</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={timeInput}
-            onChange={handleTimeChange}
-            placeholder="۱۲:۰۰"
-            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-          />
-        </div>
-
-        <div className="grid gap-7.5">
-          <div className="grid gap-2">
-            <span className="text-xs">شرح تراکنش (اختیاری)</span>
-            <textarea
-              value={transaction.note}
-              onChange={handleNoteChange}
-              placeholder="توضیحات"
-              className="min-h-25 resize-y text-sm border border-elements-border bg-elements-background p-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+              value={dateInput}
+              onChange={handleDateChange}
+              placeholder="۱۴۰۵/۰۱/۰۱"
+              className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
             />
           </div>
+
+          <div className="grid gap-2">
+            <span className="text-xs">ساعت</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={timeInput}
+              onChange={handleTimeChange}
+              placeholder="۱۲:۰۰"
+              className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+            />
+          </div>
+
+          <div className="grid gap-7.5">
+            <div className="grid gap-2">
+              <span className="text-xs">شرح تراکنش (اختیاری)</span>
+              <textarea
+                value={transaction.note}
+                onChange={handleNoteChange}
+                placeholder="توضیحات"
+                className="min-h-25 resize-y text-sm border border-elements-border bg-elements-background p-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
       <br />
     </div>
   );

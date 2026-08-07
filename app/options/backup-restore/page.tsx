@@ -75,7 +75,7 @@ export default function Page() {
   };
 
   return (
-    <div className="p-7.5 grid gap-15 animate-fade-in">
+    <div className="p-7.5 grid gap-15">
       <div className="grid gap-7.5">
         <NavbarTitle title="پشتیبان‌گیری و بازیابی" />
       </div>
