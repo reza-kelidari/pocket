@@ -1,29 +1,45 @@
 import ExcelJS from "exceljs";
 import { AccountType } from "@/utility/accounts/types";
-import { TagType } from "@/utility/shared/tagTypes";
+import { TagItemTypes, TagType } from "@/utility/shared/tagTypes";
 import { TransactionCategories } from "@/utility/shared/transactionCategories";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
+import { AccountColors } from "@/utility/shared/colors";
 import { faToEn, PreviewData } from "./excelConstants";
 
 /**
- * Safely reads a cell value, handling rich text and formulas.
+ * Safely reads a cell value, handling rich text, formulas, and various data types.
  *
- * @param cell - The cell to read.
- * @returns The cell's string value.
+ * @param cell - The ExcelJS cell object to read.
+ * @returns The cell's value as a string, or empty string if unreadable.
  */
 function getCellVal(cell: any): string {
   if (!cell || cell.value === null || cell.value === undefined) return "";
   const v = cell.value;
+  if (
+    typeof v === "string" ||
+    typeof v === "number" ||
+    typeof v === "boolean"
+  ) {
+    return String(v);
+  }
   if (v.richText) {
     return v.richText.map((rt: any) => rt.text).join("");
   }
-  if (typeof v === "object" && v.result !== undefined) return v.result;
-  return String(v);
+  if (typeof v === "object") {
+    // Return the calculated result of a formula, not the formula itself
+    if (v.result !== undefined) return String(v.result);
+    // Skip cells with unresolved formulas
+    if (v.formula !== undefined || v.sharedFormula !== undefined) return "";
+    return "";
+  }
+  return "";
 }
 
 /**
  * Builds a map of category display names to their numeric IDs.
+ * The display format is "Group Name - Category Name".
  *
- * @returns A map of "سرفصل - دسته‌بندی" to category ID.
+ * @returns A map from category display name to its numeric ID.
  */
 function buildCategoryNameToIdMap(): Map<string, number> {
   const map = new Map<string, number>();
@@ -41,13 +57,21 @@ function buildCategoryNameToIdMap(): Map<string, number> {
 }
 
 /**
- * Parses an uploaded Excel file and extracts preview data.
+ * Parses an uploaded Excel file and extracts preview data for import confirmation.
  *
- * @param buffer - The uploaded file.
- * @param existingAccounts - The user's existing accounts.
- * @param existingTags - The user's existing tags.
- * @returns The parsed preview data.
- * @throws Error if the file structure is invalid.
+ * The function reads two sheets:
+ * - "حساب‌ها و برچسب‌ها": Extracts account and tag definitions with their internal codes.
+ * - "تراکنش‌ها": Extracts transaction rows with dates, amounts, and references.
+ *
+ * For accounts and tags, it determines whether each entry is new or needs updating
+ * by comparing against existing data. Type and color codes are resolved from either
+ * the hidden code columns (via VLOOKUP results) or by translating Persian names.
+ *
+ * @param buffer - The uploaded Excel file as an ArrayBuffer.
+ * @param existingAccounts - The user's existing accounts for comparison.
+ * @param existingTags - The user's existing tags for comparison.
+ * @returns A promise resolving to the parsed preview data.
+ * @throws Error if the file structure doesn't match the expected template.
  */
 export async function parseExcelFile(
   buffer: ArrayBuffer,
@@ -60,6 +84,7 @@ export async function parseExcelFile(
   const ws1 = wb.getWorksheet("حساب‌ها و برچسب‌ها");
   const ws3 = wb.getWorksheet("تراکنش‌ها");
 
+  // Validate sheet structure by checking header cells
   if (
     !ws1 ||
     String(getCellVal(ws1.getCell("A1"))) !== "ردیف" ||
@@ -84,10 +109,15 @@ export async function parseExcelFile(
   }
 
   /**
-   * Reads a time cell, handling Date objects and strings.
+   * Reads a time cell, handling Date objects, day fractions, and string formats.
    *
-   * @param cell - The cell to read.
-   * @returns The formatted time string.
+   * Excel may store time values in three ways:
+   * - Date object: Extracted using UTC methods to avoid timezone issues.
+   * - Fractional number: e.g., 0.5 = 12:00, 0.25 = 06:00 (fraction of a day).
+   * - String: e.g., "12:00" or "۱۲:۰۰" with Persian digits.
+   *
+   * @param cell - The ExcelJS cell object containing the time value.
+   * @returns The time formatted as "HH:MM:SS", or empty string if blank.
    */
   const getCellTime = (cell: any): string => {
     if (
@@ -97,20 +127,52 @@ export async function parseExcelFile(
       cell.value === ""
     )
       return "";
+    const val = cell.value;
 
-    let val = cell.value;
     if (val instanceof Date) {
-      const h = val.getHours();
-      const m = val.getMinutes();
-      const s = val.getSeconds();
+      const h = val.getUTCHours();
+      const m = val.getUTCMinutes();
+      const s = val.getUTCSeconds();
       return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     }
+
+    const num = Number(val);
+    if (!isNaN(num)) {
+      const fraction = num - Math.floor(num);
+      if (fraction > 0 || num === 0) {
+        const totalSeconds = Math.round(fraction * 24 * 3600);
+        const h = Math.floor(totalSeconds / 3600);
+        const min = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        return `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+      }
+    }
+
     return faToEn(String(val));
   };
+
+  // Build lookup maps: Persian display name -> internal code
+  // Note: "پیش‌فرض" (Default) is intentionally NOT mapped here.
+  // For default accounts, the existing type/color from the database is preserved.
+  const typeNameToCode = new Map<string, string>();
+  Object.entries(AccountTypes).forEach(([key, type]: [string, any]) => {
+    typeNameToCode.set(type.name, key);
+  });
+
+  const colorNameToCode = new Map<string, string>();
+  Object.entries(AccountColors).forEach(([key, color]: [string, any]) => {
+    colorNameToCode.set(color.name, key);
+  });
+
+  const tagTypeNameToCode = new Map<string, string>();
+  TagItemTypes.forEach((t: any) => {
+    tagTypeNameToCode.set(t.label, t.value);
+  });
 
   const categoryNameToId = buildCategoryNameToIdMap();
   const rawTransactions: any[] = [];
 
+  // Parse transaction rows from sheet 2
   ws3.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber < 3) return;
 
@@ -119,6 +181,7 @@ export async function parseExcelFile(
     const accountName = getCellVal(row.getCell(4));
     const tagName = getCellVal(row.getCell(6));
 
+    // Resolve transaction type code from hidden column or display name
     let typeCode = getCellVal(row.getCell(7));
     if (!typeCode || typeof typeCode !== "string") {
       const typeName = getCellVal(row.getCell(8));
@@ -135,8 +198,10 @@ export async function parseExcelFile(
     if (catOrDestName === "") {
       catOrDestCode = undefined;
     } else if (typeCode === "transfer") {
+      // For transfers, the destination is an account name (resolved later)
       catOrDestCode = catOrDestName;
     } else {
+      // For income/expense, resolve category name to its numeric ID
       catOrDestCode = categoryNameToId.get(catOrDestName) ?? catOrDestName;
     }
 
@@ -147,6 +212,7 @@ export async function parseExcelFile(
     const valueStr = faToEn(String(rawValue || "")).replace(/[^\d]/g, "");
     const value = valueStr ? parseInt(valueStr, 10) : 0;
 
+    // Skip completely empty rows
     const isDateEmpty =
       !date || (typeof date === "string" && date.trim() === "");
     const isAccEmpty =
@@ -172,32 +238,53 @@ export async function parseExcelFile(
   const accList: any[] = [];
   const accMap = new Map<string, any>();
 
+  // Parse account rows from sheet 1
   ws1.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber < 2) return;
 
     const accName = getCellVal(row.getCell(2));
     const accId = getCellVal(row.getCell(3));
-    const accType = getCellVal(row.getCell(4));
-    const accColor = getCellVal(row.getCell(6));
 
     if (accName === "-" || accName === "") return;
 
     const existingAcc = existingAccounts.find((a) => a.id === accId);
     const isNew = !existingAcc;
 
+    // Read account type: prefer code column (E), fallback to name column (D)
+    let accType = getCellVal(row.getCell(5));
+    if (!accType || accType === "") {
+      const accTypeName = getCellVal(row.getCell(4));
+      if (accTypeName === "پیش‌فرض") {
+        // Leave empty for default accounts; will use existing value
+        accType = "";
+      } else {
+        accType = typeNameToCode.get(accTypeName) || accTypeName;
+      }
+    }
+
+    // Read account color: prefer code column (G), fallback to name column (F)
+    let accColor = getCellVal(row.getCell(7));
+    if (!accColor || accColor === "") {
+      const accColorName = getCellVal(row.getCell(6));
+      if (accColorName === "پیش‌فرض") {
+        // Leave empty for default accounts; will use existing value
+        accColor = "";
+      } else {
+        accColor = colorNameToCode.get(accColorName) || accColorName;
+      }
+    }
+
+    // Account needs update if name changed
+    const needsUpdate = !isNew && existingAcc.name !== accName;
+
     const accEntry = {
       name: accName,
-      type: accType,
-      color: accColor,
+      // Fallback: existing type for updates, "Bank" for new accounts
+      type: accType || existingAcc?.type || "Bank",
+      // Fallback: existing color for updates, "Black" for new accounts
+      color: accColor || existingAcc?.color || "Black",
       isNew,
-      needsUpdate:
-        !isNew &&
-        JSON.stringify(existingAcc) !==
-          JSON.stringify({
-            name: accName,
-            type: accType,
-            color: accColor,
-          }),
+      needsUpdate,
       txCount: 0,
       finalBalance: 0,
       order: Number(getCellVal(row.getCell(1))) || 0,
@@ -214,6 +301,7 @@ export async function parseExcelFile(
   const tagList: any[] = [];
   const tagMap = new Map<string, any>();
 
+  // Parse tag rows from sheet 1
   ws1.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber < 2) return;
 
@@ -222,14 +310,22 @@ export async function parseExcelFile(
 
     if (tagName === "-" || tagName === "") return;
 
+    // Read tag type: prefer code column (L), fallback to name column (K)
+    let tagType = getCellVal(row.getCell(12));
+    if (!tagType || tagType === "") {
+      const tagTypeName = getCellVal(row.getCell(11));
+      tagType = tagTypeNameToCode.get(tagTypeName) || tagTypeName;
+    }
+
     const existingTag = existingTags.find((t) => t.id === tagId);
     const isNew = !existingTag;
+    const needsUpdate = !isNew && existingTag.name !== tagName;
 
     const tagEntry = {
       name: tagName,
-      type: getCellVal(row.getCell(11)),
+      type: tagType || existingTag?.type || "other",
       isNew,
-      needsUpdate: !isNew,
+      needsUpdate,
       txCount: 0,
       order: Number(getCellVal(row.getCell(8))) || 0,
       id: tagId,
@@ -241,6 +337,7 @@ export async function parseExcelFile(
     }
   });
 
+  // Calculate transaction counts and final balances for preview
   rawTransactions.forEach((tx) => {
     if (accMap.has(tx.accountName)) {
       const acc = accMap.get(tx.accountName);
@@ -249,6 +346,7 @@ export async function parseExcelFile(
       else acc.finalBalance += tx.value;
     }
 
+    // For transfers, also update the destination account
     if (tx.type === "transfer") {
       const destKey = String(tx.catOrDestCode);
       if (accMap.has(destKey)) {
@@ -263,6 +361,7 @@ export async function parseExcelFile(
     }
   });
 
+  // Ensure the file contains at least some new data
   const hasNewData =
     rawTransactions.length > 0 ||
     accList.some((a) => a.isNew) ||

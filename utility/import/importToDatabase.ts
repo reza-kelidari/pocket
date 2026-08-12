@@ -8,11 +8,11 @@ import { MessageType } from "@/app/message/page";
 import { PreviewData } from "./excelConstants";
 
 /**
- * Splits an array into chunks of a specified size.
+ * Splits an array into smaller chunks of a specified size.
  *
- * @param array - The array to split.
- * @param size - The chunk size.
- * @returns An array of chunks.
+ * @param array - The array to split into chunks.
+ * @param size - The maximum number of elements per chunk.
+ * @returns An array of chunk arrays.
  */
 const chunkArray = (array: any[], size: number) => {
   const result = [];
@@ -23,12 +23,22 @@ const chunkArray = (array: any[], size: number) => {
 };
 
 /**
- * Imports parsed Excel data into the database.
+ * Imports parsed Excel data into the local database.
  *
- * @param previewData - The parsed preview data from Excel.
- * @param existingAccounts - The user's existing accounts.
- * @param existingTags - The user's existing tags.
- * @param router - The Next.js router instance.
+ * This function performs the following operations:
+ * 1. Validates all transactions for required fields and referential integrity.
+ * 2. Creates or updates accounts based on the parsed data.
+ * 3. Creates or updates tags based on the parsed data.
+ * 4. Creates transaction records with resolved foreign key references.
+ *
+ * On success, navigates to the message page with a success summary.
+ * On validation errors, navigates to the message page with error details.
+ *
+ * @param previewData - The parsed preview data from the uploaded Excel file.
+ * @param existingAccounts - The user's existing accounts in the database.
+ * @param existingTags - The user's existing tags in the database.
+ * @param router - The Next.js router instance for navigation.
+ * @returns A promise that resolves when the import is complete or redirected.
  */
 export async function importDataToDatabase(
   previewData: PreviewData,
@@ -36,6 +46,7 @@ export async function importDataToDatabase(
   existingTags: TagType[],
   router: any,
 ) {
+  // Build a set of valid category IDs for transaction validation
   const validCategoryIds = new Set<any>();
   TransactionCategories.expense.forEach((g) =>
     g.sub.forEach((s) => validCategoryIds.add(s.id)),
@@ -47,12 +58,14 @@ export async function importDataToDatabase(
   const errors: string[] = [];
   const validTypes = ["debit", "credit", "transfer", "initial"];
 
+  // Filter out completely empty rows
   const validTxs = previewData.rawTransactions.filter((tx) => {
     const hasDate = tx.date && String(tx.date).trim() !== "";
     const hasAcc = tx.accountName && String(tx.accountName).trim() !== "";
     return hasDate || hasAcc;
   });
 
+  // Validate each transaction
   for (const tx of validTxs) {
     const missing: string[] = [];
 
@@ -60,6 +73,15 @@ export async function importDataToDatabase(
     if (!tx.time && tx.type !== "initial") missing.push("ساعت");
     if (!tx.accountName) missing.push("نام حساب");
     if (!tx.type || !validTypes.includes(tx.type)) missing.push("نوع تراکنش");
+
+    // Tags are not allowed for initial and transfer transactions
+    if (
+      (tx.type === "initial" || tx.type === "transfer") &&
+      tx.tagName &&
+      tx.tagName.trim() !== ""
+    ) {
+      missing.push("برچسب (مجاز نیست)");
+    }
 
     if (
       tx.type !== "initial" &&
@@ -84,6 +106,7 @@ export async function importDataToDatabase(
       continue;
     }
 
+    // Validate transfer destination exists
     if (tx.type === "transfer") {
       const destName = String(tx.catOrDestCode);
       const existsInUploaded = previewData.accounts.some(
@@ -97,6 +120,7 @@ export async function importDataToDatabase(
           `در ردیف ${tx.excelRow} از حساب مقصد نامعتبری استفاده شده است.`,
         );
     } else if (tx.type === "credit" || tx.type === "debit") {
+      // Validate category exists for income/expense transactions
       if (!validCategoryIds.has(tx.catOrDestCode))
         errors.push(
           `در ردیف ${tx.excelRow} از دسته‌بندی نامعتبری استفاده شده است.`,
@@ -104,6 +128,7 @@ export async function importDataToDatabase(
     }
   }
 
+  // Redirect to message page on validation errors
   if (errors.length > 0) {
     const message: MessageType = {
       title: "خطا در ورود اطلاعات",
@@ -116,6 +141,7 @@ export async function importDataToDatabase(
   }
 
   try {
+    // Build resolvers for mapping names to IDs
     const accIdResolver = new Map<string, string>();
     const tagIdResolver = new Map<string, string>();
 
@@ -127,7 +153,6 @@ export async function importDataToDatabase(
       tagIdResolver.set(t.name, t.id);
       tagIdResolver.set(t.id, t.id);
     });
-
     previewData.accounts.forEach((a) => {
       accIdResolver.set(a.name, a.id);
       accIdResolver.set(a.id, a.id);
@@ -139,16 +164,65 @@ export async function importDataToDatabase(
 
     const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
-    const newAccounts = previewData.accounts.filter((a) => a.isNew);
-    for (const chunk of chunkArray(newAccounts, 50)) {
+    // Save new and updated accounts in batches
+    const accountsToSave: any[] = [];
+    for (const a of previewData.accounts) {
+      if (a.isNew) {
+        accountsToSave.push({
+          id: a.id || crypto.randomUUID(),
+          name: a.name,
+          type: a.type,
+          color: a.color,
+          order: a.order,
+          default: a.default ?? false,
+          hidden: false,
+        });
+      } else if (a.needsUpdate) {
+        const existing = existingAccounts.find((e) => e.id === a.id);
+        if (existing) {
+          accountsToSave.push({
+            ...existing,
+            name: a.name,
+            type: a.type || existing.type,
+            color: a.color || existing.color,
+            order: a.order,
+          });
+        }
+      }
+    }
+
+    for (const chunk of chunkArray(accountsToSave, 50)) {
       await putItem(accountsStore, chunk);
     }
 
-    const newTags = previewData.tags.filter((t) => t.isNew);
-    for (const chunk of chunkArray(newTags, 50)) {
+    // Save new and updated tags in batches
+    const tagsToSave: any[] = [];
+    for (const t of previewData.tags) {
+      if (t.isNew) {
+        tagsToSave.push({
+          id: t.id || crypto.randomUUID(),
+          name: t.name,
+          type: t.type,
+          order: t.order,
+        });
+      } else if (t.needsUpdate) {
+        const existing = existingTags.find((e) => e.id === t.id);
+        if (existing) {
+          tagsToSave.push({
+            ...existing,
+            name: t.name,
+            type: t.type || existing.type,
+            order: t.order,
+          });
+        }
+      }
+    }
+
+    for (const chunk of chunkArray(tagsToSave, 50)) {
       await putItem(tagsStore, chunk);
     }
 
+    // Build and save transaction records
     const txsToSave: any[] = [];
 
     for (const tx of validTxs) {
@@ -156,7 +230,6 @@ export async function importDataToDatabase(
       if (!accId) continue;
 
       const [y, m, d] = String(tx.date).split("/").map(Number);
-
       const timeStr =
         tx.type === "initial" ? "00:00:00" : String(tx.time || "00:00");
 
@@ -164,12 +237,14 @@ export async function importDataToDatabase(
         min = 0,
         s = 0;
 
+      // Parse time from string format (HH:MM:SS)
       if (timeStr.includes(":")) {
         const parts = timeStr.split(":").map(Number);
         h = parts[0] || 0;
         min = parts[1] || 0;
         s = parts[2] || 0;
       } else if (!isNaN(Number(timeStr))) {
+        // Parse time from fractional day format (Excel stores time as fraction of day)
         const fraction = Number(timeStr);
         if (fraction > 0 && fraction < 1) {
           const totalSeconds = Math.round(fraction * 24 * 3600);
@@ -186,10 +261,12 @@ export async function importDataToDatabase(
       let creditId = "";
       let tagId: string | undefined = undefined;
 
-      if (tx.tagName) {
+      // Resolve tag ID (skip for initial and transfer transactions)
+      if (tx.tagName && tx.type !== "initial" && tx.type !== "transfer") {
         tagId = tagIdResolver.get(tx.tagName);
       }
 
+      // Determine debit and credit account IDs based on transaction type
       if (tx.type === "debit" || tx.type === "initial") {
         debitId = accId;
         creditId = tx.catOrDestCode;
@@ -214,20 +291,33 @@ export async function importDataToDatabase(
       });
     }
 
+    // Save transactions in batches
     for (const chunk of chunkArray(txsToSave, 50)) {
       await putItem(transactionsStore, chunk);
     }
 
+    // Calculate summary statistics
+    const newAccountsCount = previewData.accounts.filter((a) => a.isNew).length;
+    const updatedAccountsCount = previewData.accounts.filter(
+      (a) => a.needsUpdate,
+    ).length;
+    const newTagsCount = previewData.tags.filter((t) => t.isNew).length;
+    const updatedTagsCount = previewData.tags.filter(
+      (t) => t.needsUpdate,
+    ).length;
+
+    // Redirect to message page with success summary
     const message: MessageType = {
       title: "ورود اطلاعات موفق",
       type: "done",
       message: [
-        `اطلاعات ${previewData.accounts.filter((a) => a.isNew).length} حساب جدید، ${previewData.tags.filter((t) => t.isNew).length} برچسب جدید و ${txsToSave.length} تراکنش با موفقیت وارد شد.`,
+        `اطلاعات ${newAccountsCount} حساب جدید، ${updatedAccountsCount} حساب بروزرسانی‌شده، ${newTagsCount} برچسب جدید، ${updatedTagsCount} برچسب بروزرسانی‌شده و ${txsToSave.length} تراکنش با موفقیت وارد شد.`,
       ],
     };
     sessionStorage.setItem("message", JSON.stringify(message));
     router.replace("/message");
   } catch (error: any) {
+    // Redirect to message page on system error
     const errorMessage: MessageType = {
       title: "خطای سیستم",
       type: "error",
