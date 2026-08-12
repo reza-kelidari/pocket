@@ -1,9 +1,10 @@
 import { AccountType } from "../accounts/types";
-import { TransactionType } from "../transactions/types";
+import { TransactionType } from "../shared/transactionTypes";
 import { AccountBalanceType, BalanceType } from "../balance/types";
 
 /**
  * Calculates the daily balance history for a specific account.
+ * Only days with transactions are stored to optimize memory and performance.
  */
 export function getAccountBalanceHistory(
   transactions: TransactionType[],
@@ -15,55 +16,36 @@ export function getAccountBalanceHistory(
 
   if (accTxs.length === 0) return { id: accountID, history: [] };
 
-  const balances: BalanceType[] = [];
+  const balanceByDay = new Map<number, number>();
   let balance = 0;
 
-  // پیدا کردن روز اولین تراکنش
-  const startDay = new Date(accTxs[0].time);
-  startDay.setHours(0, 0, 0, 0);
+  for (const tx of accTxs) {
+    const txDate = new Date(tx.time);
+    txDate.setHours(0, 0, 0, 0);
+    const dayTimestamp = txDate.getTime();
 
-  // روز امروز
-  const endDay = new Date();
-  endDay.setHours(0, 0, 0, 0);
+    if (tx.debit === accountID) balance += tx.value;
+    else if (tx.credit === accountID) balance -= tx.value;
 
-  let currentDay = startDay.getTime();
-  let txIndex = 0;
-
-  // حلقه روز به روز تا رسیدن به امروز
-  while (currentDay <= endDay.getTime()) {
-    // اعمال تمام تراکنش‌هایی که در این روز (currentDay) رخ داده‌اند
-    while (
-      txIndex < accTxs.length &&
-      new Date(accTxs[txIndex].time).setHours(0, 0, 0, 0) === currentDay
-    ) {
-      const tx = accTxs[txIndex];
-      if (tx.debit === accountID) balance += tx.value;
-      else if (tx.credit === accountID) balance -= tx.value;
-      txIndex++;
-    }
-
-    // ثبت موجودی برای این روز
-    balances.push({
-      time: currentDay,
-      balance,
-    });
-
-    // رفتن به روز بعد (۲۴ ساعت)
-    currentDay += 24 * 60 * 60 * 1000;
+    balanceByDay.set(dayTimestamp, balance);
   }
 
-  return { id: accountID, history: balances };
+  const history: BalanceType[] = Array.from(balanceByDay.entries()).map(
+    ([time, balance]) => ({ time, balance }),
+  );
+
+  return { id: accountID, history };
 }
 
 /**
  * Calculates the daily total balance history across all accounts.
+ * Only days with transactions are stored.
  */
 export function getTotalBalanceHistory(
   transactions: TransactionType[],
 ): BalanceType[] {
   if (!transactions || transactions.length === 0) return [];
 
-  // فیلتر کردن تراکنش‌هایی که روی موجودی کلی تاثیر دارند (transfer تاثیر روی کل ندارد)
   const validTxs = transactions
     .filter((t) => ["initial", "debit", "credit"].includes(t.type))
     .sort((a, b) => a.time - b.time);
@@ -74,37 +56,27 @@ export function getTotalBalanceHistory(
     return [{ time: today.getTime(), balance: 0 }];
   }
 
-  const history: BalanceType[] = [];
+  const balanceByDay = new Map<number, number>();
   let balance = 0;
 
-  const startDay = new Date(validTxs[0].time);
-  startDay.setHours(0, 0, 0, 0);
+  for (const tx of validTxs) {
+    const txDate = new Date(tx.time);
+    txDate.setHours(0, 0, 0, 0);
+    const dayTimestamp = txDate.getTime();
 
-  const endDay = new Date();
-  endDay.setHours(0, 0, 0, 0);
-
-  let currentDay = startDay.getTime();
-  let txIndex = 0;
-
-  while (currentDay <= endDay.getTime()) {
-    while (
-      txIndex < validTxs.length &&
-      new Date(validTxs[txIndex].time).setHours(0, 0, 0, 0) === currentDay
-    ) {
-      const tx = validTxs[txIndex];
-      if (tx.type === "initial" || tx.type === "debit") {
-        balance += tx.value;
-      } else if (tx.type === "credit") {
-        balance -= tx.value;
-      }
-      txIndex++;
+    if (tx.type === "initial" || tx.type === "debit") {
+      balance += tx.value;
+    } else if (tx.type === "credit") {
+      balance -= tx.value;
     }
 
-    history.push({ time: currentDay, balance });
-    currentDay += 24 * 60 * 60 * 1000;
+    balanceByDay.set(dayTimestamp, balance);
   }
 
-  return history;
+  return Array.from(balanceByDay.entries()).map(([time, balance]) => ({
+    time,
+    balance,
+  }));
 }
 
 export function getAccountBalances(

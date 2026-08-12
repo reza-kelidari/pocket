@@ -1,57 +1,44 @@
 "use client";
 
 import { AccountColors } from "@/utility/shared/colors";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import Wallet from "@/icons/Wallet";
 import Link from "next/link";
 import { AccountType } from "@/utility/accounts/types";
-import { useEffect, useState } from "react";
-import { getItem } from "@/utility/db/Database";
-import { DatabaseStores } from "@/utility/keys/database";
 
 type TransactionItemParamsType = {
   transaction: TransactionType;
   account: AccountType;
+  accounts: AccountType[];
 };
 
 export default function TransactionItem({
   transaction,
   account,
+  accounts,
 }: TransactionItemParamsType) {
   const { id: txID, name, time, type, value, debit, credit } = transaction;
-  const { accountsStore } = DatabaseStores;
 
-  const [transferNames, setTransferNames] = useState<string[]>(["", ""]);
+  const creditAcc = accounts.find((acc) => acc.id === credit);
+  const debitAcc = accounts.find((acc) => acc.id === debit);
 
   const txName =
     type === "initial"
       ? "موجودی اولیه"
       : type === "transfer"
-        ? transferNames[0] + " › " + transferNames[1]
+        ? `${creditAcc?.name ?? ""} › ${debitAcc?.name ?? ""}`
         : name;
 
   const date = new Date(time);
   const isSameYear =
     new Date().toLocaleDateString("fa-ir", { year: "numeric" }) ===
     date.toLocaleDateString("fa-ir", { year: "numeric" });
+
   const dateOptions: Intl.DateTimeFormatOptions = {
     day: "2-digit",
     month: "long",
     year: !isSameYear ? "numeric" : undefined,
   };
-
-  useEffect(() => {
-    (async () => {
-      if (type !== "transfer") return;
-
-      const [creditAcc, debitAcc] = (await Promise.all([
-        getItem(accountsStore, credit),
-        getItem(accountsStore, debit),
-      ])) as (AccountType | undefined)[];
-
-      setTransferNames([creditAcc?.name ?? "", debitAcc?.name ?? ""]);
-    })();
-  }, [type, debit, credit]);
 
   return (
     <Link

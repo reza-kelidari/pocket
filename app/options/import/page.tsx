@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import Description from "@/components/Description";
 import { generateExcelTemplate } from "@/utility/import/generateTemplate";
 import { importDataToDatabase } from "@/utility/import/importToDatabase";
-import { parseUploadedExcel } from "@/utility/import/parseExcelFile";
+import { parseExcelFile } from "@/utility/import/parseExcelFile";
 import PreviewSection from "./components/ShowDataPreview";
 import { PreviewData } from "@/utility/import/excelConstants";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
@@ -26,18 +26,16 @@ export default function ImportExcelPage() {
 
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const [isImporting, setIsImporting] = useState(false); // ✅ استیت لودینگ
+  const [isImporting, setIsImporting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadInitial() {
-      const accs = await getAll<AccountType>(DatabaseStores.accountsStore);
-      accs.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
-      setExistingAccounts(accs);
+      setExistingAccounts(
+        await getAll<AccountType>(DatabaseStores.accountsStore),
+      );
 
-      const tags = await getAll<TagType>(DatabaseStores.tagsStore);
-      tags.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
-      setExistingTags(tags);
+      setExistingTags(await getAll<TagType>(DatabaseStores.tagsStore));
     }
     loadInitial();
   }, []);
@@ -57,7 +55,7 @@ export default function ImportExcelPage() {
     reader.onload = async (event) => {
       const buffer = event.target?.result as ArrayBuffer;
       try {
-        const parsedData = await parseUploadedExcel(
+        const parsedData = await parseExcelFile(
           buffer,
           existingAccounts,
           existingTags,

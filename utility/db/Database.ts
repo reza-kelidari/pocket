@@ -24,8 +24,12 @@ async function handleUnauthorized(res: Response) {
   }
 }
 
-export async function getAll<T>(store: string): Promise<T[]> {
-  const res = await fetch(`/api/${store}`);
+export async function getAll<T>(
+  store: string,
+  queryString?: string,
+): Promise<T[]> {
+  const url = queryString ? `/api/${store}?${queryString}` : `/api/${store}`;
+  const res = await fetch(url);
   await handleUnauthorized(res);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));

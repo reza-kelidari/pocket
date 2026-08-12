@@ -1,7 +1,13 @@
-import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { AccountColors } from "@/utility/shared/colors";
+import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { TagItemTypes } from "@/utility/shared/tagTypes";
 
+/**
+ * Converts Persian digits to English digits.
+ *
+ * @param s - The input string.
+ * @returns The string with Persian digits converted to English.
+ */
 export const faToEn = (s: string) =>
   s
     ? s.toString().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
@@ -19,8 +25,12 @@ export const excelColorOptions = Object.keys(AccountColors).map((key) => {
 });
 
 export const excelTypeOptions = Object.values(AccountTypes).map((t) => t.name);
+
 export const excelTagTypeOptions = TagItemTypes.map((t) => t.label);
 
+/**
+ * Preview data structure returned by parseExcelFile.
+ */
 export type PreviewData = {
   accounts: {
     name: string;
@@ -43,5 +53,16 @@ export type PreviewData = {
     order: number;
     id: string;
   }[];
-  rawTransactions: any[];
+  rawTransactions: {
+    excelRow: number;
+    date: string;
+    time: string;
+    accountName: string;
+    tagName: string;
+    catOrDestCode: any;
+    type: string;
+    txName: string;
+    note: string;
+    value: number;
+  }[];
 };

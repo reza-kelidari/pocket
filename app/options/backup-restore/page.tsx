@@ -9,7 +9,7 @@ import { BackupType, getBackup } from "@/utility/backup-restore/methods";
 import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { TagType } from "@/utility/shared/tagTypes";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { RESTORE_DATA_KEY } from "./restore/page";
@@ -29,18 +29,36 @@ export default function Page() {
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
   useEffect(() => {
+    let isMounted = true;
+
     (async () => {
       try {
-        setAccounts(await getAll<AccountType>(accountsStore));
-        setTransactions(await getAll<TransactionType>(transactionsStore));
-        setTags(await getAll<TagType>(tagsStore));
+        const [accs, txs, tgs] = await Promise.all([
+          getAll<AccountType>(accountsStore),
+          getAll<TransactionType>(transactionsStore),
+          getAll<TagType>(tagsStore),
+        ]);
+
+        if (isMounted) {
+          setAccounts(accs);
+          setTransactions(txs);
+          setTags(tgs);
+        }
       } catch (err: any) {
-        console.error("Backup load error:", err);
-        setError(err.message || "خطا در خواندن اطلاعات از دیتابیس");
+        if (isMounted) {
+          console.error("Backup load error:", err);
+          setError(err.message || "خطا در خواندن اطلاعات از دیتابیس");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, [accountsStore, transactionsStore, tagsStore]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {

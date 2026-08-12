@@ -20,7 +20,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { deleteItem, getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { SplashShownKey } from "@/utility/keys/sessionStore";
 import SwipeableElement from "@/components/SwipeableElement";
 import TransactionItem from "@/components/TransactionItem";
@@ -38,6 +38,7 @@ export default function Home() {
 
   const [splashGuard, setSplashGuard] = useState<boolean>(true);
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
+  const [dragCounter, setDragCounter] = useState(0);
   const [headerDate, setHeaderDate] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
@@ -56,16 +57,13 @@ export default function Home() {
   const loadData = async () => {
     const isFirstLoad = accounts.length === 0 && transactions.length === 0;
     if (isFirstLoad) setIsLoading(true);
-
     const [accs, txs] = await Promise.all([
       getAll<AccountType>(accountsStore),
       getAll<TransactionType>(transactionsStore),
     ]);
-
-    setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+    setAccounts(accs);
     setTransactions(txs);
     setBalances(getAccountBalances(accs, txs));
-
     if (isFirstLoad) setIsLoading(false);
   };
 
@@ -101,7 +99,7 @@ export default function Home() {
   }, [pathname]);
 
   const latestTransactions = useMemo(() => {
-    return getLatestTransactions(transactions, 5);
+    return transactions.slice(0, 5);
   }, [transactions]);
 
   const quickAccessList: { name: string; link: string; icon: IconComponent }[] =
@@ -213,7 +211,11 @@ export default function Home() {
                 <SwipeableElement
                   isOpen={transaction.id === swipedItem}
                   onOpenChange={() => setSwipedItem(transaction.id)}
-                  onCloseOthers={() => setSwipedItem(null)}
+                  onCloseOthers={() => {
+                    setSwipedItem(null);
+                    setDragCounter((c) => c + 1);
+                  }}
+                  cancelConfirmSignal={dragCounter}
                   onEdit={() =>
                     transaction.type !== "initial"
                       ? router.push(`/transactions/edit?id=${transaction.id}`)
@@ -225,10 +227,12 @@ export default function Home() {
                       : undefined
                   }
                   key={transaction.id}
+                  confirmDelete
                 >
                   <TransactionItem
                     transaction={transaction}
                     account={account}
+                    accounts={accounts}
                   />
                 </SwipeableElement>
               );

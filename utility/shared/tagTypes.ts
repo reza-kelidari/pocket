@@ -7,9 +7,18 @@ export const TagItemTypes: { value: TagType["type"]; label: string }[] = [
   { value: "Other", label: "سایر" },
 ];
 
+export const TagTypes = [
+  "Person",
+  "Firm",
+  "Broker",
+  "Place",
+  "Object",
+  "Other",
+] as const;
+
 export type TagType = {
   id: string;
   name: string;
-  type: "Person" | "Firm" | "Broker" | "Place" | "Object" | "Other";
+  type: (typeof TagTypes)[number];
   order: number;
 };

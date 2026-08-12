@@ -1,6 +1,7 @@
 "use client";
 
 import Capsule from "@/components/Capsule";
+import CapsuleLoading from "@/components/CapsuleLoading";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
 import { AccountTypes } from "@/utility/shared/accountsTypes";
@@ -10,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccountColors } from "@/utility/shared/colors";
 import { CREATE_ACCOUNT_KEY } from "../add/page";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import useBalances from "@/utility/balance/service/useBalances";
 import { getAccountBalanceHistory } from "@/utility/shared/balancesMethods";
 import { toEnglishDigits } from "@/utility/shared/timeMethods";
@@ -22,9 +23,10 @@ import {
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { getAll, putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
+import { generateUUId } from "@/utility/shared/idGenerationMethods";
 
 const defaultAccount: AccountType = {
-  id: crypto.randomUUID(),
+  id: generateUUId(),
   name: "",
   type: "Bank",
   color: "black",
@@ -146,7 +148,7 @@ export default function AccountEdit() {
       };
     } else {
       finalTx = {
-        id: crypto.randomUUID(),
+        id: generateUUId(),
         type: "initial",
         name: "موجودی اولیه",
         time: createTimestamp,
@@ -186,16 +188,21 @@ export default function AccountEdit() {
     } catch (e) {}
   }, []);
 
-  if (isLoading || !account)
-    return (
-      <div className="p-7.5 grid gap-15">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <div className="h-5 w-5 bg-elements-border rounded-md animate-pulse"></div>
-            <div className="h-6 w-24 bg-elements-border rounded-md animate-pulse"></div>
-          </div>
-          <div className="h-8 w-28 bg-elements-border rounded-4xl animate-pulse"></div>
-        </div>
+  return (
+    <div className="p-7.5 grid gap-15">
+      <div className="grid gap-7.5">
+        <NavbarTitle title="ویرایش حساب" onClick={handleCancel}>
+          {isLoading ? (
+            <CapsuleLoading />
+          ) : (
+            <Capsule Icon={Left} primary={isValid} onClick={handleSave}>
+              ذخیره تغییرات
+            </Capsule>
+          )}
+        </NavbarTitle>
+      </div>
+
+      {isLoading ? (
         <div className="grid gap-10">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="grid gap-2">
@@ -204,20 +211,8 @@ export default function AccountEdit() {
             </div>
           ))}
         </div>
-      </div>
-    );
-  else
-    return (
-      <div className="p-7.5 grid gap-15 animate-fade-in">
-        <div className="grid gap-7.5">
-          <NavbarTitle title="ویرایش حساب" onClick={handleCancel}>
-            <Capsule Icon={Left} primary={isValid} onClick={handleSave}>
-              ذخیره تغییرات
-            </Capsule>
-          </NavbarTitle>
-        </div>
-
-        <div className="grid gap-10">
+      ) : account ? (
+        <div className="grid gap-10 animate-fade-in">
           <div className="grid gap-2">
             <span className="text-xs">نام حساب</span>
             <input
@@ -292,6 +287,7 @@ export default function AccountEdit() {
             </div>
           )}
         </div>
-      </div>
-    );
+      ) : null}
+    </div>
+  );
 }

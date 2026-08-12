@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
+import { sanitizeUuid } from "@/utility/validation";
+import { STORE_COLUMNS } from "@/utility/db/columns";
 
 const ALLOWED_STORES = ["accounts", "transactions", "tags"];
-
 const NUMERIC_FIELDS: Record<string, string[]> = {
   accounts: ["order"],
   transactions: ["time", "value"],
@@ -37,10 +38,64 @@ export async function GET(
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 
+  const url = new URL(req.url);
+  let query = `SELECT * FROM ${store} WHERE user_id = $1`;
+  const queryParams: any[] = [userId];
+  let paramIndex = 2;
+
+  if (store === "transactions") {
+    const timeWindow = url.searchParams.get("time");
+    const accounts = url.searchParams.get("accounts");
+    const categories = url.searchParams.get("categories");
+    const tags = url.searchParams.get("tags");
+
+    if (timeWindow && timeWindow !== "36500") {
+      const days = Number(timeWindow);
+      if (!isNaN(days)) {
+        const limitTime = Date.now() - days * 24 * 60 * 60 * 1000;
+        query += ` AND time >= $${paramIndex}`;
+        queryParams.push(limitTime);
+        paramIndex++;
+      }
+    }
+
+    if (accounts) {
+      const accList = accounts
+        .split(",")
+        .map((id) => sanitizeUuid(id.trim()))
+        .filter((res) => res.valid)
+        .map((res) => res.value);
+      if (accList.length > 0) {
+        query += ` AND (debit = ANY($${paramIndex}) OR credit = ANY($${paramIndex}))`;
+        queryParams.push(accList);
+        paramIndex++;
+      }
+    }
+
+    if (categories) {
+      const catList = categories.split(",").filter((s) => s !== "");
+      if (catList.length > 0) {
+        query += ` AND (debit = ANY($${paramIndex}) OR credit = ANY($${paramIndex}))`;
+        queryParams.push(catList);
+        paramIndex++;
+      }
+    }
+
+    if (tags) {
+      const tagList = tags.split(",").filter((s) => s !== "");
+      if (tagList.length > 0) {
+        query += ` AND tag = ANY($${paramIndex})`;
+        queryParams.push(tagList);
+        paramIndex++;
+      }
+    }
+    query += ` ORDER BY time DESC`;
+  } else if (store === "accounts" || store === "tags") {
+    query += ` ORDER BY "order" ASC`;
+  }
+
   try {
-    const res = await pool.query(`SELECT * FROM ${store} WHERE user_id = $1`, [
-      userId,
-    ]);
+    const res = await pool.query(query, queryParams);
     const rows = castNumericFields(res.rows, store);
     return NextResponse.json(rows);
   } catch (error) {
@@ -56,7 +111,6 @@ export async function POST(
   const userId = await getCurrentUserId();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { store: rawStore } = await params;
   const store = ALLOWED_STORES.includes(rawStore) ? rawStore : null;
   if (!store)
@@ -65,45 +119,54 @@ export async function POST(
   try {
     const body = await req.json();
     const items = Array.isArray(body) ? body : [body];
-
     const client = await pool.connect();
+
+    const allowedCols = STORE_COLUMNS[store] || [];
+
     try {
       await client.query("BEGIN");
-
       for (const item of items) {
         const { id, user_id: _ignoredUserId, ...data } = item;
-        if (!id) continue;
+
+        const idRes = sanitizeUuid(id);
+        if (!idRes.valid) continue;
+        const safeId = idRes.value;
+
+        const safeData: Record<string, any> = {};
+        for (const key of Object.keys(data)) {
+          if (allowedCols.includes(key)) {
+            safeData[key] = data[key];
+          }
+        }
 
         if (store === "accounts") {
-          delete data.create;
-          delete data.initialBalance;
-          delete data.createTimestamp;
+          delete safeData.create;
+          delete safeData.initialBalance;
+          delete safeData.createTimestamp;
         }
 
-        // ✅ پاکسازی مقادیر نامعتبر بدون تبدیل 0 به null
-        for (const key in data) {
-          if (data[key] === "") {
-            data[key] = null;
+        for (const key in safeData) {
+          if (safeData[key] === "") {
+            safeData[key] = null;
           } else if (
-            typeof data[key] === "number" &&
+            typeof safeData[key] === "number" &&
             ["debit", "credit", "tag"].includes(key)
           ) {
-            data[key] = String(data[key]);
+            safeData[key] = String(safeData[key]);
           }
         }
 
-        // ✅ اطمینان از عدد بودن فیلدهای زمان و مبلغ
         const fields = NUMERIC_FIELDS[store] || [];
         for (const key of fields) {
-          if (data[key] !== null && data[key] !== undefined) {
-            data[key] = Number(data[key]);
+          if (safeData[key] !== null && safeData[key] !== undefined) {
+            safeData[key] = Number(safeData[key]);
           }
         }
 
-        const keys = Object.keys(data);
-        const values = Object.values(data);
+        const keys = Object.keys(safeData);
+        const values = Object.values(safeData);
         const allKeys = ["id", "user_id", ...keys];
-        const allValues = [id, userId, ...values];
+        const allValues = [safeId, userId, ...values];
 
         const cols = allKeys.map((k) => `"${k}"`).join(", ");
         const vals = allKeys.map((_, i) => `$${i + 1}`).join(", ");
@@ -116,7 +179,6 @@ export async function POST(
 
         await client.query(query, allValues);
       }
-
       await client.query("COMMIT");
       return NextResponse.json({ ok: true });
     } catch (error) {

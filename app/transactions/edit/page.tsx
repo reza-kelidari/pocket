@@ -4,7 +4,7 @@ import Capsule from "@/components/Capsule";
 import CapsuleLoading from "@/components/CapsuleLoading";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +26,12 @@ import { getAll, getItem, putItem } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { DatabaseStores } from "@/utility/keys/database";
 
+/**
+ * The main component for editing an existing transaction.
+ * Handles loading, validation, and updating of transaction data.
+ *
+ * @returns The rendered edit transaction page.
+ */
 export default function TransactionEdit() {
   const searchParams = useSearchParams();
   const txID = searchParams.get("id") ?? "";
@@ -39,10 +45,18 @@ export default function TransactionEdit() {
   const [timeInput, setTimeInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  /**
+   * Persists the transaction draft to session storage.
+   *
+   * @param data - The transaction data to persist.
+   */
   const persist = useCallback((data: TransactionType) => {
     sessionStorage.setItem(CREATE_TRANSACTION_KEY, JSON.stringify(data));
   }, []);
 
+  /**
+   * Loads the transaction data and related entities (accounts, tags) on mount.
+   */
   useEffect(() => {
     if (!txID) {
       router.replace("/transactions");
@@ -60,7 +74,9 @@ export default function TransactionEdit() {
           try {
             const parsed = JSON.parse(draftData) as TransactionType;
             if (parsed.id === txID) initialTx = parsed;
-          } catch {}
+          } catch {
+            throw new Error("Error while parsing initial data");
+          }
         }
 
         if (!initialTx) {
@@ -98,6 +114,9 @@ export default function TransactionEdit() {
 
   const transactionType = transaction?.type;
 
+  /**
+   * Computes the display name for the destination account.
+   */
   const toAccountName = useMemo(() => {
     if (!transaction) return "";
     const id =
@@ -105,16 +124,25 @@ export default function TransactionEdit() {
     return accounts.find((item) => item.id === id)?.name ?? "";
   }, [accounts, transaction]);
 
+  /**
+   * Computes the display name for the source account in a transfer.
+   */
   const fromAccountName = useMemo(() => {
     if (!transaction || transaction.type !== "transfer") return "";
     return accounts.find((item) => item.id === transaction.credit)?.name ?? "";
   }, [accounts, transaction]);
 
+  /**
+   * Computes the display name for the selected tag.
+   */
   const tagName = useMemo(() => {
     if (!transaction || !transaction.tag) return "";
     return tags.find((item) => item.id === transaction.tag)?.name ?? "";
   }, [transaction, tags]);
 
+  /**
+   * Computes the display name for the selected category.
+   */
   const categoryName = useMemo(() => {
     if (!transaction) return "";
     const id =
@@ -126,23 +154,34 @@ export default function TransactionEdit() {
     return id ? (getCategoryById(id)?.name ?? "") : "";
   }, [transaction]);
 
+  /**
+   * Validates the transaction form.
+   * For transfers, the name field is hidden and thus considered valid.
+   *
+   * @returns True if the form is valid, false otherwise.
+   */
   const isValid = useMemo(() => {
     if (!transaction) return false;
-    const nameValid = transaction.name.trim().length >= 3;
+
+    const nameValid =
+      transaction.type === "transfer"
+        ? true
+        : transaction.name.trim().length >= 3;
+
     const valueValid = transaction.value > 0;
     const dateValid = dateInput.trim().length === 10;
     const timeValid = timeInput.trim().length === 5;
+
     let accountAndCategoryValid = false;
     if (transaction.type === "transfer") {
       accountAndCategoryValid =
         !!transaction.debit &&
         !!transaction.credit &&
         transaction.debit !== transaction.credit;
-    } else if (transaction.type === "debit") {
+    } else if (transaction.type === "debit" || transaction.type === "credit") {
       accountAndCategoryValid = !!transaction.debit && !!transaction.credit;
-    } else if (transaction.type === "credit") {
-      accountAndCategoryValid = !!transaction.credit && !!transaction.debit;
     }
+
     return (
       nameValid &&
       valueValid &&
@@ -152,6 +191,11 @@ export default function TransactionEdit() {
     );
   }, [transaction, dateInput, timeInput]);
 
+  /**
+   * Updates the transaction state and persists the changes.
+   *
+   * @param updated - The partial transaction data to update.
+   */
   const updateTransactionState = useCallback(
     (updated: Partial<TransactionType>) => {
       setTransaction((prev) => {
@@ -164,14 +208,29 @@ export default function TransactionEdit() {
     [persist],
   );
 
+  /**
+   * Handles changes to the transaction name input.
+   *
+   * @param e - The input change event.
+   */
   const handleNameChange = (e: ChangeEvent<HTMLInputElement>) =>
     updateTransactionState({ name: e.target.value });
 
+  /**
+   * Handles changes to the transaction value input.
+   *
+   * @param e - The input change event.
+   */
   const handleValueChange = (e: ChangeEvent<HTMLInputElement>) => {
     const raw = toEnglishDigits(e.target.value).replace(/\D/g, "");
     updateTransactionState({ value: Number(raw) || 0 });
   };
 
+  /**
+   * Handles changes to the date input.
+   *
+   * @param e - The input change event.
+   */
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
     const formatted = formatJalaliInput(e.target.value, dateInput);
     setDateInput(formatted);
@@ -183,6 +242,11 @@ export default function TransactionEdit() {
     }
   };
 
+  /**
+   * Handles changes to the time input.
+   *
+   * @param e - The input change event.
+   */
   const handleTimeChange = (e: ChangeEvent<HTMLInputElement>) => {
     const formatted = formatTimeTyping(e.target.value, timeInput);
     setTimeInput(formatted);
@@ -194,9 +258,17 @@ export default function TransactionEdit() {
     }
   };
 
+  /**
+   * Handles changes to the note textarea.
+   *
+   * @param e - The textarea change event.
+   */
   const handleNoteChange = (e: ChangeEvent<HTMLTextAreaElement>) =>
     updateTransactionState({ note: e.target.value });
 
+  /**
+   * Saves the updated transaction to the database and navigates back.
+   */
   const handleSave = async () => {
     if (!isValid || !transaction) return;
     await putItem(transactionsStore, transaction);
@@ -204,11 +276,17 @@ export default function TransactionEdit() {
     router.back();
   };
 
+  /**
+   * Cancels the editing process and clears the draft.
+   */
   const handleCancel = () => {
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     router.back();
   };
 
+  /**
+   * Syncs the form state with session storage when the page becomes visible.
+   */
   usePageShowSync(() => {
     const data = sessionStorage.getItem(CREATE_TRANSACTION_KEY);
     if (!data || !txID) return;
@@ -222,7 +300,9 @@ export default function TransactionEdit() {
         setTimeInput(formatTimeInput(parsed.time));
         return parsed;
       });
-    } catch {}
+    } catch {
+      // Ignore parsing errors
+    }
   }, [txID]);
 
   const navbarTitle = isLoading
@@ -232,6 +312,13 @@ export default function TransactionEdit() {
       : transactionType === "credit"
         ? "ویرایش پرداخت"
         : "ویرایش انتقال";
+
+  /**
+   * Determines if the source account for a transfer is empty.
+   * Used to disable the destination account selector to enforce sequential selection.
+   */
+  const isTransferFromEmpty =
+    transactionType === "transfer" && !transaction?.credit;
 
   if (!txID) return null;
 
@@ -260,22 +347,24 @@ export default function TransactionEdit() {
         </div>
       ) : (
         <div className="grid gap-7.5">
-          <div className="grid gap-2">
-            <span className="text-xs">نام تراکنش</span>
-            <input
-              type="text"
-              value={transaction.name}
-              onChange={handleNameChange}
-              placeholder={
-                transactionType === "debit"
-                  ? "حقوق ماهانه"
-                  : transactionType === "credit"
-                    ? "خرید خونه"
-                    : "انتقال بین بانکی"
-              }
-              className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-            />
-          </div>
+          {transactionType !== "transfer" && (
+            <div className="grid gap-2">
+              <span className="text-xs">نام تراکنش</span>
+              <input
+                type="text"
+                value={transaction.name}
+                onChange={handleNameChange}
+                placeholder={
+                  transactionType === "debit"
+                    ? "حقوق ماهانه"
+                    : transactionType === "credit"
+                      ? "خرید خونه"
+                      : "انتقال بین بانکی"
+                }
+                className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
+              />
+            </div>
+          )}
 
           <div className="grid gap-2">
             <span className="text-xs">مبلغ</span>
@@ -316,8 +405,21 @@ export default function TransactionEdit() {
               {transactionType === "transfer" ? "حساب مقصد" : "انتخاب حساب"}
             </span>
             <Link
-              href={`/transactions/add/account?type=toAccount`}
-              className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
+              href={
+                isTransferFromEmpty
+                  ? "#"
+                  : `/transactions/add/account?type=toAccount`
+              }
+              className={`flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm transition-colors ${
+                isTransferFromEmpty
+                  ? "pointer-events-none opacity-50"
+                  : "active:bg-elements-background/70"
+              }`}
+              onClick={(e) => {
+                if (isTransferFromEmpty) {
+                  e.preventDefault();
+                }
+              }}
             >
               <span>
                 {toAccountName ||

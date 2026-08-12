@@ -1,3 +1,5 @@
+export const TransactionKinds = ["debit", "credit", "transfer", "initial"] as const;
+
 /**
  * Represents the kind of financial transaction.
  *
@@ -6,7 +8,7 @@
  * - `transfer` : Money transferred between two accounts.
  * - `initial`  : Initial account balance.
  */
-export type TransactionKindType = "debit" | "credit" | "transfer" | "initial";
+export type TransactionKindType = typeof TransactionKinds[number];
 
 /**
  * Represents a financial transaction.

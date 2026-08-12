@@ -35,6 +35,7 @@ interface BalanceChartProps {
 }
 
 const CHART_HEIGHT = 140;
+const CURVE = 9;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SCROLL_HINT_KEY = "chart-scroll-hint-dismissed";
 const HINT_LEAVE_DELAY_MS = 5000;
@@ -85,7 +86,7 @@ function safeSetSessionItem(key: string, value: string): void {
   try {
     window.sessionStorage.setItem(key, value);
   } catch {
-    // ignore
+    throw new Error("Error while saving item locally");
   }
 }
 
@@ -228,10 +229,10 @@ function createSmoothPath(points: Array<Pick<ChartPoint, "x" | "y">>): string {
     const p0 = points[index - 1] ?? p1;
     const p3 = points[index + 2] ?? p2;
 
-    const cp1x = round(p1.x + (p2.x - p0.x) / 6);
-    const cp1y = round(p1.y + (p2.y - p0.y) / 6);
-    const cp2x = round(p2.x - (p3.x - p1.x) / 6);
-    const cp2y = round(p2.y - (p3.y - p1.y) / 6);
+    const cp1x = round(p1.x + (p2.x - p0.x) / CURVE);
+    const cp1y = round(p1.y + (p2.y - p0.y) / CURVE);
+    const cp2x = round(p2.x - (p3.x - p1.x) / CURVE);
+    const cp2y = round(p2.y - (p3.y - p1.y) / CURVE);
 
     segments.push(`C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`);
   }

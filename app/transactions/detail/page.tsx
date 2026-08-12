@@ -9,11 +9,12 @@ import Pen from "@/icons/Pen";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ComponentProps, useEffect, useState } from "react";
 import { TagType } from "@/utility/shared/tagTypes";
-import { getAll, getItem } from "@/utility/db/Database";
+import { getItem } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { DatabaseStores } from "@/utility/keys/database";
 import CapsuleLoading from "@/components/CapsuleLoading";
+import { sanitizeUuid } from "@/utility/validation";
 
 export default function TransactionDetail() {
   const searchParams = useSearchParams();
@@ -56,14 +57,25 @@ export default function TransactionDetail() {
 
         const accountID = tx.type === "credit" ? tx.credit : tx.debit;
 
-        const promises = [
-          getItem(accountsStore, accountID),
-          getItem(accountsStore, tx.credit),
-          getItem(accountsStore, tx.debit),
+        const accountIDValid = sanitizeUuid(accountID).valid;
+        const creditValid = sanitizeUuid(tx.credit).valid;
+        const debitValid = sanitizeUuid(tx.debit).valid;
+
+        const promises: Promise<any>[] = [
+          accountIDValid
+            ? getItem(accountsStore, accountID)
+            : Promise.resolve(null),
+          creditValid
+            ? getItem(accountsStore, tx.credit)
+            : Promise.resolve(null),
+          debitValid ? getItem(accountsStore, tx.debit) : Promise.resolve(null),
         ];
 
         if (tx.tag) {
-          promises.push(getItem<TagType>(tagsStore, tx.tag));
+          const tagValid = sanitizeUuid(tx.tag).valid;
+          if (tagValid) {
+            promises.push(getItem<TagType>(tagsStore, tx.tag));
+          }
         }
 
         const results = await Promise.all(promises);
@@ -143,10 +155,12 @@ export default function TransactionDetail() {
                 name="حساب"
                 className="text-xs flex items-center gap-1.5"
               >
-                {account?.name}{" "}
-                <span
-                  className={`p-1 rounded-4xl ${AccountColors[account?.color ?? "blue1"].primary}`}
-                ></span>
+                {account?.name ?? "—"}{" "}
+                {account && (
+                  <span
+                    className={`p-1 rounded-4xl ${AccountColors[account.color ?? "blue1"].primary}`}
+                  ></span>
+                )}
               </InfoRow>
             ) : (
               <>
@@ -154,20 +168,24 @@ export default function TransactionDetail() {
                   name="حساب مقصد"
                   className="text-xs flex items-center gap-1.5"
                 >
-                  {toAccount?.name}{" "}
-                  <span
-                    className={`p-1 rounded-4xl ${AccountColors[toAccount?.color ?? "blue1"].primary}`}
-                  ></span>
+                  {toAccount?.name ?? "—"}{" "}
+                  {toAccount && (
+                    <span
+                      className={`p-1 rounded-4xl ${AccountColors[toAccount.color ?? "blue1"].primary}`}
+                    ></span>
+                  )}
                 </InfoRow>
 
                 <InfoRow
                   name="حساب مبدا"
                   className="text-xs flex items-center gap-1.5"
                 >
-                  {fromAccount?.name}{" "}
-                  <span
-                    className={`p-1 rounded-4xl ${AccountColors[fromAccount?.color ?? "blue1"].primary}`}
-                  ></span>
+                  {fromAccount?.name ?? "—"}{" "}
+                  {fromAccount && (
+                    <span
+                      className={`p-1 rounded-4xl ${AccountColors[fromAccount.color ?? "blue1"].primary}`}
+                    ></span>
+                  )}
                 </InfoRow>
               </>
             )}

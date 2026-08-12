@@ -18,7 +18,7 @@ import { DatabaseStores } from "@/utility/keys/database";
 import { getAccountBalances } from "@/utility/shared/balancesMethods";
 import { PrimaryColors } from "@/utility/shared/colors";
 import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -30,6 +30,7 @@ export default function AccountsDetails() {
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const accountID = searchParams.get("id") ?? "";
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
+  const [dragCounter, setDragCounter] = useState(0);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { setBalances } = useBalances();
@@ -50,7 +51,7 @@ export default function AccountsDetails() {
       ]);
 
       setAccount(acc);
-      setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+      setAccounts(accs);
       setTransactions(txs);
       setIsLoading(false);
     })();
@@ -66,90 +67,103 @@ export default function AccountsDetails() {
   };
 
   if (!accountID) return null;
-
-  return (
-    <div className="p-7.5 grid gap-15 w-full max-w-full min-w-0 overflow-x-hidden">
-      <div className="grid gap-7.5">
-        <NavbarTitle title={isLoading ? "جزئیات حساب" : (account?.name ?? "")}>
-          {isLoading ? (
-            <CapsuleLoading />
-          ) : (
-            <Capsule
-              Icon={Pen}
-              href={`/accounts/edit?id=${account?.id}`}
-              className={`${PrimaryColors.secondary.box} animate-fade-in`}
-            >
-              اصلاح حساب
-            </Capsule>
-          )}
-        </NavbarTitle>
-      </div>
-
-      {isLoading ? (
-        <ChartContainerLoading />
-      ) : (
-        <div className="animate-fade-in w-full min-w-0">
-          <ChartView
-            title={`موجودی ${account?.name}`}
-            color={account?.color}
-            timeSelector
-            accountID={account?.id}
-            transactions={transactions}
-          />
-        </div>
-      )}
-
-      <div className="grid gap-7.5 w-full min-w-0">
-        {isLoading ? (
-          <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
-        ) : (
-          <SectionTitle>{`تراکنش‌های اخیر ${account?.name}`}</SectionTitle>
-        )}
-
-        {isLoading ? (
-          <div className="flex flex-col w-full gap-2.5">
-            {[0, 1, 2, 3].map((item) => (
-              <TransactionItemLoading key={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col w-full gap-2.5 animate-fade-in">
-            {getLatestTransactions(
-              transactions.filter((item) =>
-                [item.debit, item.credit].includes(accountID),
-              ),
-              5,
-            ).map((transaction) => (
-              <SwipeableElement
-                isOpen={transaction.id === swipedItem}
-                onOpenChange={() => setSwipedItem(transaction.id)}
-                onCloseOthers={() => setSwipedItem(null)}
-                onEdit={() =>
-                  transaction.type !== "initial"
-                    ? router.push(`/transactions/edit?id=${transaction.id}`)
-                    : router.push(`/accounts/edit?id=${account?.id}`)
-                }
-                onDelete={
-                  transaction.type !== "initial"
-                    ? () => handleDeleteTransaction(transaction.id)
-                    : undefined
-                }
-                key={transaction.id}
+  else
+    return (
+      <div className="p-7.5 grid gap-15 w-full max-w-full min-w-0 overflow-x-hidden">
+        <div className="grid gap-7.5">
+          <NavbarTitle
+            title={isLoading ? "جزئیات حساب" : (account?.name ?? "")}
+          >
+            {isLoading ? (
+              <CapsuleLoading />
+            ) : (
+              <Capsule
+                Icon={Pen}
+                href={`/accounts/edit?id=${account?.id}`}
+                className={`${PrimaryColors.secondary.box} animate-fade-in`}
               >
-                <TransactionItem account={account!} transaction={transaction} />
-              </SwipeableElement>
-            ))}
+                اصلاح حساب
+              </Capsule>
+            )}
+          </NavbarTitle>
+        </div>
+
+        {isLoading ? (
+          <ChartContainerLoading />
+        ) : (
+          <div className="animate-fade-in w-full min-w-0">
+            <ChartView
+              title={`موجودی ${account?.name}`}
+              color={account?.color}
+              timeSelector
+              accountID={account?.id}
+              transactions={transactions}
+            />
           </div>
         )}
-      </div>
 
-      {isLoading ? (
-        <div className="h-11.5 w-full rounded-2xl bg-elements-border animate-pulse"></div>
-      ) : (
-        <Button href={`/transactions?accounts=${accountID}`}>
-          مشاهده همه تراکنش‌ها
-        </Button>
-      )}
-    </div>
-  );
+        <div className="grid gap-7.5 w-full min-w-0">
+          {isLoading ? (
+            <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
+          ) : (
+            <SectionTitle>{`تراکنش‌های اخیر ${account?.name}`}</SectionTitle>
+          )}
+
+          {isLoading ? (
+            <div className="flex flex-col w-full gap-2.5">
+              {[0, 1, 2, 3].map((item) => (
+                <TransactionItemLoading key={item} />
+              ))}
+            </div>
+          ) : !!account ? (
+            <div className="flex flex-col w-full gap-2.5 animate-fade-in">
+              {getLatestTransactions(
+                transactions.filter((item) =>
+                  [item.debit, item.credit].includes(accountID),
+                ),
+                5,
+              ).map((transaction) => (
+                <SwipeableElement
+                  isOpen={transaction.id === swipedItem}
+                  onOpenChange={() => setSwipedItem(transaction.id)}
+                  onCloseOthers={() => {
+                    setSwipedItem(null);
+                    setDragCounter((c) => c + 1);
+                  }}
+                  cancelConfirmSignal={dragCounter}
+                  onEdit={() =>
+                    transaction.type !== "initial"
+                      ? router.push(`/transactions/edit?id=${transaction.id}`)
+                      : router.push(`/accounts/edit?id=${account?.id}`)
+                  }
+                  onDelete={
+                    transaction.type !== "initial"
+                      ? () => handleDeleteTransaction(transaction.id)
+                      : undefined
+                  }
+                  key={transaction.id}
+                  confirmDelete
+                >
+                  <TransactionItem
+                    account={account}
+                    transaction={transaction}
+                    accounts={accounts}
+                  />
+                </SwipeableElement>
+              ))}
+            </div>
+          ) : (
+            ""
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="h-11.5 w-full rounded-2xl bg-elements-border animate-pulse"></div>
+        ) : (
+          <Button href={`/transactions?accounts=${accountID}`}>
+            مشاهده همه تراکنش‌ها
+          </Button>
+        )}
+      </div>
+    );
 }

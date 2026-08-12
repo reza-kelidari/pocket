@@ -33,15 +33,15 @@ export default function Button({
 
   if (href && !disabled) {
     return (
-      <Link href={href} className="w-full" {...props}>
-        <div className={className}>{children}</div>
+      <Link href={href} {...props} className={className}>
+        {children}
       </Link>
     );
   }
 
   return (
-    <button type="button" disabled={disabled} className="w-full" {...props}>
-      <div className={className}>{children}</div>
+    <button type="button" disabled={disabled} {...props} className={className}>
+      {children}
     </button>
   );
 }

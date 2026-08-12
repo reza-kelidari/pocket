@@ -8,11 +8,12 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { getAll, putItem } from "@/utility/db/Database";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TagItemTypes } from "@/utility/shared/tagTypes";
+import { generateUUId } from "@/utility/shared/idGenerationMethods";
 
 export default function AddTag() {
   const router = useRouter();
   const [tagDetails, setTagDetails] = useState<TagType>({
-    id: crypto.randomUUID(),
+    id: "",
     name: "",
     type: "Person",
     order: 0,
@@ -28,8 +29,11 @@ export default function AddTag() {
         const tagInDB = tags.find((item) => item.id === id);
         setTagDetails(tagInDB!);
       } else {
-        const nextId = crypto.randomUUID();
-        setTagDetails((prev) => ({ ...prev, id: nextId, order: tags.length }));
+        setTagDetails((prev) => ({
+          ...prev,
+          id: generateUUId(),
+          order: tags.length,
+        }));
       }
     })();
   }, []);

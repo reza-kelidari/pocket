@@ -1,10 +1,55 @@
 import ExcelJS from "exceljs";
-import { AccountType, AccountTypesType } from "@/utility/accounts/types";
-import { TagType, TagItemTypes } from "@/utility/shared/tagTypes";
-import { AccountTypes } from "@/utility/shared/accountsTypes";
-import { faToEn, excelColorOptions, PreviewData } from "./excelConstants";
+import { AccountType } from "@/utility/accounts/types";
+import { TagType } from "@/utility/shared/tagTypes";
+import { TransactionCategories } from "@/utility/shared/transactionCategories";
+import { faToEn, PreviewData } from "./excelConstants";
 
-export async function parseUploadedExcel(
+/**
+ * Safely reads a cell value, handling rich text and formulas.
+ *
+ * @param cell - The cell to read.
+ * @returns The cell's string value.
+ */
+function getCellVal(cell: any): string {
+  if (!cell || cell.value === null || cell.value === undefined) return "";
+  const v = cell.value;
+  if (v.richText) {
+    return v.richText.map((rt: any) => rt.text).join("");
+  }
+  if (typeof v === "object" && v.result !== undefined) return v.result;
+  return String(v);
+}
+
+/**
+ * Builds a map of category display names to their numeric IDs.
+ *
+ * @returns A map of "سرفصل - دسته‌بندی" to category ID.
+ */
+function buildCategoryNameToIdMap(): Map<string, number> {
+  const map = new Map<string, number>();
+  TransactionCategories.expense.forEach((group) => {
+    group.sub.forEach((cat: any) => {
+      map.set(`${group.name} - ${cat.name}`, cat.id);
+    });
+  });
+  TransactionCategories.income.forEach((group) => {
+    group.sub.forEach((cat: any) => {
+      map.set(`${group.name} - ${cat.name}`, cat.id);
+    });
+  });
+  return map;
+}
+
+/**
+ * Parses an uploaded Excel file and extracts preview data.
+ *
+ * @param buffer - The uploaded file.
+ * @param existingAccounts - The user's existing accounts.
+ * @param existingTags - The user's existing tags.
+ * @returns The parsed preview data.
+ * @throws Error if the file structure is invalid.
+ */
+export async function parseExcelFile(
   buffer: ArrayBuffer,
   existingAccounts: AccountType[],
   existingTags: TagType[],
@@ -12,25 +57,8 @@ export async function parseUploadedExcel(
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
 
-  const ws1 = wb.getWorksheet(1);
-  const ws3 = wb.getWorksheet(3);
-
-  const getCellVal = (cell: any): string | number => {
-    if (!cell) return "";
-    let val = cell.value;
-    if (typeof val === "object" && val !== null) {
-      if (val instanceof Date) return val.toISOString();
-      if ("result" in val) val = val.result;
-      else if ("richText" in val)
-        val = val.richText.map((t: any) => t.text).join("");
-      else if ("text" in val) val = val.text;
-      else if ("formula" in val) val = "";
-    }
-    if (val === null || val === undefined) return "";
-    if (typeof val === "string") return val.trim();
-    if (typeof val === "number") return val;
-    return String(val).trim();
-  };
+  const ws1 = wb.getWorksheet("حساب‌ها و برچسب‌ها");
+  const ws3 = wb.getWorksheet("تراکنش‌ها");
 
   if (
     !ws1 ||
@@ -46,14 +74,21 @@ export async function parseUploadedExcel(
     String(getCellVal(ws3.getCell("D2"))) !== "نام حساب" ||
     String(getCellVal(ws3.getCell("F2"))) !== "نام برچسب" ||
     String(getCellVal(ws3.getCell("H2"))) !== "نوع تراکنش" ||
-    String(getCellVal(ws3.getCell("I2"))) !== "کد دسته‌بندی / مقصد" ||
-    String(getCellVal(ws3.getCell("L2"))) !== "مبلغ"
+    String(getCellVal(ws3.getCell("I2"))) !== "دسته‌بندی / مقصد" ||
+    String(getCellVal(ws3.getCell("K2"))) !== "نام تراکنش" ||
+    String(getCellVal(ws3.getCell("M2"))) !== "مبلغ"
   ) {
     throw new Error(
       "اکسل انتخاب‌شده منطبق با نمونه‌ی برنامه نیست، برای ورود داده با اکسل از نمونه‌ی برنامه استفاده کنین",
     );
   }
 
+  /**
+   * Reads a time cell, handling Date objects and strings.
+   *
+   * @param cell - The cell to read.
+   * @returns The formatted time string.
+   */
   const getCellTime = (cell: any): string => {
     if (
       !cell ||
@@ -62,244 +97,155 @@ export async function parseUploadedExcel(
       cell.value === ""
     )
       return "";
+
     let val = cell.value;
     if (val instanceof Date) {
       const h = val.getHours();
       const m = val.getMinutes();
       const s = val.getSeconds();
-      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     }
-    if (val === 0) return ""; // جلوگیری از تبدیل 0 به 00:00:00
-    if (typeof val === "number" && val > 0 && val < 1) {
-      const totalSeconds = Math.round(val * 24 * 3600);
-      const h = Math.floor(totalSeconds / 3600);
-      const m = Math.floor((totalSeconds % 3600) / 60);
-      const s = totalSeconds % 60;
-      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-    }
-    if (typeof val === "object" && val !== null) {
-      if ("result" in val) val = val.result;
-      else if ("text" in val) val = val.text;
-      else if ("richText" in val)
-        val = val.richText.map((t: any) => t.text).join("");
-    }
-    if (val === 0) return "";
-    return String(val || "").trim();
+    return faToEn(String(val));
   };
 
-  const getVal = (row: any, cellIdx: number) => {
-    let val = getCellVal(row.getCell(cellIdx));
-    if (val === "" || val === null || val === undefined) return undefined;
-    const parsed = Number(val);
-    if (!isNaN(parsed) && val !== "") return parsed;
-    return val;
-  };
-
-  const uploadedAccounts: any[] = [];
-  const uploadedTags: any[] = [];
+  const categoryNameToId = buildCategoryNameToIdMap();
   const rawTransactions: any[] = [];
 
-  if (ws1) {
-    let accOrderFallback = 1000;
-    let tagOrderFallback = 1000;
+  ws3.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber < 3) return;
 
-    ws1.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
+    const date = getCellVal(row.getCell(1));
+    const time = getCellTime(row.getCell(2));
+    const accountName = getCellVal(row.getCell(4));
+    const tagName = getCellVal(row.getCell(6));
 
-      const orderAccStr = getCellVal(row.getCell(1));
-      const nameAcc = getCellVal(row.getCell(2));
-      const typeAcc = getCellVal(row.getCell(4));
-      const colorAcc = getCellVal(row.getCell(6));
+    let typeCode = getCellVal(row.getCell(7));
+    if (!typeCode || typeof typeCode !== "string") {
+      const typeName = getCellVal(row.getCell(8));
+      if (typeName === "دریافت") typeCode = "debit";
+      else if (typeName === "پرداخت") typeCode = "credit";
+      else if (typeName === "انتقال") typeCode = "transfer";
+      else if (typeName === "افتتاح") typeCode = "initial";
+      else typeCode = "";
+    }
 
-      const orderTagStr = getCellVal(row.getCell(8));
-      const nameTag = getCellVal(row.getCell(9));
-      const typeTag = getCellVal(row.getCell(11));
+    const catOrDestName = getCellVal(row.getCell(9));
+    let catOrDestCode: any;
 
-      if (nameAcc) {
-        const existingAcc = existingAccounts.find(
-          (a) => a.name === String(nameAcc),
-        );
-        const orderAccNum = Number(orderAccStr);
-        const finalOrderAcc =
-          isNaN(orderAccNum) || orderAccStr === ""
-            ? accOrderFallback++
-            : orderAccNum;
+    if (catOrDestName === "") {
+      catOrDestCode = undefined;
+    } else if (typeCode === "transfer") {
+      catOrDestCode = catOrDestName;
+    } else {
+      catOrDestCode = categoryNameToId.get(catOrDestName) ?? catOrDestName;
+    }
 
-        if (existingAcc && existingAcc.default) {
-          uploadedAccounts.push({
-            name: String(nameAcc),
-            type: existingAcc.type,
-            color: existingAcc.color,
-            order: existingAcc.name === "وجوه در راه" ? existingAcc.order : finalOrderAcc,
-          });
-        } else {
-          const typeKey =
-            Object.keys(AccountTypes).find(
-              (k) => AccountTypes[k as AccountTypesType].name === typeAcc,
-            ) || "Bank";
-          const colorKey =
-            excelColorOptions.find((c) => c.label === colorAcc)?.key || "black";
-          uploadedAccounts.push({
-            name: String(nameAcc),
-            type: typeKey,
-            color: colorKey,
-            order: finalOrderAcc,
-          });
-        }
-      }
-      if (nameTag) {
-        const orderTagNum = Number(orderTagStr);
-        const finalOrderTag =
-          isNaN(orderTagNum) || orderTagStr === ""
-            ? tagOrderFallback++
-            : orderTagNum;
-        const tagTypeKey =
-          TagItemTypes.find((t) => t.label === typeTag)?.value || "Other";
-        uploadedTags.push({
-          name: String(nameTag),
-          type: tagTypeKey,
-          order: finalOrderTag,
-        });
-      }
+    const txName = getCellVal(row.getCell(11));
+    const note = getCellVal(row.getCell(12));
+    const rawValue = getCellVal(row.getCell(13));
+
+    const valueStr = faToEn(String(rawValue || "")).replace(/[^\d]/g, "");
+    const value = valueStr ? parseInt(valueStr, 10) : 0;
+
+    const isDateEmpty =
+      !date || (typeof date === "string" && date.trim() === "");
+    const isAccEmpty =
+      !accountName ||
+      (typeof accountName === "string" && accountName.trim() === "");
+
+    if (isDateEmpty && isAccEmpty) return;
+
+    rawTransactions.push({
+      excelRow: rowNumber,
+      date: faToEn(String(date || "")),
+      time: faToEn(String(time || "")),
+      accountName: String(accountName || ""),
+      tagName: String(tagName || ""),
+      catOrDestCode,
+      type: typeCode,
+      txName: txName ? String(txName) : "",
+      note: note ? String(note) : "",
+      value,
     });
-  }
-
-  if (ws3) {
-    ws3.eachRow((row, rowNumber) => {
-      if (rowNumber <= 2) return;
-
-      const date = getCellVal(row.getCell(1));
-      const time = getCellTime(row.getCell(2));
-      const accountName = getCellVal(row.getCell(4));
-      const tagName = getCellVal(row.getCell(6));
-
-      let typeCode = getCellVal(row.getCell(7));
-      if (!typeCode || typeof typeCode !== "string") {
-        const typeName = getCellVal(row.getCell(8));
-        if (typeName === "دریافت") typeCode = "debit";
-        else if (typeName === "پرداخت") typeCode = "credit";
-        else if (typeName === "انتقال") typeCode = "transfer";
-        else if (typeName === "افتتاح") typeCode = "initial";
-        else typeCode = "";
-      }
-
-      let catOrDestCode: any = getVal(row, 9);
-      if (catOrDestCode === "") catOrDestCode = undefined;
-
-      const note = getCellVal(row.getCell(11));
-      const rawValue = getCellVal(row.getCell(12));
-
-      const valueStr = faToEn(String(rawValue || "")).replace(/[^\d]/g, "");
-      const value = valueStr ? parseInt(valueStr, 10) : 0;
-
-      const isDateEmpty =
-        !date || (typeof date === "string" && date.trim() === "");
-      const isAccEmpty =
-        !accountName ||
-        (typeof accountName === "string" && accountName.trim() === "");
-
-      if (isDateEmpty && isAccEmpty) return;
-
-      rawTransactions.push({
-        excelRow: rowNumber,
-        date: faToEn(String(date || "")),
-        time: faToEn(String(time || "")),
-        accountName: String(accountName || ""),
-        tagName: String(tagName || ""),
-        catOrDestCode,
-        type: typeCode,
-        note: note ? String(note) : "",
-        value,
-      });
-    });
-  }
+  });
 
   const accList: any[] = [];
   const accMap = new Map<string, any>();
 
-  existingAccounts.forEach((a) => {
-    const obj = {
-      id: a.id,
-      name: a.name,
-      type: a.type,
-      color: a.color,
-      order: a.name === "وجوه در راه" ? 999 : a.order,
-      default: a.default,
-      isNew: false,
-      needsUpdate: false,
+  ws1.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber < 2) return;
+
+    const accName = getCellVal(row.getCell(2));
+    const accId = getCellVal(row.getCell(3));
+    const accType = getCellVal(row.getCell(4));
+    const accColor = getCellVal(row.getCell(6));
+
+    if (accName === "-" || accName === "") return;
+
+    const existingAcc = existingAccounts.find((a) => a.id === accId);
+    const isNew = !existingAcc;
+
+    const accEntry = {
+      name: accName,
+      type: accType,
+      color: accColor,
+      isNew,
+      needsUpdate:
+        !isNew &&
+        JSON.stringify(existingAcc) !==
+          JSON.stringify({
+            name: accName,
+            type: accType,
+            color: accColor,
+          }),
       txCount: 0,
       finalBalance: 0,
+      order: Number(getCellVal(row.getCell(1))) || 0,
+      id: accId,
+      default: existingAcc?.default ?? false,
     };
-    accList.push(obj);
-    accMap.set(String(a.id), obj);
-    accMap.set(a.name, obj);
-  });
 
-  uploadedAccounts.forEach((a) => {
-    if (accMap.has(a.name)) {
-      const existing = accMap.get(a.name);
-      if (!existing.default) {
-        if (existing.type !== a.type || existing.color !== a.color) {
-          existing.needsUpdate = true;
-          existing.type = a.type;
-          existing.color = a.color;
-        }
-      }
-      if (existing.name !== "وجوه در راه") existing.order = a.order;
-    } else {
-      const obj = {
-        ...a,
-        default: false,
-        isNew: true,
-        needsUpdate: false,
-        txCount: 0,
-        finalBalance: 0,
-      };
-      accList.push(obj);
-      accMap.set(a.name, obj);
+    if (!accMap.has(accName)) {
+      accMap.set(accName, accEntry);
+      accList.push(accEntry);
     }
   });
 
   const tagList: any[] = [];
   const tagMap = new Map<string, any>();
 
-  existingTags.forEach((t) => {
-    const obj = {
-      id: t.id,
-      name: t.name,
-      type: t.type,
-      order: t.order,
-      isNew: false,
-      needsUpdate: false,
-      txCount: 0,
-    };
-    tagList.push(obj);
-    tagMap.set(String(t.id), obj);
-    tagMap.set(t.name, obj);
-  });
+  ws1.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber < 2) return;
 
-  uploadedTags.forEach((t) => {
-    if (tagMap.has(t.name)) {
-      const existing = tagMap.get(t.name);
-      if (existing.type !== t.type) {
-        existing.needsUpdate = true;
-        existing.type = t.type;
-      }
-      existing.order = t.order;
-    } else {
-      const obj = { ...t, isNew: true, needsUpdate: false, txCount: 0 };
-      tagList.push(obj);
-      tagMap.set(t.name, obj);
+    const tagName = getCellVal(row.getCell(9));
+    const tagId = getCellVal(row.getCell(10));
+
+    if (tagName === "-" || tagName === "") return;
+
+    const existingTag = existingTags.find((t) => t.id === tagId);
+    const isNew = !existingTag;
+
+    const tagEntry = {
+      name: tagName,
+      type: getCellVal(row.getCell(11)),
+      isNew,
+      needsUpdate: !isNew,
+      txCount: 0,
+      order: Number(getCellVal(row.getCell(8))) || 0,
+      id: tagId,
+    };
+
+    if (!tagMap.has(tagName)) {
+      tagMap.set(tagName, tagEntry);
+      tagList.push(tagEntry);
     }
   });
 
   rawTransactions.forEach((tx) => {
-    const accKey = String(tx.accountName);
-    if (accMap.has(accKey)) {
-      const acc = accMap.get(accKey);
+    if (accMap.has(tx.accountName)) {
+      const acc = accMap.get(tx.accountName);
       acc.txCount++;
-      if (tx.type === "credit" || tx.type === "transfer")
-        acc.finalBalance -= tx.value;
+      if (tx.type === "credit") acc.finalBalance -= tx.value;
       else acc.finalBalance += tx.value;
     }
 
@@ -329,8 +275,8 @@ export async function parseUploadedExcel(
   }
 
   return {
-    accounts: accList.filter((a) => a.txCount > 0 || a.isNew || a.needsUpdate),
-    tags: tagList.filter((t) => t.txCount > 0 || t.isNew || t.needsUpdate),
+    accounts: accList,
+    tags: tagList,
     rawTransactions,
   };
 }

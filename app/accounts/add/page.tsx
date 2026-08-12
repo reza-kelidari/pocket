@@ -5,7 +5,7 @@ import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
 import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { AccountColorType, AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import {
   jalaliToTimestamp,
   toEnglishDigits,

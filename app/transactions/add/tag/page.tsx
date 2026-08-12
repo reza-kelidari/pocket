@@ -6,7 +6,7 @@ import Tag from "@/icons/Tag";
 import { PrimaryColors } from "@/utility/shared/colors";
 import { getAll } from "@/utility/db/Database";
 import { TagType } from "@/utility/shared/tagTypes";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CREATE_TRANSACTION_KEY } from "../page";

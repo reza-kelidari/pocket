@@ -14,10 +14,14 @@ export default function Splash() {
     async function load() {
       try {
         const authRes = await fetch("/api/auth/me");
+
         if (authRes.status === 401) {
+          const configRes = await fetch("/api/env-config");
+          const config = await configRes.json();
+
           const currentUrl = window.location.origin + fromPath;
           router.replace(
-            `https://auth.rezakelidari.ir/?redirect=${encodeURIComponent(currentUrl)}`,
+            `${config.authServiceUrl}/?redirect=${encodeURIComponent(currentUrl)}`,
           );
           return;
         }
@@ -31,9 +35,7 @@ export default function Splash() {
         }
 
         if (initRes.status === 204) {
-          // ✅ دیگر نیازی به محاسبه timestamp در کلاینت نیست
           const createRes = await fetch("/api/init", { method: "POST" });
-
           if (createRes.status === 200) {
             sessionStorage.setItem(SplashShownKey, "1");
             router.replace(fromPath);
@@ -47,8 +49,8 @@ export default function Splash() {
       }
     }
 
-    const timer = setTimeout(load, 1000);
-    return () => clearTimeout(timer);
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 300));
+    Promise.all([load(), minDelay]).catch(console.error);
   }, [router, fromPath]);
 
   return (

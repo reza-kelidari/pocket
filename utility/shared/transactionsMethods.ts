@@ -1,5 +1,5 @@
 import { TransactionCategories } from "./transactionCategories";
-import { TransactionType } from "../transactions/types";
+import { TransactionType } from "../shared/transactionTypes";
 
 /**
  * Returns the most recent transactions.
@@ -16,7 +16,7 @@ export function getLatestTransactions(
   transactions: TransactionType[],
   limit: number,
 ): TransactionType[] {
-  return [...transactions].sort((a, b) => b.time - a.time).slice(0, limit);
+  return [...transactions].slice(0, limit);
 }
 
 export function getCategoryById(id: string) {

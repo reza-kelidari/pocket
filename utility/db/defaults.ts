@@ -1,5 +1,5 @@
 import { AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import {
   jalaliToTimestamp,
   toJalaliDateArray,
@@ -7,11 +7,13 @@ import {
 import { generateUUId } from "../shared/idGenerationMethods";
 
 const walletID = generateUUId();
+const debitsID = generateUUId();
+const creditsID = generateUUId();
 
 export function getDefaultAccounts(): AccountType[] {
   return [
     {
-      id: "00000000-0000-4000-0000-000000000001",
+      id: debitsID,
       order: 1,
       name: "طلب‌ها",
       color: "green2",
@@ -19,7 +21,7 @@ export function getDefaultAccounts(): AccountType[] {
       default: true,
     },
     {
-      id: "00000000-0000-4000-0000-000000000002",
+      id: creditsID,
       order: 2,
       name: "بدهی‌ها",
       color: "red",
@@ -27,7 +29,7 @@ export function getDefaultAccounts(): AccountType[] {
       default: true,
     },
     {
-      id: "00000000-0000-4000-0000-000000000003",
+      id: generateUUId(),
       order: 999,
       name: "وجوه در راه",
       color: "black",
@@ -67,7 +69,7 @@ export function getDefaultTransactions(): TransactionType[] {
       id: crypto.randomUUID(),
       time: startOfYear,
       name: "موجودی اولیه",
-      debit: "00000000-0000-4000-0000-000000000001",
+      debit: debitsID,
       credit: "",
       value: 0,
       type: "initial",
@@ -77,7 +79,7 @@ export function getDefaultTransactions(): TransactionType[] {
       id: crypto.randomUUID(),
       time: startOfYear,
       name: "موجودی اولیه",
-      debit: "00000000-0000-4000-0000-000000000002",
+      debit: creditsID,
       credit: "",
       value: 0,
       type: "initial",

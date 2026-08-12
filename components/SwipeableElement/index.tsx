@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import Button from "@/components/Button";
 
 const ACTION_WIDTH = 100;
 
@@ -10,42 +11,61 @@ export default function SwipeableElement({
   onEdit,
   onDelete,
   defaultAccount,
+  cancelConfirmSignal,
+  confirmDelete = false,
 }: {
   children: React.ReactNode;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onCloseOthers: () => void;
-  onEdit?: () => void; 
+  onEdit?: () => void;
   onDelete?: () => void;
   defaultAccount?: boolean;
+  cancelConfirmSignal?: number;
+  confirmDelete?: boolean;
 }) {
   const [translateX, setTranslateX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const startX = useRef(0);
   const currentX = useRef(0);
   const startTranslateX = useRef(0);
+  const prevSignal = useRef(cancelConfirmSignal);
 
   const canEdit = !!onEdit;
-  const canDelete = !!onDelete && !defaultAccount; 
-
+  const canDelete = !!onDelete && !defaultAccount;
   const minTranslate = canEdit ? -ACTION_WIDTH : 0;
   const maxTranslate = canDelete ? ACTION_WIDTH : 0;
-
   const isSwipeable = canEdit || canDelete;
 
   useEffect(() => {
-    if (!isOpen && !isDragging) {
+    if (!isOpen && !isDragging && !confirmingDelete) {
       setTranslateX(0);
     }
-  }, [isOpen, isDragging]);
+  }, [isOpen, isDragging, confirmingDelete]);
+
+  useEffect(() => {
+    if (
+      cancelConfirmSignal !== undefined &&
+      cancelConfirmSignal !== prevSignal.current
+    ) {
+      setConfirmingDelete(false);
+    }
+    prevSignal.current = cancelConfirmSignal;
+  }, [cancelConfirmSignal]);
+
+  // اگر confirmDelete در حین استفاده false شد، حالت تأیید حذف را لغو کن
+  useEffect(() => {
+    if (!confirmDelete && confirmingDelete) {
+      setConfirmingDelete(false);
+    }
+  }, [confirmDelete, confirmingDelete]);
 
   const handleStart = (clientX: number) => {
-    if (!isSwipeable) return;
-
+    if (!isSwipeable || confirmingDelete) return;
     if (!isOpen) {
       onCloseOthers();
     }
-
     startX.current = clientX;
     currentX.current = clientX;
     startTranslateX.current = translateX;
@@ -53,11 +73,10 @@ export default function SwipeableElement({
   };
 
   const handleMove = (clientX: number) => {
-    if (!isDragging) return;
+    if (!isDragging || confirmingDelete) return;
     currentX.current = clientX;
     const delta = clientX - startX.current;
     const rawTranslate = startTranslateX.current + delta;
-
     const clampedDelta = Math.max(
       minTranslate,
       Math.min(maxTranslate, rawTranslate),
@@ -66,9 +85,8 @@ export default function SwipeableElement({
   };
 
   const handleEnd = () => {
-    if (!isDragging) return;
+    if (!isDragging || confirmingDelete) return;
     setIsDragging(false);
-
     const delta = currentX.current - startX.current;
     const threshold = ACTION_WIDTH / 3;
 
@@ -100,6 +118,30 @@ export default function SwipeableElement({
     }
   };
 
+  const handleDeleteClick = () => {
+    // اگر confirm فعال نباشد، حذف مستقیم انجام می‌شود
+    if (!confirmDelete) {
+      setTranslateX(0);
+      onOpenChange(false);
+      onDelete?.();
+      return;
+    }
+
+    // اگر confirm فعال باشد، اول تأیید بگیر
+    setConfirmingDelete(true);
+    setTranslateX(0);
+    onOpenChange(false);
+  };
+
+  const handleConfirmDelete = () => {
+    setConfirmingDelete(false);
+    onDelete?.();
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmingDelete(false);
+  };
+
   const dragProps = isSwipeable
     ? {
         onMouseDown: (e: React.MouseEvent) => handleStart(e.clientX),
@@ -116,39 +158,57 @@ export default function SwipeableElement({
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      {canEdit && (
-        <div className="absolute inset-y-0 right-0 w-22.5 bg-primary-background border border-primary-border flex items-center justify-center rounded-2xl me-2">
-          <button
-            onClick={onEdit}
-            className="text-primary text-xs font-medium w-full h-full"
-          >
+      {canEdit && !confirmingDelete && (
+        <div className="absolute inset-y-0 right-0 w-22.5 flex items-stretch me-2">
+          <Button onClick={onEdit} className="!h-full w-full">
             ویرایش
-          </button>
+          </Button>
         </div>
       )}
-
-      {canDelete && (
-        <div className="absolute inset-y-0 left-0 w-22.5 bg-red-background border border-red-border flex items-center justify-center rounded-2xl ms-2">
-          <button
-            onClick={onDelete}
-            className="text-red text-xs font-medium w-full h-full"
-          >
+      {canDelete && !confirmingDelete && (
+        <div className="absolute inset-y-0 left-0 w-22.5 flex items-stretch ms-2">
+          <Button red onClick={handleDeleteClick} className="!h-full w-full">
             حذف
-          </button>
+          </Button>
         </div>
       )}
 
+      {/* محتوای اصلی */}
       <div
         {...dragProps}
-        className="relative z-10 bg-white select-none rounded-2xl"
+        className={`relative z-10 bg-white select-none rounded-2xl ${
+          confirmingDelete ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
         style={{
           transform: `translateX(${translateX}px)`,
-          transition: isDragging ? "none" : "transform 0.3s ease-out",
+          transition: isDragging
+            ? "none"
+            : "transform 0.3s ease-out, opacity 0.3s ease-out",
           touchAction: isSwipeable ? "pan-y" : "auto",
           cursor: isSwipeable ? "grab" : "default",
         }}
       >
         {children}
+      </div>
+
+      <div
+        className={`absolute inset-0 z-20 flex items-center justify-between px-2 transition-opacity duration-300 ${
+          confirmingDelete ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <span className="text-xs text-red font-medium">حذف بشه؟</span>
+        <div className="flex items-center gap-4">
+          <Button
+            red
+            onClick={handleConfirmDelete}
+            className="!h-9 !w-auto px-3"
+          >
+            تأیید حذف
+          </Button>
+          <Button onClick={handleCancelDelete} className="!h-9 !w-auto px-3">
+            لغو
+          </Button>
+        </div>
       </div>
     </div>
   );

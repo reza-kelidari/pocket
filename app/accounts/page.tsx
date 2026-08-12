@@ -27,7 +27,7 @@ import {
 import { AccountType } from "@/utility/accounts/types";
 import { getAll, putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
-import AccountsListElementLoading from "@/components/AccountsListElementLoading"; // ✅ ایمپورت لودینگ
+import AccountsListElementLoading from "@/components/AccountsListElementLoading";
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
@@ -36,6 +36,7 @@ export default function Accounts() {
   const router = useRouter();
   const [showHint, setShowHint] = useState(true);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
+  const [dragCounter, setDragCounter] = useState(0);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -54,7 +55,7 @@ export default function Accounts() {
     (async () => {
       try {
         const accs = await getAll<AccountType>(accountsStore);
-        setAccounts(accs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+        setAccounts(accs);
       } catch (error) {
         console.error("Failed to load accounts:", error);
       } finally {
@@ -176,7 +177,11 @@ export default function Accounts() {
                           onOpenChange={(open) =>
                             setOpenItemId(open ? account.id : null)
                           }
-                          onCloseOthers={() => setOpenItemId(null)}
+                          onCloseOthers={() => {
+                            setOpenItemId(null);
+                            setDragCounter((c) => c + 1);
+                          }}
+                          cancelConfirmSignal={dragCounter}
                           onEdit={() =>
                             router.push(`/accounts/edit?id=${account.id}`)
                           }

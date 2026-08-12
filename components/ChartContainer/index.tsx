@@ -8,7 +8,7 @@ import {
   getAccountBalanceHistory,
   getTotalBalanceHistory,
 } from "@/utility/shared/balancesMethods";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import Box from "../Box";
 
 type ChartParamsType = {

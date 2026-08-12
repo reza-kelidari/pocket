@@ -1,5 +1,5 @@
 import { AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { TagType } from "@/utility/shared/tagTypes";
 
 export type BackupType = {
@@ -22,7 +22,7 @@ export async function getBackup(
   };
 
   const dataStr = JSON.stringify(backupData, null, 2);
-  const blob = new Blob([dataStr], { type: "application/json" });
+  const blob = new Blob([dataStr], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

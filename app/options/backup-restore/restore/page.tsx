@@ -7,7 +7,7 @@ import useBalances from "@/utility/balance/service/useBalances";
 import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { getAccountBalances } from "@/utility/shared/balancesMethods";
-import { TransactionType } from "@/utility/transactions/types";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -25,12 +25,14 @@ export default function RestoreProcessingPage() {
 
     const runRestore = async () => {
       if (!isMounted) return;
+      setProgress(1);
 
       const dataStr = sessionStorage.getItem(RESTORE_DATA_KEY);
       if (!dataStr) {
         router.replace("/options/backup-restore");
         return;
       }
+      setProgress(5);
 
       const backupData = JSON.parse(dataStr);
 
@@ -38,26 +40,37 @@ export default function RestoreProcessingPage() {
         setStepText("در حال ارسال اطلاعات به سرور...");
         setProgress(20);
 
-        // ✅ انجام کل عملیات در یک درخواست در بک‌اند
         const res = await fetch("/api/restore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(backupData),
         });
 
+        setProgress(40);
+
         if (!res.ok) {
           throw new Error("خطا در ارتباط با سرور");
         }
 
+        setProgress(50);
+
         setStepText("به‌روزرسانی موجودی‌ها...");
-        setProgress(80);
+
+        setProgress(70);
 
         const { accountsStore, transactionsStore } = DatabaseStores;
         const finalAccounts = await getAll<AccountType>(accountsStore);
+
+        setProgress(80);
+
         const finalTxs = await getAll<TransactionType>(transactionsStore);
+
+        setProgress(90);
+
         setBalances(getAccountBalances(finalAccounts, finalTxs));
 
         setProgress(100);
+
         sessionStorage.removeItem(RESTORE_DATA_KEY);
 
         const message: MessageType = {
