@@ -59,7 +59,7 @@ export default function TransactionItem({
           {date.toLocaleDateString("fa-ir", dateOptions)}
         </p>
       </div>
-      <div className="flex flex-col items-end gap-1 px-1">
+      <div className="flex flex-col items-end gap-1">
         <div
           className={`text-xs flex items-center gap-1 font-medium
           ${type === "debit" ? "text-income-primary" : type === "credit" ? "text-expense-primary" : ""}`}
@@ -78,7 +78,7 @@ export default function TransactionItem({
           </span>
         </div>
         {balanceAfter !== undefined && type !== "initial" && (
-          <span className="text-[9px] text-secondary leading-none whitespace-nowrap">
+          <span className="text-[9px] text-secondary leading-none whitespace-nowrap px-1.5">
             {balanceAfter.toLocaleString("fa-ir")} ﷼
           </span>
         )}

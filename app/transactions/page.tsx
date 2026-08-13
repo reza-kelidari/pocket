@@ -1,4 +1,5 @@
 "use client";
+
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import TransactionItem from "@/components/TransactionItem";
@@ -22,9 +23,7 @@ import { TransactionType } from "@/utility/shared/transactionTypes";
 import { deleteItem, getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import SwipeableElement from "@/components/SwipeableElement";
-
-const SCROLL_KEY = "transactions-scroll-position";
-const FILTER_KEY = "transactions-scroll-filter";
+import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
 
 export default function Transactions() {
   const searchParams = useSearchParams();
@@ -36,7 +35,12 @@ export default function Transactions() {
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [dragCounter, setDragCounter] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const scrollRestoredRef = useRef(false);
+
+  // Dropdown animation states
+  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+  const [isDropdownMounted, setIsDropdownMounted] = useState(false);
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const timeFilter = timeFilters(toJalaliDateArray(new Date()));
 
@@ -50,88 +54,42 @@ export default function Transactions() {
     [searchParams],
   );
 
-  // جلوگیری از ریست خودکار اسکرول توسط مرورگر
+  // ==================== مدیریت اسکرول ====================
+  // تولید کلید پویا بر اساس فیلترها تا هر حالت فیلتر، اسکرول مستقل خود را داشته باشد
+  const SCROLL_KEY = useMemo(
+    () => `transactions-scroll-${JSON.stringify(transactionsFilter)}`,
+    [transactionsFilter],
+  );
+
+  const { clearSavedPosition } = useScrollRestoration(SCROLL_KEY, !isLoading);
+
+  // مدیریت چرخه‌ی انیمیشن دراپ‌داون
   useEffect(() => {
-    history.scrollRestoration = "manual";
-  }, []);
+    if (showTimeDropdown) {
+      setIsDropdownMounted(true);
+      const timer = setTimeout(() => setIsDropdownVisible(true), 15);
+      return () => clearTimeout(timer);
+    } else {
+      setIsDropdownVisible(false);
+      const timer = setTimeout(() => setIsDropdownMounted(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [showTimeDropdown]);
 
-  // ذخیره اسکرول با کمی تاخیر (Debounce)
-  // دلیل: وقتی روی تراکنش کلیک می‌کنید، Next.js قبل از لود صفحه بعد اسکرول رو صفر می‌کنه.
-  // با این تاخیر، اون ایونتِ صفر شدن کنسل میشه و مقدار قبلی پاک نمیشه.
+  // بستن دراپ‌داون با کلیک بیرون
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const handleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
-      }, 150);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  // بازیابی اسکرول بعد از لود کامل
-  useEffect(() => {
-    if (isLoading || transactions.length === 0 || scrollRestoredRef.current)
-      return;
-
-    const currentFilter = JSON.stringify(transactionsFilter);
-    const savedFilter = sessionStorage.getItem(FILTER_KEY);
-    sessionStorage.setItem(FILTER_KEY, currentFilter);
-
-    if (savedFilter !== currentFilter) {
-      scrollRestoredRef.current = true;
-      window.scrollTo({ top: 0, behavior: "instant" });
-      return;
-    }
-
-    const savedScroll = sessionStorage.getItem(SCROLL_KEY);
-    if (!savedScroll) {
-      scrollRestoredRef.current = true;
-      return;
-    }
-
-    const targetScroll = parseInt(savedScroll, 10);
-    if (targetScroll <= 0) {
-      scrollRestoredRef.current = true;
-      return;
-    }
-
-    scrollRestoredRef.current = true;
-    let attempts = 0;
-    const maxAttempts = 5;
-    let cancelled = false;
-
-    const tryScroll = () => {
-      if (cancelled) return;
-      attempts++;
-
-      const maxScroll =
-        document.documentElement.scrollHeight - window.innerHeight;
-
-      if (maxScroll >= targetScroll || attempts >= maxAttempts) {
-        window.scrollTo({ top: targetScroll, behavior: "smooth" });
-      } else {
-        setTimeout(tryScroll, 1000);
+    if (!showTimeDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowTimeDropdown(false);
       }
     };
-
-    // شروع اولین تلاش بعد از ۱ ثانیه
-    const timer = setTimeout(() => {
-      tryScroll();
-    }, 1000);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [isLoading, transactions.length, transactionsFilter]);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showTimeDropdown]);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,11 +117,22 @@ export default function Transactions() {
 
   const navigateWithLoading = useCallback(
     (url: string) => {
-      window.scrollTo({ top: 0 });
-      sessionStorage.removeItem(SCROLL_KEY);
+      clearSavedPosition();
+      window.scrollTo({ top: 0, behavior: "instant" });
       router.replace(url);
     },
-    [router],
+    [router, clearSavedPosition],
+  );
+
+  const handleTimeFilterChange = useCallback(
+    (time: number) => {
+      clearSavedPosition();
+      window.scrollTo({ top: 0, behavior: "instant" });
+      const newFilter = { ...transactionsFilter, timeWindow: time };
+      router.replace(`/transactions${filterToUrl(newFilter)}`);
+      setShowTimeDropdown(false);
+    },
+    [transactionsFilter, router, clearSavedPosition],
   );
 
   const selectedAccount =
@@ -175,38 +144,69 @@ export default function Transactions() {
     <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen">
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
-        <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-full scrollbar-none">
-          <span className="me-2">فیلترها</span>
-          <Capsule
-            Icon={Left}
-            href={`/transactions/filter-time${filterToUrl(transactionsFilter)}`}
-            replace
-            primary={transactionsFilter.timeWindow !== 29}
-          >
-            {timeFilter.find(
-              (filter) => filter.time === transactionsFilter.timeWindow,
-            )?.name ?? "۳۰ روز گذشته"}
-          </Capsule>
-          <Capsule
-            Icon={Left}
-            href={`/transactions/filter-account${filterToUrl(transactionsFilter)}`}
-            replace
-            primary={transactionsFilter.accounts.length > 0}
-            accountColor={selectedAccount?.color}
-            className={
-              selectedAccount
-                ? `${AccountColors[selectedAccount.color].border} ${AccountColors[selectedAccount.color].text} ${AccountColors[selectedAccount.color].surface}`
-                : ""
-            }
-          >
-            {transactionsFilter.accounts.length === 0
-              ? "همه حساب‌ها"
-              : transactionsFilter.accounts.length === 1
-                ? selectedAccount?.name
-                : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
-          </Capsule>
+
+        {/* کانتینر relative برای دراپ‌داون */}
+        <div className="relative" ref={dropdownRef}>
+          <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-full scrollbar-none">
+            <span className="me-2">فیلترها</span>
+
+            <Capsule
+              Icon={Left}
+              primary={transactionsFilter.timeWindow !== 29}
+              onClick={() => setShowTimeDropdown((v) => !v)}
+            >
+              {timeFilter.find(
+                (filter) => filter.time === transactionsFilter.timeWindow,
+              )?.name ?? "۳۰ روز گذشته"}
+            </Capsule>
+
+            <Capsule
+              Icon={Left}
+              href={`/transactions/filter-account${filterToUrl(transactionsFilter)}`}
+              replace
+              primary={transactionsFilter.accounts.length > 0}
+              accountColor={selectedAccount?.color}
+              className={
+                selectedAccount
+                  ? `${AccountColors[selectedAccount.color].border} ${AccountColors[selectedAccount.color].text} ${AccountColors[selectedAccount.color].surface}`
+                  : ""
+              }
+            >
+              {transactionsFilter.accounts.length === 0
+                ? "همه حساب‌ها"
+                : transactionsFilter.accounts.length === 1
+                  ? selectedAccount?.name
+                  : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
+            </Capsule>
+          </div>
+
+          {isDropdownMounted && (
+            <div
+              className={`absolute top-full right-0 mt-2 p-2 flex flex-col gap-1 bg-white border border-elements-border rounded-2xl shadow-lg z-50 min-w-36 transition-all duration-300 ease-in-out transform origin-top-right ${
+                isDropdownVisible
+                  ? "opacity-100 translate-y-0 scale-100"
+                  : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
+              }`}
+            >
+              {timeFilter.map((option) => (
+                <button
+                  key={option.time}
+                  type="button"
+                  onClick={() => handleTimeFilterChange(option.time)}
+                  className={`block w-full text-right px-4 rounded-md py-2.5 text-xs transition-colors cursor-pointer ${
+                    option.time === transactionsFilter.timeWindow
+                      ? "text-primary font-bold bg-primary-background"
+                      : "text-black hover:bg-elements-background"
+                  }`}
+                >
+                  {option.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
       <div className="flex-1">
         {isLoading ? (
           <div className="grid gap-4">

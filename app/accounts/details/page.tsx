@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Capsule from "@/components/Capsule";
 import CapsuleLoading from "@/components/CapsuleLoading";
 import ChartView from "@/components/ChartContainer";
@@ -9,8 +10,6 @@ import SectionTitle from "@/components/SectionTitle";
 import SwipeableElement from "@/components/SwipeableElement";
 import TransactionItem from "@/components/TransactionItem";
 import TransactionItemLoading from "@/components/TransactionItemLoading";
-import Pen from "@/icons/Pen";
-import Left from "@/icons/Left";
 import { AccountType } from "@/utility/accounts/types";
 import useBalances from "@/utility/balance/service/useBalances";
 import { deleteItem, getAll, getItem } from "@/utility/db/Database";
@@ -21,7 +20,9 @@ import { TransactionType } from "@/utility/shared/transactionTypes";
 import { timeFilters } from "@/app/transactions/methods";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
+import Pen from "@/icons/Pen";
+import Left from "@/icons/Left";
 
 /** Shape returned by the ledger endpoint */
 type LedgerTransaction = TransactionType & { balanceAfter: number };
@@ -37,31 +38,67 @@ export default function AccountsDetails() {
   const { accountsStore, transactionsStore } = DatabaseStores;
   const accountID = searchParams.get("id") ?? "";
 
+  const timeParam = searchParams.get("time");
+  const initialTimeFilter = timeParam ? Number(timeParam) : 29;
+
   const [account, setAccount] = useState<AccountType>();
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [allTransactions, setAllTransactions] = useState<TransactionType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Ledger state
   const [ledgerData, setLedgerData] = useState<LedgerResponse | null>(null);
   const [isLedgerLoading, setIsLedgerLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState<number>(29);
-  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<number>(initialTimeFilter);
 
-  // Swipe state
+  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+  const [isDropdownMounted, setIsDropdownMounted] = useState(false);
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [dragCounter, setDragCounter] = useState(0);
 
   const { setBalances } = useBalances();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // تولید گزینه‌های فیلتر زمانی دقیقاً هم‌خوان با لیست تراکنش‌ها
+  // Ref برای جلوگیری از ست شدن State روی کامپوننت Unmount شده
+  const isMountedRef = useRef(true);
+
+  const SCROLL_KEY = `account-details-scroll-${accountID}-${timeFilter}`;
+
   const timeFilterOptions = useMemo(
     () => timeFilters(toJalaliDateArray(new Date())),
     [],
   );
 
-  // Close dropdown on outside click
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const t = searchParams.get("time");
+    const newTime = t ? Number(t) : 29;
+    if (newTime !== timeFilter) {
+      setTimeFilter(newTime);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (showTimeDropdown) {
+      setIsDropdownMounted(true);
+      const timer = setTimeout(() => setIsDropdownVisible(true), 15);
+      return () => clearTimeout(timer);
+    } else {
+      setIsDropdownVisible(false);
+      const timer = setTimeout(() => setIsDropdownMounted(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [showTimeDropdown]);
+
   useEffect(() => {
     if (!showTimeDropdown) return;
     const handleClick = (e: MouseEvent) => {
@@ -76,12 +113,10 @@ export default function AccountsDetails() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showTimeDropdown]);
 
-  // Redirect if no account ID
   useEffect(() => {
     if (!accountID) router.replace("/accounts");
   }, [accountID, router]);
 
-  // Initial load: account info, all accounts, all transactions (for chart)
   useEffect(() => {
     if (!accountID) return;
     (async () => {
@@ -91,6 +126,7 @@ export default function AccountsDetails() {
         getAll<AccountType>(accountsStore),
         getAll<TransactionType>(transactionsStore),
       ]);
+      if (!isMountedRef.current) return;
       setAccount(acc);
       setAccounts(accs);
       setAllTransactions(txs);
@@ -98,7 +134,6 @@ export default function AccountsDetails() {
     })();
   }, [accountID, accountsStore, transactionsStore]);
 
-  // Fetch ledger data whenever timeFilter changes
   const fetchLedger = useCallback(async () => {
     if (!accountID) return;
     setIsLedgerLoading(true);
@@ -106,17 +141,19 @@ export default function AccountsDetails() {
       const res = await fetch(
         `/api/accounts/${accountID}/ledger?time=${timeFilter}`,
       );
+      if (!isMountedRef.current) return;
+
       if (res.status === 401) {
         router.replace("/splash");
         return;
       }
       if (!res.ok) throw new Error("Ledger fetch failed");
       const data: LedgerResponse = await res.json();
-      setLedgerData(data);
+      if (isMountedRef.current) setLedgerData(data);
     } catch (err) {
       console.error("Failed to fetch ledger:", err);
     } finally {
-      setIsLedgerLoading(false);
+      if (isMountedRef.current) setIsLedgerLoading(false);
     }
   }, [accountID, timeFilter, router]);
 
@@ -124,16 +161,53 @@ export default function AccountsDetails() {
     fetchLedger();
   }, [fetchLedger]);
 
-  // Handle delete transaction
+  // ==================== بازیابی اسکرول ====================
+  const isPageReady = !isLoading && !isLedgerLoading && !!ledgerData;
+  const { clearSavedPosition } = useScrollRestoration(SCROLL_KEY, isPageReady);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const isOnDetailsPage =
+        window.location.pathname.includes("/accounts/details");
+
+      if (!isOnDetailsPage) {
+        // خروج از صفحه: فعال‌سازی قفل و پاک‌سازی امن
+        clearSavedPosition();
+      } else {
+        // برگشت از ویرایش: آپدیت دیتاها
+        fetchLedger();
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [fetchLedger, clearSavedPosition]);
+
   const handleDeleteTransaction = async (id: string) => {
     await deleteItem(transactionsStore, id);
-    // Refresh both chart data and ledger
     const newTxs = allTransactions.filter((t) => t.id !== id);
     setAllTransactions(newTxs);
     setBalances(getAccountBalances(accounts, newTxs));
     setSwipedItem(null);
     fetchLedger();
   };
+
+  const handleTimeFilterChange = useCallback(
+    (time: number) => {
+      setTimeFilter(time);
+      setShowTimeDropdown(false);
+
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("time", String(time));
+
+      // پاک کردن اسکرول فعلی قبل از تغییر Key
+      clearSavedPosition();
+      window.scrollTo({ top: 0, behavior: "instant" });
+
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router, accountID, clearSavedPosition],
+  );
 
   const currentTimeFilterName = useMemo(
     () =>
@@ -147,7 +221,10 @@ export default function AccountsDetails() {
   return (
     <div className="p-7.5 flex flex-col gap-15 w-full max-w-full min-w-0 overflow-x-hidden min-h-screen">
       <div className="flex flex-col gap-15 w-full min-w-0">
-        <NavbarTitle title={isLoading ? "جزئیات حساب" : (account?.name ?? "")}>
+        <NavbarTitle
+          title={isLoading ? "جزئیات حساب" : (account?.name ?? "")}
+          onClick={clearSavedPosition}
+        >
           {isLoading ? (
             <CapsuleLoading />
           ) : (
@@ -191,16 +268,20 @@ export default function AccountsDetails() {
                   {currentTimeFilterName}
                   <Left height={15} width={15} className="fill-primary" />
                 </button>
-                {showTimeDropdown && (
-                  <div className="absolute top-full left-0 mt-2 p-2 flex flex-col gap-1 bg-white border border-elements-border rounded-2xl shadow-lg z-50 min-w-36 overflow-show">
+
+                {isDropdownMounted && (
+                  <div
+                    className={`absolute top-full left-0 mt-2 p-2 flex flex-col gap-1 bg-white border border-elements-border rounded-2xl shadow-lg z-50 min-w-36 transition-all duration-200 ease-out transform origin-top-left ${
+                      isDropdownVisible
+                        ? "opacity-100 translate-y-0 scale-100"
+                        : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
+                    }`}
+                  >
                     {timeFilterOptions.map((option) => (
                       <button
                         key={option.time}
                         type="button"
-                        onClick={() => {
-                          setTimeFilter(option.time);
-                          setShowTimeDropdown(false);
-                        }}
+                        onClick={() => handleTimeFilterChange(option.time)}
                         className={`block w-full text-right px-4 rounded-md py-2.5 text-xs transition-colors ${
                           option.time === timeFilter
                             ? "text-primary font-bold bg-primary-background"
