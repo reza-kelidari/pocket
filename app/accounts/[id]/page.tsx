@@ -1,6 +1,17 @@
+/**
+ * @fileoverview Account Details Page
+ *
+ * Displays comprehensive details for a specific account, including:
+ * - Account metadata and an edit action.
+ * - Balance history chart.
+ * - Transaction ledger with time-based filtering.
+ * - Swipe actions for editing and deleting transactions.
+ *
+ * Route: `/accounts/[id]`
+ */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import Capsule from "@/components/Capsule";
 import CapsuleLoading from "@/components/CapsuleLoading";
 import ChartView from "@/components/ChartContainer";
@@ -24,60 +35,108 @@ import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
 import Pen from "@/icons/Pen";
 import Left from "@/icons/Left";
 
-/** Shape returned by the ledger endpoint */
+/**
+ * Represents a single transaction within the ledger response,
+ * including the calculated account balance immediately after the transaction.
+ */
 type LedgerTransaction = TransactionType & { balanceAfter: number };
 
+/**
+ * Shape of the response returned by the `/api/accounts/[id]/ledger` endpoint.
+ * Contains the starting balance for the selected time period and the list of transactions.
+ */
 interface LedgerResponse {
+  /** The account balance before the first transaction in the selected time window. */
   balanceBefore: number;
+  /** Chronological list of transactions with their resulting balances. */
   transactions: LedgerTransaction[];
 }
 
-export default function AccountsDetails() {
+/**
+ * Props for the AccountsDetails page component.
+ */
+interface AccountsDetailsProps {
+  /**
+   * Next.js dynamic route parameters.
+   * In Next.js 15+ / React 19, `params` is a Promise that must be unwrapped using React's `use` hook.
+   */
+  params: Promise<{ id: string }>;
+}
+
+/**
+ * `AccountsDetails` Component
+ *
+ * Renders the detailed view for a specific financial account. It fetches and displays
+ * the account's metadata, a balance history chart, and a filterable ledger of transactions.
+ *
+ * Features:
+ * - Unwraps dynamic route `id` parameter using React 19's `use` hook.
+ * - Fetches account data and global transactions from the local database.
+ * - Fetches time-filtered ledger data from a dedicated API endpoint.
+ * - Manages dropdown UI for time filtering with smooth mount/unmount animations.
+ * - Handles transaction deletion with local state synchronization and balance recalculation.
+ * - Implements scroll restoration and cleanup on navigation.
+ *
+ * @param props - Component props containing Next.js route parameters.
+ * @returns The rendered account details UI, or `null` if the account ID is missing.
+ */
+export default function AccountsDetails({ params }: AccountsDetailsProps) {
+  // Unwrap the Promise-based params using React 19's `use` hook
+  const { id: accountID } = use(params);
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const { accountsStore, transactionsStore } = DatabaseStores;
-  const accountID = searchParams.get("id") ?? "";
 
   const timeParam = searchParams.get("time");
   const initialTimeFilter = timeParam ? Number(timeParam) : 29;
 
+  // --- Core Data States ---
   const [account, setAccount] = useState<AccountType>();
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [allTransactions, setAllTransactions] = useState<TransactionType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- Ledger & Filter States ---
   const [ledgerData, setLedgerData] = useState<LedgerResponse | null>(null);
   const [isLedgerLoading, setIsLedgerLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<number>(initialTimeFilter);
 
+  // --- UI & Interaction States ---
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [isDropdownMounted, setIsDropdownMounted] = useState(false);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   const [dragCounter, setDragCounter] = useState(0);
 
   const { setBalances } = useBalances();
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Ref برای جلوگیری از ست شدن State روی کامپوننت Unmount شده
   const isMountedRef = useRef(true);
 
   const SCROLL_KEY = `account-details-scroll-${accountID}-${timeFilter}`;
 
+  /** Pre-calculated time filter options based on the current Jalali date. */
   const timeFilterOptions = useMemo(
     () => timeFilters(toJalaliDateArray(new Date())),
     [],
   );
 
+  /**
+   * Tracks the mounted state of the component to prevent state updates
+   * on unmounted components during asynchronous operations.
+   */
   useEffect(() => {
     isMountedRef.current = true;
-
     return () => {
       isMountedRef.current = false;
     };
   }, []);
 
+  /**
+   * Synchronizes the local `timeFilter` state with the URL search parameters.
+   * Ensures the UI reflects the correct time window if the URL is modified externally
+   * (e.g., via browser back/forward buttons).
+   */
   useEffect(() => {
     const t = searchParams.get("time");
     const newTime = t ? Number(t) : 29;
@@ -87,6 +146,10 @@ export default function AccountsDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  /**
+   * Manages the mount/unmount lifecycle and CSS transitions for the time filter dropdown.
+   * Applies a slight delay to allow CSS transitions to execute smoothly before unmounting.
+   */
   useEffect(() => {
     if (showTimeDropdown) {
       setIsDropdownMounted(true);
@@ -99,6 +162,10 @@ export default function AccountsDetails() {
     }
   }, [showTimeDropdown]);
 
+  /**
+   * Adds a global click listener to close the time filter dropdown
+   * when the user clicks outside of the dropdown container.
+   */
   useEffect(() => {
     if (!showTimeDropdown) return;
     const handleClick = (e: MouseEvent) => {
@@ -113,10 +180,17 @@ export default function AccountsDetails() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showTimeDropdown]);
 
+  /**
+   * Redirects the user to the main accounts list if the dynamic route `id` is missing or invalid.
+   */
   useEffect(() => {
     if (!accountID) router.replace("/accounts");
   }, [accountID, router]);
 
+  /**
+   * Fetches the core account data, all accounts, and all transactions
+   * from the local database when the component mounts or the account ID changes.
+   */
   useEffect(() => {
     if (!accountID) return;
     (async () => {
@@ -134,6 +208,10 @@ export default function AccountsDetails() {
     })();
   }, [accountID, accountsStore, transactionsStore]);
 
+  /**
+   * Fetches the transaction ledger for the current account and selected time filter.
+   * Handles loading states, API errors, and unauthorized redirects.
+   */
   const fetchLedger = useCallback(async () => {
     if (!accountID) return;
     setIsLedgerLoading(true);
@@ -157,58 +235,80 @@ export default function AccountsDetails() {
     }
   }, [accountID, timeFilter, router]);
 
+  /**
+   * Triggers the ledger fetch operation whenever the `fetchLedger` callback changes
+   * (which occurs when `accountID` or `timeFilter` changes).
+   */
   useEffect(() => {
     fetchLedger();
   }, [fetchLedger]);
 
-  // ==================== بازیابی اسکرول ====================
   const isPageReady = !isLoading && !isLedgerLoading && !!ledgerData;
   const { clearSavedPosition } = useScrollRestoration(SCROLL_KEY, isPageReady);
 
+  /**
+   * Listens for browser history navigation events (`popstate`).
+   * Clears saved scroll positions when navigating away from the details page,
+   * and refetches the ledger when returning to it.
+   */
   useEffect(() => {
     const handlePopState = () => {
       const isOnDetailsPage =
-        window.location.pathname.includes("/accounts/details");
+        window.location.pathname === `/accounts/${accountID}`;
 
       if (!isOnDetailsPage) {
-        // خروج از صفحه: فعال‌سازی قفل و پاک‌سازی امن
         clearSavedPosition();
       } else {
-        // برگشت از ویرایش: آپدیت دیتاها
         fetchLedger();
       }
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [fetchLedger, clearSavedPosition]);
+  }, [fetchLedger, clearSavedPosition, accountID]);
 
-  const handleDeleteTransaction = async (id: string) => {
-    await deleteItem(transactionsStore, id);
-    const newTxs = allTransactions.filter((t) => t.id !== id);
+  /**
+   * Handles the deletion of a transaction.
+   * Removes the transaction from the local database, updates the global transactions state,
+   * recalculates account balances, and refetches the ledger to reflect the changes.
+   *
+   * @param txId - The unique identifier of the transaction to delete.
+   */
+  const handleDeleteTransaction = async (txId: string) => {
+    await deleteItem(transactionsStore, txId);
+    const newTxs = allTransactions.filter((t) => t.id !== txId);
     setAllTransactions(newTxs);
     setBalances(getAccountBalances(accounts, newTxs));
     setSwipedItem(null);
     fetchLedger();
   };
 
+  /**
+   * Handles changes to the time filter dropdown.
+   * Updates the local state, modifies the URL search parameters without reloading the page,
+   * resets the scroll position, and clears any saved scroll restoration data.
+   *
+   * @param time - The new time filter value (in days).
+   */
   const handleTimeFilterChange = useCallback(
     (time: number) => {
       setTimeFilter(time);
       setShowTimeDropdown(false);
 
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("time", String(time));
+      const urlParams = new URLSearchParams(searchParams.toString());
+      urlParams.set("time", String(time));
 
-      // پاک کردن اسکرول فعلی قبل از تغییر Key
       clearSavedPosition();
       window.scrollTo({ top: 0, behavior: "instant" });
 
-      router.replace(`?${params.toString()}`, { scroll: false });
+      router.replace(`/accounts/${accountID}?${urlParams.toString()}`, {
+        scroll: false,
+      });
     },
     [searchParams, router, accountID, clearSavedPosition],
   );
 
+  /** Resolves the display name for the currently active time filter. */
   const currentTimeFilterName = useMemo(
     () =>
       timeFilterOptions.find((o) => o.time === timeFilter)?.name ??
@@ -218,7 +318,6 @@ export default function AccountsDetails() {
 
   if (!accountID) return null;
 
-  // رنگ‌های حساب برای استفاده در دراپ‌داون
   const accountColor = AccountColors[account?.color ?? "black"];
 
   return (

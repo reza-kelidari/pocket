@@ -36,7 +36,7 @@ export default function AccountCard({
   const CardIcon: IconComponent = AccountTypes[type].icon;
 
   return (
-    <Link href={`/accounts/details?id=${id}`}>
+    <Link href={`/accounts/${id}`}>
       <div
         className={`w-58 h-36 border p-5 flex flex-col gap-2 rounded-4xl snap-center shrink-0
           ${AccountColors[color].surface}

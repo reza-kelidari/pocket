@@ -193,7 +193,7 @@ export default function Accounts() {
                           <AccountsListElement
                             account={account}
                             balances={getBalances()}
-                            href={`accounts/details?id=${account.id}`}
+                            href={`accounts/${account.id}`}
                           />
                         </SwipeableElement>
                       </SortableAccountElement>
