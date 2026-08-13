@@ -1,6 +1,6 @@
 "use client";
 
-import Database from "@/icons/Database";
+import ProcessingOverlay from "@/components/ProcessingOverlay";
 import { MessageType } from "@/app/message/page";
 import { AccountType } from "@/utility/accounts/types";
 import useBalances from "@/utility/balance/service/useBalances";
@@ -47,28 +47,19 @@ export default function RestoreProcessingPage() {
         });
 
         setProgress(40);
-
-        if (!res.ok) {
-          throw new Error("خطا در ارتباط با سرور");
-        }
-
-        setProgress(50);
+        if (!res.ok) throw new Error("خطا در ارتباط با سرور");
 
         setStepText("به‌روزرسانی موجودی‌ها...");
-
         setProgress(70);
 
         const { accountsStore, transactionsStore } = DatabaseStores;
         const finalAccounts = await getAll<AccountType>(accountsStore);
-
         setProgress(80);
 
         const finalTxs = await getAll<TransactionType>(transactionsStore);
-
         setProgress(90);
 
         setBalances(getAccountBalances(finalAccounts, finalTxs));
-
         setProgress(100);
 
         sessionStorage.removeItem(RESTORE_DATA_KEY);
@@ -102,7 +93,6 @@ export default function RestoreProcessingPage() {
     };
 
     runRestore();
-
     return () => {
       isMounted = false;
     };
@@ -110,31 +100,10 @@ export default function RestoreProcessingPage() {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col items-center justify-center p-7.5 z-50 animate-fade-in">
-      <div className="w-full max-w-md flex flex-col items-center gap-10">
-        <div className="h-16 w-16 rounded-4xl bg-primary-background border border-primary-border grid place-content-center">
-          <Database
-            height={35}
-            width={35}
-            className="fill-primary animate-pulse"
-          />
-        </div>
-
-        <div className="text-center">
-          <h1 className="text-lg font-bold mb-2">در حال بازیابی اطلاعات</h1>
-          <p className="text-secondary text-sm transition-all">{stepText}</p>
-        </div>
-
-        <div className="w-full bg-elements-background rounded-2xl h-3 overflow-hidden">
-          <div
-            className="bg-primary h-full rounded-2xl transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-        <p className="text-xs text-secondary font-bold">
-          {progress.toLocaleString("fa-IR")}٪
-        </p>
-      </div>
-    </div>
+    <ProcessingOverlay
+      title="در حال بازیابی اطلاعات"
+      progress={progress}
+      stepText={stepText}
+    />
   );
 }

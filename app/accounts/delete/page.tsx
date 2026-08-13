@@ -12,6 +12,7 @@ import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { JSX, useEffect, useState } from "react";
+import { MessageType } from "@/app/message/page";
 
 /**
  * @fileoverview Account deletion confirmation page.
@@ -137,6 +138,12 @@ function useFetchAccountDeleteData(
  * transaction reassignment and cleanup), updates the local balance state
  * to reflect the server's changes, and navigates back.
  *
+ * During the deletion process, a {@link ProcessingOverlay} is displayed with
+ * determinate progress tracking across three phases:
+ * 1. Deleting the account from the database.
+ * 2. Clearing local balance entries.
+ * 3. Recalculating balances after transfer reassignments.
+ *
  * @returns The rendered confirmation UI, a processing overlay, or `null` if data is missing.
  */
 export default function AccountDelete(): JSX.Element | null {
@@ -149,28 +156,39 @@ export default function AccountDelete(): JSX.Element | null {
 
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [stepText, setStepText] = useState<string>("");
 
   /**
-   * Handles the account deletion process.
+   * Handles the account deletion process with step-by-step progress tracking.
    *
-   * 1. Sends the DELETE request to the API (server handles cascading logic).
-   * 2. Removes the deleted account's local balance entry.
-   * 3. Refetches all accounts and transactions to recalculate balances,
-   *    ensuring the UI reflects the server-side transfer reassignments.
-   * 4. Navigates back to the previous screen.
+   * The operation is divided into three phases:
+   * 1. **Delete account** (0% → 33%): Sends the DELETE request to the API.
+   * 2. **Update balances** (33% → 66%): Removes the deleted account's local balance entry.
+   * 3. **Recalculate** (66% → 100%): Refetches all accounts and transactions to
+   *    recalculate balances, ensuring the UI reflects the server-side transfer reassignments.
+   *
+   * After completion, navigates back to the previous screen.
    */
   const handleDelete = async (): Promise<void> => {
     if (!isConfirmed || isLoading || !data?.account) return;
 
     setIsProcessing(true);
+    setProgress(0);
+    setStepText("در حال حذف حساب از دیتابیس...");
+
     try {
-      // 1. Trigger server-side deletion and cascading updates
+      // Phase 1: Trigger server-side deletion and cascading updates
       await deleteItem(DatabaseStores.accountsStore, accountID);
+      setProgress(33);
+      setStepText("در حال پاک‌سازی موجودی محلی...");
 
-      // 2. Remove local balance for the deleted account
+      // Phase 2: Remove local balance for the deleted account
       removeBalance(accountID);
+      setProgress(66);
+      setStepText("در حال محاسبه مجدد موجودی‌ها...");
 
-      // 3. Refetch data to recalculate balances (transfers are now linked to transit account)
+      // Phase 3: Refetch data to recalculate balances (transfers are now linked to transit account)
       const { accountsStore, transactionsStore } = DatabaseStores;
       const [finalAccounts, finalTransactions] = await Promise.all([
         getAll<AccountType>(accountsStore),
@@ -178,12 +196,23 @@ export default function AccountDelete(): JSX.Element | null {
       ]);
 
       setBalances(getAccountBalances(finalAccounts, finalTransactions));
+      setProgress(100);
 
-      // 4. Navigate back
-      router.back();
+      const message: MessageType = {
+        title: "حذف موفق",
+        type: "done",
+        message: [`حساب ${data.account.name} با موفقیت حذف شد`],
+      };
+      sessionStorage.setItem("message", JSON.stringify(message));
+
+      setTimeout(() => {
+        router.replace("/message");
+      }, 500);
     } catch (error) {
       console.error("Failed to delete account:", error);
       setIsProcessing(false);
+      setProgress(0);
+      setStepText("");
     }
   };
 
@@ -192,6 +221,8 @@ export default function AccountDelete(): JSX.Element | null {
       <ProcessingOverlay
         title="در حال حذف حساب"
         subtitle="لطفاً تا پایان عملیات صبر کنید..."
+        progress={progress}
+        stepText={stepText}
       />
     );
   }
@@ -271,7 +302,7 @@ export default function AccountDelete(): JSX.Element | null {
             onChange={(e) => setIsConfirmed(e.target.checked)}
             className="accent-red p-3 ml-1"
           />
-          بله، تأیید می‌کنم
+          بله، تأیید می‌کنم
         </label>
 
         <Button

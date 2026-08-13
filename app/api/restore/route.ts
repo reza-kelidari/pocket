@@ -31,12 +31,14 @@ export async function POST(req: NextRequest) {
     try {
       await client.query("BEGIN");
 
+      // پاکسازی کامل داده‌های قبلی
       await client.query(`DELETE FROM transactions WHERE user_id = $1`, [
         userId,
       ]);
       await client.query(`DELETE FROM tags WHERE user_id = $1`, [userId]);
       await client.query(`DELETE FROM accounts WHERE user_id = $1`, [userId]);
 
+      // بازیابی حساب‌ها
       for (const acc of backupData.accounts || []) {
         const idR = sanitizeUuid(acc.id);
         if (!idR.valid) continue;
@@ -52,7 +54,14 @@ export async function POST(req: NextRequest) {
 
         await client.query(
           `INSERT INTO accounts (id, user_id, name, type, "order", color, "default", hidden)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (id) DO UPDATE SET
+             name = EXCLUDED.name,
+             type = EXCLUDED.type,
+             "order" = EXCLUDED."order",
+             color = EXCLUDED.color,
+             "default" = EXCLUDED."default",
+             hidden = EXCLUDED.hidden`,
           [
             idR.value,
             userId,
@@ -66,6 +75,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // بازیابی برچسب‌ها
       for (const tag of backupData.tags || []) {
         const idR = sanitizeUuid(tag.id);
         if (!idR.valid) continue;
@@ -78,7 +88,11 @@ export async function POST(req: NextRequest) {
 
         await client.query(
           `INSERT INTO tags (id, user_id, name, type, "order")
-           VALUES ($1, $2, $3, $4, $5)`,
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (id) DO UPDATE SET
+             name = EXCLUDED.name,
+             type = EXCLUDED.type,
+             "order" = EXCLUDED."order"`,
           [
             idR.value,
             userId,
@@ -89,6 +103,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // بازیابی تراکنش‌ها
       for (const tx of backupData.transactions || []) {
         const idR = sanitizeUuid(tx.id);
         if (!idR.valid) continue;
@@ -107,7 +122,16 @@ export async function POST(req: NextRequest) {
 
         await client.query(
           `INSERT INTO transactions (id, user_id, time, name, type, debit, credit, value, note, tag)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (id) DO UPDATE SET
+             time = EXCLUDED.time,
+             name = EXCLUDED.name,
+             type = EXCLUDED.type,
+             debit = EXCLUDED.debit,
+             credit = EXCLUDED.credit,
+             value = EXCLUDED.value,
+             note = EXCLUDED.note,
+             tag = EXCLUDED.tag`,
           [
             idR.value,
             userId,
@@ -125,14 +149,15 @@ export async function POST(req: NextRequest) {
 
       await client.query("COMMIT");
       return NextResponse.json({ ok: true });
-    } catch (error) {
+    } catch (error: any) {
       await client.query("ROLLBACK");
-      throw error;
+      console.error("POST /api/restore error:", error);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
     } finally {
       client.release();
     }
-  } catch (error) {
-    console.error("POST /api/restore error:", error);
+  } catch (error: any) {
+    console.error("POST /api/restore outer error:", error);
     return NextResponse.json({ error: "Database error" }, { status: 500 });
   }
 }

@@ -21,29 +21,29 @@ interface DeleteAllData {
 }
 
 /**
+ * Return type for the {@link useFetchDeleteAllData} hook.
+ */
+interface UseFetchDeleteAllDataResult {
+  data: DeleteAllData | null;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+/**
  * Custom hook to manage the state of fetching accounts and transactions.
  * Encapsulates the data fetching logic, error handling, and loading state.
  *
  * @returns An object containing the fetched data, loading status, and potential errors.
  */
-function useFetchDeleteAllData(): {
-  data: DeleteAllData | null;
-  isLoading: boolean;
-  error: Error | null;
-} {
+function useFetchDeleteAllData(): UseFetchDeleteAllDataResult {
   const [data, setData] = useState<DeleteAllData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // Prevents state updates if the component unmounts during the async operation
     let isMounted = true;
-
     const { accountsStore, transactionsStore } = DatabaseStores;
 
-    /**
-     * Asynchronously fetches accounts and transactions concurrently.
-     */
     const fetchData = async () => {
       try {
         const [accs, txs] = await Promise.all([
@@ -53,7 +53,6 @@ function useFetchDeleteAllData(): {
 
         if (!isMounted) return;
 
-        // Fallback to empty arrays to prevent runtime errors if the DB returns undefined
         setData({
           accounts: accs ?? [],
           transactions: txs ?? [],
@@ -61,7 +60,7 @@ function useFetchDeleteAllData(): {
         setError(null);
       } catch (err) {
         if (!isMounted) return;
-        setError(err as Error);
+        setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -78,48 +77,65 @@ function useFetchDeleteAllData(): {
 }
 
 /**
- * DeleteAllConfirm Component
+ * `DeleteAllConfirm` Component
  *
  * Renders a confirmation screen warning the user about the deletion of all data.
  * It fetches the current count of accounts and transactions to display context to the user.
- * Upon user confirmation, it triggers the deletion API, clears local stores,
- * and redirects to the splash screen to re-initialize the application.
+ * Upon user confirmation, it triggers the deletion API with a step-by-step progress overlay,
+ * clears local stores, and redirects to the splash screen to re-initialize the application.
  *
- * @returns {JSX.Element} The rendered confirmation component.
+ * @returns The rendered confirmation component, processing overlay, or error message.
  */
-export default function DeleteAllConfirm(): JSX.Element {
+export default function DeleteAllConfirm(): JSX.Element | null {
   const router = useRouter();
-
-  // Utilizing the custom hook to separate data-fetching logic from the UI
   const { data, isLoading, error } = useFetchDeleteAllData();
 
+  // UI States
   const [validate, setValidate] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [stepText, setStepText] = useState<string>("");
 
   /**
    * Handles the deletion of all application data.
-   * Validates user confirmation, triggers the API call, clears local stores,
-   * and redirects to the splash screen.
+   * Updates progress and step text to provide visual feedback via `ProcessingOverlay`.
    *
-   * @returns {Promise<void>}
+   * 1. Sends DELETE request to the API.
+   * 2. Clears local balance store and session storage.
+   * 3. Redirects to the splash screen.
    */
   const handleDeleteAll = async (): Promise<void> => {
     if (!validate || isLoading) return;
 
     setIsProcessing(true);
+    setProgress(10);
+    setStepText("در حال ارسال درخواست به سرور...");
+
     try {
-      // Send delete request to the API route
-      await fetch("/api/all", { method: "DELETE" });
+      const res = await fetch("/api/all", { method: "DELETE" });
+      if (!res.ok) throw new Error("خطا در ارتباط با سرور");
+
+      setProgress(50);
+      setStepText("پاکسازی حافظه محلی...");
 
       // Clear local stores and session storage
       balancesStore.clear();
       sessionStorage.removeItem(SplashShownKey);
+
+      setProgress(90);
+      setStepText("در حال بازنشانی برنامه...");
+
+      // Small delay to ensure the user sees the final progress state before redirect
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setProgress(100);
 
       // Redirect user to splash screen for app re-initialization
       router.replace("/splash");
     } catch (error) {
       console.error("Failed to delete all data:", error);
       setIsProcessing(false);
+      setProgress(0);
+      setStepText("");
     }
   };
 
@@ -128,20 +144,21 @@ export default function DeleteAllConfirm(): JSX.Element {
     return (
       <ProcessingOverlay
         title="در حال پاکسازی اطلاعات"
-        subtitle="در حال بازنشانی برنامه..."
+        progress={progress}
+        stepText={stepText}
       />
     );
   }
-
-  // Safely extract values with defaults
-  const accountCount = data?.accounts.length ?? 0;
-  const transactionCount = data?.transactions.length ?? 0;
 
   if (error) {
     return (
       <div className="text-center text-red p-10">خطا در دریافت اطلاعات...</div>
     );
   }
+
+  // Safely extract values with defaults
+  const accountCount = data?.accounts.length ?? 0;
+  const transactionCount = data?.transactions.length ?? 0;
 
   return (
     <div className="flex flex-col items-center justify-center gap-7.5 p-15 h-screen">
