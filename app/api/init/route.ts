@@ -48,11 +48,41 @@ export async function POST(req: NextRequest) {
     const { gy, gm, gd } = toGregorian(jy, 1, 1);
     const time = new Date(gy, gm - 1, gd).getTime();
 
-    const accounts = [
-      { order: 1, name: "طلب‌ها", color: "green2", hidden: false },
-      { order: 2, name: "بدهی‌ها", color: "red", hidden: false },
-      { order: 999, name: "وجوه در راه", color: "black", hidden: true },
-      { order: 0, name: "کیف پول نقدی", color: "orange", hidden: false },
+    const accounts: {
+      order: number;
+      name: string;
+      color: string;
+      hidden: boolean;
+      type: "Bank" | "Wallet" | "Invest" | "Crypto" | "Book";
+    }[] = [
+      {
+        order: 1,
+        name: "طلب‌ها",
+        color: "green2",
+        hidden: false,
+        type: "Book",
+      },
+      {
+        order: 2,
+        name: "بدهی‌ها",
+        color: "red",
+        hidden: false,
+        type: "Book",
+      },
+      {
+        order: 999,
+        name: "وجوه در راه",
+        color: "black",
+        hidden: true,
+        type: "Book",
+      },
+      {
+        order: 0,
+        name: "کیف پول نقدی",
+        color: "orange",
+        hidden: false,
+        type: "Wallet",
+      },
     ];
 
     const insertedAccounts: { id: string; name: string }[] = [];
@@ -60,7 +90,7 @@ export async function POST(req: NextRequest) {
     for (const acc of accounts) {
       const res = await client.query(
         `INSERT INTO accounts (id, user_id, name, type, "order", color, "default", hidden)
-         VALUES (gen_random_uuid(), $1, $2, 'Wallet', $3, $4, true, $5)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, true, $6)
          RETURNING id`,
         [userId, acc.name, acc.order, acc.color, acc.hidden],
       );

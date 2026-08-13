@@ -1,4 +1,5 @@
 import Bank from "@/icons/Bank";
+import Book from "@/icons/Book";
 import Candle from "@/icons/Candle";
 import CryptoCoin from "@/icons/CryptoCoin";
 import Wallet from "@/icons/Wallet";
@@ -32,5 +33,10 @@ export const AccountTypes = {
   Crypto: {
     name: "کیف‌پول دیجیتالی",
     icon: CryptoCoin,
+  },
+
+  Book: {
+    name: "دفتر",
+    icon: Book,
   },
 } as const;
