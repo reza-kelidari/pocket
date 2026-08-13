@@ -5,15 +5,6 @@ import { sanitizeUuid } from "@/utility/validation";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-/**
- * GET /api/accounts/:id/ledger?time=29
- *
- * Returns transactions for the specified account with running balance info.
- * - Each transaction includes `balanceAfter` (balance immediately after that tx).
- * - Response includes `balanceBefore` (balance at the start of the filtered period).
- *
- * Balance calculation is done entirely in PostgreSQL using a window function.
- */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -29,37 +20,66 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   const url = new URL(req.url);
   const timeWindow = Number(url.searchParams.get("time") || 29);
+  const tagParam = url.searchParams.get("tag");
 
-  // 36500 means "no time limit"
   let timeFilter = 0;
   if (timeWindow && timeWindow !== 36500) {
     timeFilter = Date.now() - timeWindow * 24 * 60 * 60 * 1000;
   }
 
+  let tagValue: string | null = null;
+  let isUntagged = false;
+
+  if (tagParam === "untagged") {
+    isUntagged = true;
+  } else if (tagParam) {
+    const tagIdResult = sanitizeUuid(tagParam);
+    if (tagIdResult.valid) {
+      tagValue = tagIdResult.value;
+    }
+  }
+
   try {
-    // 1) Calculate balanceBefore: sum of all tx effects before the filter period
     let balanceBefore = 0;
     if (timeFilter > 0) {
-      const beforeRes = await pool.query(
-        `SELECT COALESCE(SUM(
-          CASE
-            WHEN debit = $2 THEN value
-            WHEN credit = $2 THEN -value
-            ELSE 0
-          END
-        ), 0)::bigint AS balance_before
-        FROM transactions
-        WHERE user_id = $1 AND (debit = $2 OR credit = $2) AND time < $3`,
-        [userId, accountId, timeFilter],
-      );
+      let beforeQuery = `SELECT COALESCE(SUM(
+        CASE
+          WHEN debit = $2 THEN value
+          WHEN credit = $2 THEN -value
+          ELSE 0
+        END
+      ), 0)::bigint AS balance_before
+      FROM transactions
+      WHERE user_id = $1 AND (debit = $2 OR credit = $2) AND time < $3`;
+      let beforeParams: unknown[] = [userId, accountId, timeFilter];
+
+      if (isUntagged) {
+        beforeQuery += ` AND tag IS NULL`;
+      } else if (tagValue) {
+        beforeQuery += ` AND tag = $4`;
+        beforeParams.push(tagValue);
+      }
+
+      const beforeRes = await pool.query(beforeQuery, beforeParams);
       balanceBefore = Number(beforeRes.rows[0].balance_before) || 0;
     }
 
-    // 2) Get transactions with running balance (window function over ALL txs, then filter)
     let query: string;
     const queryParams: unknown[] = [userId, accountId];
+    let paramIdx = 3;
+
+    const tagFilterSQL = isUntagged
+      ? `AND tag IS NULL`
+      : tagValue
+        ? `AND tag = $${paramIdx++}`
+        : "";
+
+    if (tagValue) queryParams.push(tagValue);
 
     if (timeFilter > 0) {
+      queryParams.push(timeFilter);
+      const timeIdx = queryParams.length;
+
       query = `
         WITH all_txs AS (
           SELECT
@@ -75,12 +95,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
             )::bigint AS balance_after
           FROM transactions
-          WHERE user_id = $1 AND (debit = $2 OR credit = $2)
+          WHERE user_id = $1 AND (debit = $2 OR credit = $2) ${tagFilterSQL}
         )
         SELECT * FROM all_txs
-        WHERE time >= $3
+        WHERE time >= $${timeIdx}
         ORDER BY time DESC, id DESC`;
-      queryParams.push(timeFilter);
     } else {
       query = `
         SELECT
@@ -96,12 +115,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
           )::bigint AS balance_after
         FROM transactions
-        WHERE user_id = $1 AND (debit = $2 OR credit = $2)
+        WHERE user_id = $1 AND (debit = $2 OR credit = $2) ${tagFilterSQL}
         ORDER BY time DESC, id DESC`;
     }
 
     const res = await pool.query(query, queryParams);
-
     const transactions = res.rows.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       time: Number(row.time),
