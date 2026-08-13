@@ -11,7 +11,15 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  use,
+  JSX,
+} from "react";
 import Capsule from "@/components/Capsule";
 import CapsuleLoading from "@/components/CapsuleLoading";
 import ChartView from "@/components/ChartContainer";
@@ -61,6 +69,96 @@ interface AccountsDetailsProps {
    * In Next.js 15+ / React 19, `params` is a Promise that must be unwrapped using React's `use` hook.
    */
   params: Promise<{ id: string }>;
+}
+
+/**
+ * Props for the TimeWindow component.
+ */
+interface TimeWindowProps {
+  /** Reference to the dropdown container element for click-outside detection. */
+  dropdownRef: React.RefObject<HTMLDivElement | null>;
+  /** State setter to toggle the dropdown visibility. */
+  setShowTimeDropdown: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Display name of the currently selected time filter. */
+  currentTimeFilterName: string;
+  /** Whether the dropdown DOM element is currently mounted. */
+  isDropdownMounted: boolean;
+  /** Whether the dropdown is visible (for CSS transition control). */
+  isDropdownVisible: boolean;
+  /** Array of available time filter options. */
+  timeFilterOptions: {
+    name: string;
+    time: number;
+  }[];
+  /** Callback handler when a time filter option is selected. */
+  handleTimeFilterChange: (time: number) => void;
+  /** Currently active time filter value (in days). */
+  timeFilter: number;
+  /** Color scheme for the account-themed UI elements. */
+  accountColor: {
+    readonly text: string;
+    readonly border: string;
+    readonly surface: string;
+  };
+}
+
+/**
+ * TimeWindow Component
+ *
+ * Renders a dropdown button for selecting time-based filters on the account ledger.
+ * Handles mount/unmount animations and click-outside-to-close behavior.
+ *
+ * @param props - Component props containing dropdown state and configuration.
+ * @returns The rendered time filter dropdown UI.
+ */
+function TimeWindow({
+  dropdownRef,
+  setShowTimeDropdown,
+  currentTimeFilterName,
+  isDropdownMounted,
+  isDropdownVisible,
+  timeFilterOptions,
+  handleTimeFilterChange,
+  timeFilter,
+  accountColor,
+}: TimeWindowProps): JSX.Element {
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setShowTimeDropdown((v) => !v)}
+        className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap ${accountColor.surface} ${accountColor.border} ${accountColor.text} cursor-pointer`}
+      >
+        {currentTimeFilterName}
+        <Left height={15} width={15} className="fill-current" />
+      </button>
+
+      {isDropdownMounted && (
+        <div
+          className={`absolute top-full left-0 mt-2 p-2 flex flex-col gap-1 bg-white border border-elements-border rounded-2xl shadow-lg z-50 min-w-36 transition-all duration-200 ease-out transform origin-top-left ${
+            isDropdownVisible
+              ? "opacity-100 translate-y-0 scale-100"
+              : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
+          }`}
+        >
+          {timeFilterOptions.map((option) => (
+            <button
+              key={option.time}
+              type="button"
+              onClick={() => handleTimeFilterChange(option.time)}
+              className={`block w-full text-right px-4 rounded-md py-2.5 text-xs transition-colors ${
+                option.time === timeFilter
+                  ? `${accountColor.text} font-bold ${accountColor.surface}`
+                  : "text-black hover:bg-elements-background"
+              }`}
+            >
+              {option.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -355,61 +453,35 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
         )}
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-8">
         {isLoading ? (
           <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
         ) : (
           <SectionTitle
             action={
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowTimeDropdown((v) => !v)}
-                  className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap ${accountColor.surface} ${accountColor.border} ${accountColor.text} cursor-pointer`}
-                >
-                  {currentTimeFilterName}
-                  <Left height={15} width={15} className="fill-current" />
-                </button>
-
-                {isDropdownMounted && (
-                  <div
-                    className={`absolute top-full left-0 mt-2 p-2 flex flex-col gap-1 bg-white border border-elements-border rounded-2xl shadow-lg z-50 min-w-36 transition-all duration-200 ease-out transform origin-top-left ${
-                      isDropdownVisible
-                        ? "opacity-100 translate-y-0 scale-100"
-                        : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
-                    }`}
-                  >
-                    {timeFilterOptions.map((option) => (
-                      <button
-                        key={option.time}
-                        type="button"
-                        onClick={() => handleTimeFilterChange(option.time)}
-                        className={`block w-full text-right px-4 rounded-md py-2.5 text-xs transition-colors ${
-                          option.time === timeFilter
-                            ? `${accountColor.text} font-bold ${accountColor.surface}`
-                            : "text-black hover:bg-elements-background"
-                        }`}
-                      >
-                        {option.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <TimeWindow
+                dropdownRef={dropdownRef}
+                setShowTimeDropdown={setShowTimeDropdown}
+                currentTimeFilterName={currentTimeFilterName}
+                isDropdownMounted={isDropdownMounted}
+                isDropdownVisible={isDropdownVisible}
+                timeFilterOptions={timeFilterOptions}
+                handleTimeFilterChange={handleTimeFilterChange}
+                timeFilter={timeFilter}
+                accountColor={accountColor}
+              />
             }
-          >
-            {`گردش حساب ${account?.name}`}
-          </SectionTitle>
+          >{`گردش حساب ${account?.name}`}</SectionTitle>
         )}
 
         {isLedgerLoading || isLoading ? (
-          <div className="flex flex-col w-full gap-2.5">
+          <div className="flex flex-col w-full gap-4">
             {[0, 1, 2, 3, 4].map((item) => (
               <TransactionItemLoading key={item} />
             ))}
           </div>
         ) : ledgerData && ledgerData.transactions.length > 0 ? (
-          <div className="flex flex-col w-full gap-2.5 animate-fade-in">
+          <div className="flex flex-col w-full gap-4 animate-fade-in">
             {ledgerData.transactions.map((transaction) => (
               <SwipeableElement
                 isOpen={transaction.id === swipedItem}
