@@ -15,7 +15,7 @@ import useBalances from "@/utility/balance/service/useBalances";
 import { deleteItem, getAll, getItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import { getAccountBalances } from "@/utility/shared/balancesMethods";
-import { PrimaryColors } from "@/utility/shared/colors";
+import { PrimaryColors, AccountColors } from "@/utility/shared/colors";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import { timeFilters } from "@/app/transactions/methods";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
@@ -218,6 +218,9 @@ export default function AccountsDetails() {
 
   if (!accountID) return null;
 
+  // رنگ‌های حساب برای استفاده در دراپ‌داون
+  const accountColor = AccountColors[account?.color ?? "black"];
+
   return (
     <div className="p-7.5 flex flex-col gap-15 w-full max-w-full min-w-0 overflow-x-hidden min-h-screen">
       <div className="flex flex-col gap-15 w-full min-w-0">
@@ -263,10 +266,10 @@ export default function AccountsDetails() {
                 <button
                   type="button"
                   onClick={() => setShowTimeDropdown((v) => !v)}
-                  className="border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap bg-primary-background border-primary-border text-primary cursor-pointer"
+                  className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap ${accountColor.surface} ${accountColor.border} ${accountColor.text} cursor-pointer`}
                 >
                   {currentTimeFilterName}
-                  <Left height={15} width={15} className="fill-primary" />
+                  <Left height={15} width={15} className="fill-current" />
                 </button>
 
                 {isDropdownMounted && (
@@ -284,7 +287,7 @@ export default function AccountsDetails() {
                         onClick={() => handleTimeFilterChange(option.time)}
                         className={`block w-full text-right px-4 rounded-md py-2.5 text-xs transition-colors ${
                           option.time === timeFilter
-                            ? "text-primary font-bold bg-primary-background"
+                            ? `${accountColor.text} font-bold ${accountColor.surface}`
                             : "text-black hover:bg-elements-background"
                         }`}
                       >
