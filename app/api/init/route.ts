@@ -89,10 +89,28 @@ export async function POST(req: NextRequest) {
 
     for (const acc of accounts) {
       const res = await client.query(
-        `INSERT INTO accounts (id, user_id, name, type, "order", color, "default", hidden)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, true, $6)
+        `INSERT INTO accounts (
+         id,
+         user_id,
+         name,
+         type,
+         "order",
+         color,
+         "default",
+         hidden
+         )
+         VALUES (
+           gen_random_uuid(),
+           $1,
+           $2,
+           $3::account_type,
+           $4,
+           $5::account_color,
+           true,
+           $6
+         )
          RETURNING id`,
-        [userId, acc.name, acc.order, acc.color, acc.hidden],
+        [userId, acc.name, acc.type, acc.order, acc.color, acc.hidden],
       );
       insertedAccounts.push({ id: res.rows[0].id, name: acc.name });
     }
