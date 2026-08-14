@@ -55,7 +55,7 @@ export async function getItem<T>(
 export async function putItem<T extends { id: string } | { id: string }[]>(
   store: string,
   item: T,
-): Promise<void> {
+): Promise<string[]> {
   const res = await fetch(`/api/${store}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -66,6 +66,8 @@ export async function putItem<T extends { id: string } | { id: string }[]>(
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || "خطا در ذخیره‌سازی اطلاعات");
   }
+  const data = await res.json();
+  return data.ids ?? [];
 }
 
 export async function deleteItem(store: string, id: string): Promise<void> {

@@ -132,7 +132,7 @@ export async function generateExcelTemplate(
   ws1.getCell("B1").value = "نام حساب";
   ws1.getCell("C1").value = "کد حساب";
   ws1.getCell("D1").value = "نوع حساب";
-  ws1.getCell("E1").value = "کد نوع";
+  ws1.getCell("E1").value = "کد نوع حساب";
   ws1.getCell("F1").value = "رنگ حساب";
   ws1.getCell("G1").value = "کد رنگ";
   ws1.getCell("H1").value = "ردیف";
@@ -171,14 +171,11 @@ export async function generateExcelTemplate(
     // Visible accounts
     if (i < visibleAccounts.length) {
       const acc = visibleAccounts[i];
-
       ws1.getCell(`A${r}`).value = acc.order ?? i + 1;
       ws1.getCell(`A${r}`).numFmt = "[$-,300]#";
       ws1.getCell(`A${r}`).alignment = centerAlign;
-
       ws1.getCell(`B${r}`).value = acc.name;
       ws1.getCell(`C${r}`).value = acc.id;
-
       if (acc.default) {
         // Default accounts have locked type with gray background
         ws1.getCell(`D${r}`).value = "پیش‌فرض";
@@ -195,6 +192,8 @@ export async function generateExcelTemplate(
           errorTitle: "نامعتبر",
           error: "نوع حساب پیش‌فرض قابل تغییر نیست",
         };
+        // ─── کد نوع حساب پیش‌فرض: مستقیم نوشته میشه (مثلاً Book) ───
+        ws1.getCell(`E${r}`).value = acc.type;
       } else {
         // Regular accounts have selectable type dropdown
         const accTypeName =
@@ -208,8 +207,11 @@ export async function generateExcelTemplate(
           errorTitle: "نامعتبر",
           error: "مقدار مجاز را انتخاب کنید",
         };
+        // Resolve internal type code via VLOOKUP for non-default accounts
+        ws1.getCell(`E${r}`).value = {
+          formula: `IFERROR(VLOOKUP(D${r},Hidden_Maps!A:B,2,FALSE),"")`,
+        };
       }
-
       const colorName =
         AccountColors[acc.color as keyof typeof AccountColors]?.name || "مشکی";
       ws1.getCell(`F${r}`).value = colorName;
@@ -221,14 +223,14 @@ export async function generateExcelTemplate(
         errorTitle: "نامعتبر",
         error: "مقدار مجاز را انتخاب کنید",
       };
-
-      // Resolve internal codes via VLOOKUP formulas
-      ws1.getCell(`E${r}`).value = {
-        formula: `IFERROR(VLOOKUP(D${r},Hidden_Maps!A:B,2,FALSE),"")`,
-      };
-      ws1.getCell(`G${r}`).value = {
-        formula: `IFERROR(VLOOKUP(F${r},Hidden_Maps!D:E,2,FALSE),"")`,
-      };
+      // Color code: VLOOKUP for non-default, direct for default
+      if (acc.default) {
+        ws1.getCell(`G${r}`).value = acc.color;
+      } else {
+        ws1.getCell(`G${r}`).value = {
+          formula: `IFERROR(VLOOKUP(F${r},Hidden_Maps!D:E,2,FALSE),"")`,
+        };
+      }
     } else if (i < totalAccounts) {
       // Hidden accounts (funds in transit)
       const hiddenAcc = hiddenAccounts[i - visibleAccounts.length];
@@ -277,7 +279,7 @@ export async function generateExcelTemplate(
       };
 
       // Write codes directly instead of VLOOKUP for hidden accounts
-      ws1.getCell(`E${r}`).value = "Default";
+      ws1.getCell(`E${r}`).value = hiddenAcc.type;
       ws1.getCell(`G${r}`).value = hiddenAcc.color || "Black";
     }
 
@@ -432,12 +434,10 @@ export async function generateExcelTemplate(
     ws3.getCell(`F${r}`).dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: [
-        `INDIRECT(IF(OR($H${r}="انتقال",$H${r}="افتتاح"),"emptyRange","tagNames"))`,
-      ],
+      formulae: [`INDIRECT(IF($H${r}="افتتاح","emptyRange","tagNames"))`],
       showErrorMessage: true,
       errorTitle: "نامعتبر",
-      error: "برای این نوع تراکنش برچسب مجاز نیست",
+      error: "برای تراکنش افتتاح برچسب مجاز نیست",
     };
 
     // Transaction type dropdown
@@ -464,7 +464,7 @@ export async function generateExcelTemplate(
 
     // Validation formula: shows checkmark, X, or empty
     ws3.getCell(`J${r}`).value = {
-      formula: `IF(AND(A${r}="",B${r}="",D${r}="",F${r}="",H${r}="",I${r}="",K${r}="",L${r}="",M${r}=""),"",IF(OR(A${r}="",D${r}="",H${r}="",I${r}="",M${r}=""),"✗",IF(AND(ISNUMBER(SEARCH("/",A${r})),OR(ISNUMBER(B${r}),ISNUMBER(SEARCH(":",B${r}))),COUNTIF(accountNames,D${r})>0,IF(F${r}<>"",COUNTIF(tagNames,F${r})>0,TRUE),IF(H${r}="انتقال",COUNTIF(accountNames,I${r})>0,IF(H${r}="دریافت",COUNTIF(incomeCatNames,I${r})>0,IF(H${r}="پرداخت",COUNTIF(expenseCatNames,I${r})>0,FALSE))),M${r}>0),"✓","✗")))`,
+      formula: `IF(AND(A${r}="",B${r}="",D${r}="",F${r}="",H${r}="",I${r}="",K${r}="",L${r}="",M${r}=""),"",IF(OR(A${r}="",D${r}="",H${r}="",I${r}="",M${r}=""),"✗",IF(AND(ISNUMBER(SEARCH("/",A${r})),OR(ISNUMBER(B${r}),ISNUMBER(SEARCH(":",B${r}))),COUNTIF(accountNames,D${r})>0,IF(F${r}<>"",COUNTIF(tagNames,F${r})>0,TRUE),IF(H${r}="انتقال",COUNTIF(accountNames,I${r})>0,IF(H${r}="دریافت",COUNTIF(incomeCatNames,I${r})>0,IF(H${r}="پرداخت",COUNTIF(expenseCatNames,I${r})>0,FALSE))),IF(AND(H${r}="انتقال",F${r}<>""),OR(IFERROR(VLOOKUP(D${r},'حساب‌ها و برچسب‌ها'!$B:$E,4,FALSE),"")="Book",IFERROR(VLOOKUP(I${r},'حساب‌ها و برچسب‌ها'!$B:$E,4,FALSE),"")="Book"),TRUE),M${r}>0),"✓","✗")))`,
     };
 
     // Helper formula for INDIRECT resolution

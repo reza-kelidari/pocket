@@ -231,7 +231,8 @@ export const TransactionCategories = {
       sub: [
         { id: 0x02160001, name: "کارمزد خدمات بانکی", icon: Wallet },
         { id: 0x02160002, name: "کارمزد خدمات دولتی", icon: Wallet },
-        { id: 0x02160003, name: "زیان ناشی‌از اصلاح مانده‌ها", icon: Wallet },
+        { id: 0x02160003, name: "جرائم مالی", icon: Wallet },
+        { id: 0x02160004, name: "زیان ناشی‌از اصلاح مانده‌ها", icon: Wallet },
       ],
     },
     {

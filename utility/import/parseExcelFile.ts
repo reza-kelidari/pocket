@@ -342,11 +342,22 @@ export async function parseExcelFile(
     if (accMap.has(tx.accountName)) {
       const acc = accMap.get(tx.accountName);
       acc.txCount++;
-      if (tx.type === "credit") acc.finalBalance -= tx.value;
-      else acc.finalBalance += tx.value;
+      switch (tx.type) {
+        case "debit":
+          acc.finalBalance += tx.value;
+          break;
+        case "credit":
+          acc.finalBalance -= tx.value;
+          break;
+        case "transfer":
+          acc.finalBalance -= tx.value;
+          break;
+        case "initial":
+          acc.finalBalance += tx.value;
+          break;
+      }
     }
 
-    // For transfers, also update the destination account
     if (tx.type === "transfer") {
       const destKey = String(tx.catOrDestCode);
       if (accMap.has(destKey)) {

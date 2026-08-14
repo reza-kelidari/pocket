@@ -5,6 +5,7 @@ import { sanitizeUuid } from "@/utility/validation";
 import { STORE_COLUMNS } from "@/utility/db/columns";
 
 const ALLOWED_STORES = ["accounts", "transactions", "tags"];
+
 const NUMERIC_FIELDS: Record<string, string[]> = {
   accounts: ["order"],
   transactions: ["time", "value"],
@@ -58,7 +59,6 @@ export async function GET(
         paramIndex++;
       }
     }
-
     if (accounts) {
       const accList = accounts
         .split(",")
@@ -71,7 +71,6 @@ export async function GET(
         paramIndex++;
       }
     }
-
     if (categories) {
       const catList = categories.split(",").filter((s) => s !== "");
       if (catList.length > 0) {
@@ -80,7 +79,6 @@ export async function GET(
         paramIndex++;
       }
     }
-
     if (tags) {
       const tagList = tags.split(",").filter((s) => s !== "");
       if (tagList.length > 0) {
@@ -111,6 +109,7 @@ export async function POST(
   const userId = await getCurrentUserId();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { store: rawStore } = await params;
   const store = ALLOWED_STORES.includes(rawStore) ? rawStore : null;
   if (!store)
@@ -120,17 +119,16 @@ export async function POST(
     const body = await req.json();
     const items = Array.isArray(body) ? body : [body];
     const client = await pool.connect();
-
     const allowedCols = STORE_COLUMNS[store] || [];
+    /** آرایه‌ی id‌های نهایی به ترتیب آیتم‌های ورودی */
+    const resultIds: string[] = [];
 
     try {
       await client.query("BEGIN");
+
       for (const item of items) {
         const { id, user_id: _ignoredUserId, ...data } = item;
-
         const idRes = sanitizeUuid(id);
-        if (!idRes.valid) continue;
-        const safeId = idRes.value;
 
         const safeData: Record<string, any> = {};
         for (const key of Object.keys(data)) {
@@ -165,22 +163,37 @@ export async function POST(
 
         const keys = Object.keys(safeData);
         const values = Object.values(safeData);
-        const allKeys = ["id", "user_id", ...keys];
-        const allValues = [safeId, userId, ...values];
 
-        const cols = allKeys.map((k) => `"${k}"`).join(", ");
-        const vals = allKeys.map((_, i) => `$${i + 1}`).join(", ");
-        const updates = keys.map((k, i) => `"${k}" = $${i + 3}`).join(", ");
-
-        const query =
-          keys.length === 0
-            ? `INSERT INTO ${store} (id, user_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`
-            : `INSERT INTO ${store} (${cols}) VALUES (${vals}) ON CONFLICT (id) DO UPDATE SET ${updates}`;
-
-        await client.query(query, allValues);
+        if (idRes.valid) {
+          // ─── آیتم با id مشخص: INSERT یا UPDATE ───
+          const safeId = idRes.value;
+          const allKeys = ["id", "user_id", ...keys];
+          const allValues = [safeId, userId, ...values];
+          const cols = allKeys.map((k) => `"${k}"`).join(", ");
+          const vals = allKeys.map((_, i) => `$${i + 1}`).join(", ");
+          const updates = keys.map((k, i) => `"${k}" = $${i + 3}`).join(", ");
+          const query =
+            keys.length === 0
+              ? `INSERT INTO ${store} (id, user_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`
+              : `INSERT INTO ${store} (${cols}) VALUES (${vals}) ON CONFLICT (id) DO UPDATE SET ${updates}`;
+          await client.query(query, allValues);
+          resultIds.push(safeId);
+        } else {
+          // ─── آیتم بدون id: دیتابیس UUID تولید می‌کند ───
+          const allCols = ["id", "user_id", ...keys];
+          const colStr = allCols.map((k) => `"${k}"`).join(", ");
+          const paramPlaceholders = keys.map((_, i) => `$${i + 2}`);
+          const valStr = ["gen_random_uuid()", "$1", ...paramPlaceholders].join(
+            ", ",
+          );
+          const query = `INSERT INTO ${store} (${colStr}) VALUES (${valStr}) RETURNING id`;
+          const res = await client.query(query, [userId, ...values]);
+          resultIds.push(res.rows[0].id);
+        }
       }
+
       await client.query("COMMIT");
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, ids: resultIds });
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

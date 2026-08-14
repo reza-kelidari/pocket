@@ -7,6 +7,8 @@ import { DatabaseStores } from "@/utility/keys/database";
 import { getAll } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { TagType } from "@/utility/shared/tagTypes";
+import { TransactionType } from "@/utility/shared/transactionTypes";
+import { getAccountBalances } from "@/utility/shared/balancesMethods";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Description from "@/components/Description";
@@ -20,21 +22,20 @@ import ProcessingOverlay from "@/components/ProcessingOverlay";
 export default function ImportExcelPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [existingAccounts, setExistingAccounts] = useState<AccountType[]>([]);
   const [existingTags, setExistingTags] = useState<TagType[]>([]);
-
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [stepText, setStepText] = useState("");
 
   useEffect(() => {
     async function loadInitial() {
       setExistingAccounts(
         await getAll<AccountType>(DatabaseStores.accountsStore),
       );
-
       setExistingTags(await getAll<TagType>(DatabaseStores.tagsStore));
     }
     loadInitial();
@@ -47,7 +48,6 @@ export default function ImportExcelPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileError(null);
     setPreviewData(null);
 
@@ -60,6 +60,24 @@ export default function ImportExcelPage() {
           existingAccounts,
           existingTags,
         );
+
+        // ─── افزودن موجودی فعلی هر حساب به finalBalance ───
+        const allTxs = await getAll<TransactionType>(
+          DatabaseStores.transactionsStore,
+        );
+        const balances = getAccountBalances(existingAccounts, allTxs);
+        const balanceMap = new Map<string, number>();
+        for (const b of balances) {
+          const lastBalance = b.history?.at(-1)?.balance ?? 0;
+          balanceMap.set(b.id, lastBalance);
+        }
+        for (const acc of parsedData.accounts) {
+          if (!acc.isNew && acc.id) {
+            const existingBalance = balanceMap.get(acc.id) ?? 0;
+            acc.finalBalance += existingBalance;
+          }
+        }
+
         setPreviewData(parsedData);
       } catch (err: any) {
         setFileError(err.message || "خطایی در پردازش فایل رخ داد.");
@@ -71,16 +89,26 @@ export default function ImportExcelPage() {
   const handleImport = async () => {
     if (!isConfirmed || !previewData) return;
     setIsImporting(true);
-
+    setProgress(0);
+    setStepText("در حال شروع فرآیند ورود اطلاعات...");
     try {
-      await importDataToDatabase(
+      const result = await importDataToDatabase(
         previewData,
         existingAccounts,
         existingTags,
-        router,
+        (p, s) => {
+          setProgress(p);
+          setStepText(s);
+        },
       );
+      // ─── اول overlay رو unmount می‌کنیم، بعد ناوبری ───
+      setIsImporting(false);
+      sessionStorage.setItem("message", JSON.stringify(result));
+      router.replace("/message");
     } catch (error) {
       setIsImporting(false);
+      setProgress(0);
+      setStepText("");
       setFileError("خطایی در هنگام ورود اطلاعات رخ داد.");
     }
   };
@@ -90,6 +118,8 @@ export default function ImportExcelPage() {
       <ProcessingOverlay
         title="در حال وارد کردن اطلاعات"
         subtitle="لطفاً تا پایان عملیات صبر کنید..."
+        progress={progress}
+        stepText={stepText}
       />
     );
   }
