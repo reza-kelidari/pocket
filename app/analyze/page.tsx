@@ -100,6 +100,16 @@ function AnalyzeContent() {
         />
       ),
     },
+    {
+      name: "سود و زیان",
+      component: (
+        <Profit
+          timeParam={timeParam}
+          transactions={transactions}
+          isLoading={isLoading}
+        />
+      ),
+    },
   ];
 
   const [activeTab, setActiveTab] = useState<number>(0);
