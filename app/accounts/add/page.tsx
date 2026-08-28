@@ -1,9 +1,7 @@
 "use client";
-
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
-import { AccountTypes } from "@/utility/shared/accountsTypes";
 import { AccountColorType, AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import {
@@ -11,10 +9,8 @@ import {
   toEnglishDigits,
   toJalaliDateArray,
 } from "@/utility/shared/timeMethods";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AccountColors } from "@/utility/shared/colors";
 import useBalances from "@/utility/balance/service/useBalances";
 import {
   formatJalaliDate,
@@ -24,25 +20,19 @@ import {
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import { getAll, putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
+import AccountForm, { AccountFormValues } from "@/components/AccountForm";
 
 export const CREATE_ACCOUNT_KEY = "new-account";
 
 type NewAccountFormType = {
   id: string;
-  name: string;
-  type: AccountType["type"];
-  color: AccountColorType;
-  initialBalance: number;
-  order: number;
-  createTimestamp: number;
-};
+} & AccountFormValues;
 
 const defaultForm: Omit<NewAccountFormType, "id"> = {
   name: "",
   type: "Bank",
   color: "black",
   initialBalance: 0,
-  order: 0,
   createTimestamp: jalaliToTimestamp(
     toJalaliDateArray(new Date()) as [number, number, number],
   ),
@@ -50,7 +40,6 @@ const defaultForm: Omit<NewAccountFormType, "id"> = {
 
 export default function AddAccount() {
   const router = useRouter();
-  const pathname = usePathname();
   const { addBalance } = useBalances();
   const { accountsStore, transactionsStore } = DatabaseStores;
 
@@ -96,7 +85,7 @@ export default function AddAccount() {
     const typeValid = !!form.type;
     const colorValid = !!form.color;
     return nameValid && dateValid && typeValid && colorValid;
-  }, [form.name, createInput, form.type, form.color]);
+  }, [form, createInput]);
 
   const updateForm = useCallback((updated: Partial<NewAccountFormType>) => {
     setForm((prev) => {
@@ -137,13 +126,11 @@ export default function AddAccount() {
 
   const handleSave = async () => {
     if (!isValid) return;
-
     const accounts = (await getAll(accountsStore)) as AccountType[];
     const maxOrder = accounts.reduce(
       (max, a) => Math.max(max, a.order ?? 0),
       0,
     );
-
     const accountToSave: AccountType = {
       id: form.id,
       name: form.name,
@@ -152,7 +139,6 @@ export default function AddAccount() {
       order: maxOrder + 1,
     };
     await putItem(accountsStore, accountToSave);
-
     const initialTransaction: TransactionType = {
       id: crypto.randomUUID(),
       type: "initial",
@@ -163,12 +149,10 @@ export default function AddAccount() {
       credit: "",
     } as TransactionType;
     await putItem(transactionsStore, initialTransaction);
-
     addBalance({
       id: form.id,
       history: [{ time: form.createTimestamp, balance: form.initialBalance }],
     });
-
     sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
     resetFormState();
     router.back();
@@ -206,77 +190,15 @@ export default function AddAccount() {
           </Capsule>
         </NavbarTitle>
       </div>
-
-      <div className="grid gap-10">
-        <div className="grid gap-2">
-          <span className="text-xs">نام حساب</span>
-          <input
-            type="text"
-            value={form.name}
-            onChange={handleNameChange}
-            placeholder="بانک فلان"
-            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-          />
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-xs">نوع حساب</span>
-          <Link
-            href={`${pathname}/type`}
-            className="flex items-center justify-between h-12 w-full border border-elements-border bg-elements-background px-4 rounded-2xl text-sm active:bg-elements-background/70 transition-colors"
-          >
-            <span>{AccountTypes[form.type].name}</span>
-            <Left width={16} height={16} className="fill-secondary" />
-          </Link>
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-xs">موجودی اولیه</span>
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={
-                form.initialBalance
-                  ? form.initialBalance.toLocaleString("fa-IR")
-                  : ""
-              }
-              onChange={handleInitialBalanceChange}
-              placeholder="۰"
-              className="h-12 w-full text-sm border border-elements-border bg-elements-background px-4 pl-10 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-            />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-[10px] pointer-events-none">
-              ﷼
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-xs">تاریخ افتتاح حساب</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={createInput}
-            onChange={handleCreateChange}
-            placeholder="۱۴۰۵/۰۱/۰۱"
-            className="h-12 text-sm border border-elements-border bg-elements-background px-4 rounded-2xl outline-none focus:bg-primary-background focus:border-primary-border transition-all"
-          />
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-xs">رنگ حساب</span>
-          <div className="grid grid-cols-4 gap-7.5 w-full p-5">
-            {Object.entries(AccountColors).map(([key, color]) => (
-              <button
-                type="button"
-                key={key}
-                onClick={() => handleColorChange(key as AccountColorType)}
-                className={`${color.primary} h-11 w-11 rounded-3xl cursor-pointer transition-all duration-200 justify-self-center border-4 border-transparent ${form.color === key ? "scale-90 border-white/50 shadow-2xl" : ""}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      <AccountForm
+        values={form}
+        createInput={createInput}
+        isValid={isValid}
+        onNameChange={handleNameChange}
+        onInitialBalanceChange={handleInitialBalanceChange}
+        onCreateChange={handleCreateChange}
+        onColorChange={handleColorChange}
+      />
     </div>
   );
 }

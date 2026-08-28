@@ -10,7 +10,7 @@ import { TransactionType } from "@/utility/shared/transactionTypes";
 import { AccountType } from "@/utility/accounts/types";
 import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
-import AccountSelectorSkeleton from "@/components/AccountSelectorSkeleton";
+import AccountSelectorSkeleton from "@/components/Skeletons/AccountSelectorSkeleton";
 
 /**
  * The main component for selecting an account during transaction creation or editing.

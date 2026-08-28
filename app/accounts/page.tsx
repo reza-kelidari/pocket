@@ -27,7 +27,7 @@ import {
 import { AccountType } from "@/utility/accounts/types";
 import { getAll, putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
-import AccountsListElementLoading from "@/components/AccountsListElementLoading";
+import AccountsListElementLoading from "@/components/Skeletons/AccountsListElementLoading";
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);

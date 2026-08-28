@@ -124,7 +124,7 @@ export default function Profit({
   ];
 
   return (
-    <Box className="flex flex-col gap-4">
+    <Box className="gap-4">
       {rows.map((row, i) => {
         if (row.kind === "separator") {
           return <div key={`sep-${i}`} />;

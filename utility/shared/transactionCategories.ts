@@ -202,7 +202,7 @@ export const TransactionCategories = {
         { id: 0x02130005, name: "سینما، تئاتر، کنسرت، و...", icon: Wallet },
         { id: 0x02130006, name: "رویداد‌های ورزشی", icon: Wallet },
         { id: 0x02130007, name: "سرگرمی", icon: Wallet },
-        { id: 0x02130008, name: "تحصیل، توصعه فردی", icon: Wallet },
+        { id: 0x02130008, name: "تحصیل، توسعه فردی", icon: Wallet },
         { id: 0x02130009, name: "عکاسی، آتلیه", icon: Wallet },
         { id: 0x0213000a, name: "کتاب (چاپی، صوتی، اشتراک)", icon: Wallet },
         { id: 0x0213000b, name: "تور، هتل", icon: Wallet },

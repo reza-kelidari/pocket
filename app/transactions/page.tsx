@@ -3,7 +3,7 @@
 import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import TransactionItem from "@/components/TransactionItem";
-import TransactionItemLoading from "@/components/TransactionItemLoading";
+import TransactionItemLoading from "@/components/Skeletons/TransactionItemLoading";
 import Left from "@/icons/Left";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";

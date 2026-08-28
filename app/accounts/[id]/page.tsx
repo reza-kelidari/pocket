@@ -19,15 +19,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import Capsule from "@/components/Capsule";
-import CapsuleLoading from "@/components/CapsuleLoading";
+import CapsuleLoading from "@/components/Skeletons/CapsuleLoading";
 import ChartView from "@/components/ChartContainer";
-import ChartContainerLoading from "@/components/ChartContainerLoading";
+import ChartContainerLoading from "@/components/Skeletons/ChartContainerLoading";
 import NavbarTitle from "@/components/NavbarTitle";
 import SectionTitle from "@/components/SectionTitle";
 import SwipeableElement from "@/components/SwipeableElement";
 import TagBalanceItem from "@/components/TagBalanceItem";
 import TransactionItem from "@/components/TransactionItem";
-import TransactionItemLoading from "@/components/TransactionItemLoading";
+import TransactionItemLoading from "@/components/Skeletons/TransactionItemLoading";
 import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 import { AccountType } from "@/utility/accounts/types";

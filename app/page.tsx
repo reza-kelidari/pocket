@@ -24,9 +24,9 @@ import { SplashShownKey } from "@/utility/keys/sessionStore";
 import SwipeableElement from "@/components/SwipeableElement";
 import TransactionItem from "@/components/TransactionItem";
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
-import AccountCardLoading from "@/components/AccountCardLoading";
-import TransactionItemLoading from "@/components/TransactionItemLoading";
-import ChartContainerLoading from "@/components/ChartContainerLoading";
+import AccountCardLoading from "@/components/Skeletons/AccountCardSkeleton";
+import TransactionItemLoading from "@/components/Skeletons/TransactionItemLoading";
+import ChartContainerLoading from "@/components/Skeletons/ChartContainerLoading";
 
 export default function Home() {
   const router = useRouter();
@@ -68,7 +68,9 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
-  }, [accountsStore, transactionsStore]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resetAccountsScroll = () => {
     if (accountsScrollRef.current) {

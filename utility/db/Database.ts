@@ -1,11 +1,5 @@
 import { castNumericFields } from "./castNumeric";
 
-const NUMERIC_FIELDS: Record<string, string[]> = {
-  accounts: ["order"],
-  transactions: ["time", "value"],
-  tags: ["order"],
-};
-
 async function handleUnauthorized(res: Response) {
   if (res.status === 401) {
     window.location.href = "/splash";

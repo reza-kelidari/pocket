@@ -13,7 +13,7 @@ import { getItem } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import { DatabaseStores } from "@/utility/keys/database";
-import CapsuleLoading from "@/components/CapsuleLoading";
+import CapsuleLoading from "@/components/Skeletons/CapsuleLoading";
 import { sanitizeUuid } from "@/utility/validation";
 
 export default function TransactionDetail() {

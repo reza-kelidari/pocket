@@ -34,6 +34,7 @@ export default function SwipeableElement({
 
   const canEdit = !!onEdit;
   const canDelete = !!onDelete && !defaultAccount;
+
   const minTranslate = canEdit ? -ACTION_WIDTH : 0;
   const maxTranslate = canDelete ? ACTION_WIDTH : 0;
   const isSwipeable = canEdit || canDelete;
@@ -54,7 +55,6 @@ export default function SwipeableElement({
     prevSignal.current = cancelConfirmSignal;
   }, [cancelConfirmSignal]);
 
-  // اگر confirmDelete در حین استفاده false شد، حالت تأیید حذف را لغو کن
   useEffect(() => {
     if (!confirmDelete && confirmingDelete) {
       setConfirmingDelete(false);
@@ -119,15 +119,12 @@ export default function SwipeableElement({
   };
 
   const handleDeleteClick = () => {
-    // اگر confirm فعال نباشد، حذف مستقیم انجام می‌شود
     if (!confirmDelete) {
       setTranslateX(0);
       onOpenChange(false);
       onDelete?.();
       return;
     }
-
-    // اگر confirm فعال باشد، اول تأیید بگیر
     setConfirmingDelete(true);
     setTranslateX(0);
     onOpenChange(false);
@@ -160,20 +157,18 @@ export default function SwipeableElement({
     <div className="relative overflow-hidden rounded-2xl">
       {canEdit && !confirmingDelete && (
         <div className="absolute inset-y-0 right-0 w-22.5 flex items-stretch me-2">
-          <Button onClick={onEdit} className="!h-full w-full">
+          <Button onClick={onEdit} className="h-full! w-full">
             ویرایش
           </Button>
         </div>
       )}
       {canDelete && !confirmingDelete && (
         <div className="absolute inset-y-0 left-0 w-22.5 flex items-stretch ms-2">
-          <Button red onClick={handleDeleteClick} className="!h-full w-full">
+          <Button red onClick={handleDeleteClick} className="h-full! w-full">
             حذف
           </Button>
         </div>
       )}
-
-      {/* محتوای اصلی */}
       <div
         {...dragProps}
         className={`relative z-10 bg-white select-none rounded-2xl ${
@@ -190,7 +185,6 @@ export default function SwipeableElement({
       >
         {children}
       </div>
-
       <div
         className={`absolute inset-0 z-20 flex items-center justify-between px-2 transition-opacity duration-300 ${
           confirmingDelete ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -201,11 +195,11 @@ export default function SwipeableElement({
           <Button
             red
             onClick={handleConfirmDelete}
-            className="!h-9 !w-auto px-3"
+            className="h-9! w-auto! px-3"
           >
             تأیید حذف
           </Button>
-          <Button onClick={handleCancelDelete} className="!h-9 !w-auto px-3">
+          <Button onClick={handleCancelDelete} className="h-9! w-auto! px-3">
             لغو
           </Button>
         </div>

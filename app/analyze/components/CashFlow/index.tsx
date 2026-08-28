@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import ChartContainer from "@/components/ChartContainer";
-import IncomeVsExpense from "./IncomeVsExpense";
+import IncomeVsExpense from "./components/IncomeVsExpense";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import {
   getCutoffTimestamp,

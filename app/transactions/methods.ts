@@ -1,5 +1,3 @@
-import { jalaliToTimestamp } from "@/utility/shared/timeMethods";
-
 export type TransactionsFilterType = {
   timeWindow: number;
   accounts: string[];
@@ -24,13 +22,22 @@ export const parseStringArray = (param: string | null): string[] => {
   return param.split(",").filter((s) => s !== "");
 };
 
+export const TIME_FILTERS = {
+  SEVEN_DAYS: 7,
+  THIRTY_DAYS: 30,
+  THIS_MONTH: -1,
+  NINETY_DAYS: 90,
+  THIS_YEAR: -2,
+  ALL_TIME: 36500,
+} as const;
+
 export const timeFilters = (dateArray: number[]) => {
   return [
-    { name: "۷ روز گذشته", time: 7 - 1 },
-    { name: "۳۰ روز گذشته", time: 30 - 1 },
-    { name: "این ماه", time: -1 },
-    { name: "۹۰ روز گذشته", time: 90 - 1 },
-    { name: "امسال", time: -2 },
-    { name: "از ابتدا", time: 36500 },
+    { name: "۷ روز گذشته", time: TIME_FILTERS.SEVEN_DAYS - 1 },
+    { name: "۳۰ روز گذشته", time: TIME_FILTERS.THIRTY_DAYS - 1 },
+    { name: "این ماه", time: TIME_FILTERS.THIS_MONTH },
+    { name: "۹۰ روز گذشته", time: TIME_FILTERS.NINETY_DAYS - 1 },
+    { name: "امسال", time: TIME_FILTERS.THIS_YEAR },
+    { name: "از ابتدا", time: TIME_FILTERS.ALL_TIME },
   ];
 };

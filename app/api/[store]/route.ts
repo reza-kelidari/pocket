@@ -7,6 +7,18 @@ import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
 import { castNumericFields, NUMERIC_FIELDS } from "@/utility/db/castNumeric";
 import { ALLOWED_STORES } from "@/utility/keys/database";
 
+const STORE_QUERIES = {
+  accounts: 'SELECT * FROM accounts WHERE user_id = $1 ORDER BY "order" ASC',
+  transactions: "SELECT * FROM transactions WHERE user_id = $1",
+  tags: 'SELECT * FROM tags WHERE user_id = $1 ORDER BY "order" ASC',
+} as const;
+
+function validateStore(rawStore: string): string | null {
+  return (ALLOWED_STORES as readonly string[]).includes(rawStore)
+    ? rawStore
+    : null;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ store: string }> },
@@ -16,15 +28,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { store: rawStore } = await params;
-  const store = (ALLOWED_STORES as readonly string[]).includes(rawStore)
-    ? rawStore
-    : null;
+  const store = validateStore(rawStore);
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 
   const url = new URL(req.url);
-  let query = `SELECT * FROM ${store} WHERE user_id = $1`;
-  const queryParams: any[] = [userId];
+  let query = STORE_QUERIES[store as keyof typeof STORE_QUERIES];
+  const queryParams: unknown[] = [userId];
   let paramIndex = 2;
 
   if (store === "transactions") {
@@ -42,6 +52,7 @@ export async function GET(
         paramIndex++;
       }
     }
+
     if (accounts) {
       const accList = accounts
         .split(",")
@@ -54,6 +65,7 @@ export async function GET(
         paramIndex++;
       }
     }
+
     if (categories) {
       const catList = categories.split(",").filter((s) => s !== "");
       if (catList.length > 0) {
@@ -62,6 +74,7 @@ export async function GET(
         paramIndex++;
       }
     }
+
     if (tags) {
       const tagList = tags.split(",").filter((s) => s !== "");
       if (tagList.length > 0) {
@@ -70,9 +83,8 @@ export async function GET(
         paramIndex++;
       }
     }
+
     query += ` ORDER BY time DESC`;
-  } else if (store === "accounts" || store === "tags") {
-    query += ` ORDER BY "order" ASC`;
   }
 
   try {
@@ -96,27 +108,42 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { store: rawStore } = await params;
-  const store = (ALLOWED_STORES as readonly string[]).includes(rawStore)
-    ? rawStore
-    : null;
+  const store = validateStore(rawStore);
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 
   try {
     const body = await req.json();
+    // ✅ اصلاح type safety: validation دقیق‌تر
+    if (body === null || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 },
+      );
+    }
     const items = Array.isArray(body) ? body : [body];
+
+    // ✅ validation برای هر آیتم
+    for (const item of items) {
+      if (item === null || typeof item !== "object") {
+        return NextResponse.json(
+          { error: "Invalid item in request" },
+          { status: 400 },
+        );
+      }
+    }
+
     const client = await pool.connect();
     const allowedCols = STORE_COLUMNS[store] || [];
     const resultIds: string[] = [];
 
     try {
       await client.query("BEGIN");
-
       for (const item of items) {
         const { id, user_id: _ignoredUserId, ...data } = item;
         const idRes = sanitizeUuid(id);
+        const safeData: Record<string, unknown> = {};
 
-        const safeData: Record<string, any> = {};
         for (const key of Object.keys(data)) {
           if (allowedCols.includes(key)) {
             safeData[key] = data[key];
@@ -151,7 +178,6 @@ export async function POST(
         const values = Object.values(safeData);
 
         if (idRes.valid) {
-          // ─── آیتم با id مشخص: INSERT یا UPDATE ───
           const safeId = idRes.value;
           const allKeys = ["id", "user_id", ...keys];
           const allValues = [safeId, userId, ...values];
@@ -165,7 +191,6 @@ export async function POST(
           await client.query(query, allValues);
           resultIds.push(safeId);
         } else {
-          // ─── آیتم بدون id: دیتابیس UUID تولید می‌کند ───
           const allCols = ["id", "user_id", ...keys];
           const colStr = allCols.map((k) => `"${k}"`).join(", ");
           const paramPlaceholders = keys.map((_, i) => `$${i + 2}`);
@@ -177,7 +202,6 @@ export async function POST(
           resultIds.push(res.rows[0].id);
         }
       }
-
       await client.query("COMMIT");
       return NextResponse.json({ ok: true, ids: resultIds });
     } catch (error) {
@@ -201,9 +225,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { store: rawStore } = await params;
-  const store = (ALLOWED_STORES as readonly string[]).includes(rawStore)
-    ? rawStore
-    : null;
+  const store = validateStore(rawStore);
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 

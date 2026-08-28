@@ -6,6 +6,7 @@ import SplitGauge from "@/components/SplitGauge";
 import SplitFooter from "@/components/SplitFooter";
 import DeltaStat from "@/components/DeltaStat";
 import { computeSplit, computeDelta } from "@/utility/shared/chartMath";
+import AnalyzeIncomeVsExpenseLoading from "@/components/Skeletons/AnalyzeIncomeVsExpenseLoading";
 
 type MetricsType = {
   currentIncome: number;
@@ -31,10 +32,7 @@ export default function IncomeVsExpense({
 
   if (isLoading) {
     return (
-      <Box className="gap-5">
-        <h3 className="text-secondary text-xs">{title}</h3>
-        <div className="w-full h-36 bg-elements-background border border-elements-border rounded-2xl animate-pulse" />
-      </Box>
+      <AnalyzeIncomeVsExpenseLoading>{title}</AnalyzeIncomeVsExpenseLoading>
     );
   }
 

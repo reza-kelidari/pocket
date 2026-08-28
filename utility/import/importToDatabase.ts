@@ -7,6 +7,35 @@ import { jalaliToTimestamp } from "@/utility/shared/timeMethods";
 import { MessageType } from "@/app/message/page";
 import { PreviewData } from "./excelConstants";
 
+type AccountToSave = {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  order: number;
+  default?: boolean;
+  hidden?: boolean;
+};
+
+type TagToSave = {
+  id: string;
+  name: string;
+  type: string;
+  order: number;
+};
+
+type TransactionToSave = {
+  id: string;
+  time: number;
+  name: string;
+  type: string;
+  debit: string;
+  credit: string;
+  value: number;
+  note: string;
+  tag?: string;
+};
+
 const chunkArray = (array: any[], size: number) => {
   const result = [];
   for (let i = 0; i < array.length; i += size) {
@@ -130,7 +159,7 @@ export async function importDataToDatabase(
     // ═══════════════════════════════════════════════════════════
     report(15, "در حال ذخیره‌ی حساب‌ها...");
 
-    const accountsToSave: any[] = [];
+    const accountsToSave: AccountToSave[] = [];
     const newAccountNameAt = new Map<number, string>();
     let accIdx = 0;
 
@@ -156,6 +185,8 @@ export async function importDataToDatabase(
             type: a.type || existing.type,
             color: a.color || existing.color,
             order: a.order,
+            default: existing.default ?? false,
+            hidden: existing.hidden ?? false,
           });
           accIdx++;
         }
@@ -175,7 +206,7 @@ export async function importDataToDatabase(
     // ═══════════════════════════════════════════════════════════
     report(30, "در حال ذخیره‌ی برچسب‌ها...");
 
-    const tagsToSave: any[] = [];
+    const tagsToSave: TagToSave[] = [];
     const newTagNameAt = new Map<number, string>();
     let tagIdx = 0;
 
@@ -256,7 +287,7 @@ export async function importDataToDatabase(
     // ═══════════════════════════════════════════════════════════
     report(55, "در حال پردازش تراکنش‌ها...");
 
-    const txsToSave: any[] = [];
+    const txsToSave: TransactionToSave[] = [];
     for (const tx of validTxs) {
       const accId = accIdResolver.get(tx.accountName);
       if (!accId) continue;

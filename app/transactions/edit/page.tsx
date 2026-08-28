@@ -1,7 +1,7 @@
 "use client";
 
 import Capsule from "@/components/Capsule";
-import CapsuleLoading from "@/components/CapsuleLoading";
+import CapsuleLoading from "@/components/Skeletons/CapsuleLoading";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
 import { TransactionType } from "@/utility/shared/transactionTypes";

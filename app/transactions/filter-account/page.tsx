@@ -11,7 +11,7 @@ import useBalances from "@/utility/balance/service/useBalances";
 import { getAll } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { DatabaseStores } from "@/utility/keys/database";
-import AccountSelectorLoading from "@/components/AccountSelectorLoading";
+import AccountSelectorLoading from "@/components/Skeletons/AccountSelectorLoading";
 
 export default function AccountFilter() {
   const searchParams = useSearchParams();

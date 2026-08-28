@@ -7,8 +7,6 @@ import { timeFilters } from "@/app/transactions/methods";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import Left from "@/icons/Left";
 import CashFlow from "./components/CashFlow";
-import Incomes from "./components/Incomes";
-import Expenses from "./components/Expenses";
 import Profit from "./components/Profit";
 import { PrimaryColors } from "@/utility/shared/colors";
 import { getAll } from "@/utility/db/Database";
@@ -16,6 +14,8 @@ import { DatabaseStores } from "@/utility/keys/database";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
+import { TagType } from "@/utility/shared/tagTypes";
+import FinancialAnalysis from "./components/FinancialAnalysis";
 
 type TabType = { name: string; component: JSX.Element };
 
@@ -53,17 +53,20 @@ function AnalyzeContent() {
   const tw = useTimeWindow();
 
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
+  const [tags, setTags] = useState<TagType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
       setIsLoading(true);
-      const txs = await getAll<TransactionType>(
-        DatabaseStores.transactionsStore,
-      );
+      const [txs, allTags] = await Promise.all([
+        getAll<TransactionType>(DatabaseStores.transactionsStore),
+        getAll<TagType>(DatabaseStores.tagsStore),
+      ]);
       if (!isMounted) return;
       setTransactions(txs.filter((tx) => tx.type !== "transfer"));
+      setTags(allTags);
       setIsLoading(false);
     }
     loadData();
@@ -96,6 +99,30 @@ function AnalyzeContent() {
         <CashFlow
           timeParam={timeParam}
           transactions={transactions}
+          isLoading={isLoading}
+        />
+      ),
+    },
+    {
+      name: "درآمد‌ها",
+      component: (
+        <FinancialAnalysis
+          type="income"
+          timeParam={timeParam}
+          transactions={transactions}
+          tags={tags}
+          isLoading={isLoading}
+        />
+      ),
+    },
+    {
+      name: "هزینه‌ها",
+      component: (
+        <FinancialAnalysis
+          type="expense"
+          timeParam={timeParam}
+          transactions={transactions}
+          tags={tags}
           isLoading={isLoading}
         />
       ),
@@ -155,7 +182,14 @@ function AnalyzeContent() {
           ))}
         </div>
 
-        {tabs[activeTab].component}
+        {tabs.map((tab, index) => (
+          <div
+            key={tab.name}
+            className={activeTab === index ? "contents" : "hidden"}
+          >
+            {tab.component}
+          </div>
+        ))}
       </div>
     </div>
   );

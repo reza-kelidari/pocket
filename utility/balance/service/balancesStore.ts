@@ -1,5 +1,4 @@
 "use client";
-
 import { AccountBalanceType } from "../types";
 
 class BalancesStore {
@@ -15,6 +14,12 @@ class BalancesStore {
   }
 
   setBalances(data: AccountBalanceType[]) {
+    if (
+      this.balances.length === data.length &&
+      this.balances.every((b, i) => b.id === data[i].id)
+    ) {
+      return;
+    }
     this.balances = [...data];
     this.notify();
   }
@@ -35,7 +40,9 @@ class BalancesStore {
   }
 
   removeBalance(id: string) {
-    this.balances = this.balances.filter((b) => b.id !== id);
+    const newBalances = this.balances.filter((b) => b.id !== id);
+    if (newBalances.length === this.balances.length) return;
+    this.balances = newBalances;
     this.notify();
   }
 
@@ -47,6 +54,7 @@ class BalancesStore {
   getSnapshot = () => this.balances;
 
   clear() {
+    if (this.balances.length === 0) return;
     this.balances = [];
     this.notify();
   }
