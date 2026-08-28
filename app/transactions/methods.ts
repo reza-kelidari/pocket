@@ -25,18 +25,12 @@ export const parseStringArray = (param: string | null): string[] => {
 };
 
 export const timeFilters = (dateArray: number[]) => {
-  const now = Date.now();
-  const startOfYear = jalaliToTimestamp([dateArray[0], 1, 1]);
-  const daysSinceStartOfYear = Math.ceil(
-    (now - startOfYear) / (24 * 60 * 60 * 1000),
-  );
-
   return [
     { name: "۷ روز گذشته", time: 7 - 1 },
     { name: "۳۰ روز گذشته", time: 30 - 1 },
-    { name: "این ماه", time: dateArray[2] - 1 },
+    { name: "این ماه", time: -1 },
     { name: "۹۰ روز گذشته", time: 90 - 1 },
-    { name: "امسال", time: daysSinceStartOfYear },
+    { name: "امسال", time: -2 },
     { name: "از ابتدا", time: 36500 },
   ];
 };

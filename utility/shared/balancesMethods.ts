@@ -1,8 +1,9 @@
 import { AccountType } from "../accounts/types";
 import { TransactionType } from "../shared/transactionTypes";
 import { AccountBalanceType, BalanceType } from "../balance/types";
+import { getCutoffTimestamp } from "./timeMethods";
 
-export type ChartWindow = 7 | 30 | 90 | "all";
+export type ChartWindow = 7 | 30 | 90 | "all" | -1 | -2;
 
 export function getAccountBalanceHistory(
   transactions: TransactionType[],
@@ -83,14 +84,21 @@ export function sliceDailySeriesForWindow(
 ): BalanceType[] {
   if (window === "all" || history.length === 0) return history;
 
-  const daysAgo = window - 1;
-  const startDate = new Date(now);
-  startDate.setDate(startDate.getDate() - daysAgo);
-  startDate.setHours(0, 0, 0, 0);
-  const cutoff = startDate.getTime();
+  let cutoff: number;
+
+  if (window === -1 || window === -2) {
+    cutoff = getCutoffTimestamp(window);
+  } else {
+    const daysAgo = window - 1;
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - daysAgo);
+    startDate.setHours(0, 0, 0, 0);
+    cutoff = startDate.getTime();
+  }
 
   let firstPointBeforeWindow: BalanceType | null = null;
   const pointsInWindow: BalanceType[] = [];
+
   for (const point of history) {
     if (point.time < cutoff) {
       firstPointBeforeWindow = point;
@@ -98,6 +106,7 @@ export function sliceDailySeriesForWindow(
       pointsInWindow.push(point);
     }
   }
+
   if (firstPointBeforeWindow && pointsInWindow.length > 0) {
     return [firstPointBeforeWindow, ...pointsInWindow];
   }
