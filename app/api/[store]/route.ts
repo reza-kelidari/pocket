@@ -3,28 +3,9 @@ import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
 import { sanitizeUuid } from "@/utility/validation";
 import { STORE_COLUMNS } from "@/utility/db/columns";
-
-const ALLOWED_STORES = ["accounts", "transactions", "tags"];
-
-const NUMERIC_FIELDS: Record<string, string[]> = {
-  accounts: ["order"],
-  transactions: ["time", "value"],
-  tags: ["order"],
-};
-
-function castNumericFields(rows: any[], store: string) {
-  const fields = NUMERIC_FIELDS[store] || [];
-  return rows.map((r) => {
-    for (let k in r) {
-      if (r[k] === null) {
-        r[k] = fields.includes(k) ? 0 : "";
-      } else if (fields.includes(k)) {
-        r[k] = Number(r[k]);
-      }
-    }
-    return r;
-  });
-}
+import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
+import { castNumericFields, NUMERIC_FIELDS } from "@/utility/db/castNumeric";
+import { ALLOWED_STORES } from "@/utility/keys/database";
 
 export async function GET(
   req: NextRequest,
@@ -35,7 +16,9 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { store: rawStore } = await params;
-  const store = ALLOWED_STORES.includes(rawStore) ? rawStore : null;
+  const store = (ALLOWED_STORES as readonly string[]).includes(rawStore)
+    ? rawStore
+    : null;
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 
@@ -53,7 +36,7 @@ export async function GET(
     if (timeWindow && timeWindow !== "36500") {
       const days = Number(timeWindow);
       if (!isNaN(days)) {
-        const limitTime = Date.now() - days * 24 * 60 * 60 * 1000;
+        const limitTime = getCutoffTimestamp(days);
         query += ` AND time >= $${paramIndex}`;
         queryParams.push(limitTime);
         paramIndex++;
@@ -94,7 +77,9 @@ export async function GET(
 
   try {
     const res = await pool.query(query, queryParams);
-    const rows = castNumericFields(res.rows, store);
+    const rows = res.rows.map((row: Record<string, unknown>) =>
+      castNumericFields(row, store),
+    );
     return NextResponse.json(rows);
   } catch (error) {
     console.error(`GET /api/${store} error:`, error);
@@ -111,7 +96,9 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { store: rawStore } = await params;
-  const store = ALLOWED_STORES.includes(rawStore) ? rawStore : null;
+  const store = (ALLOWED_STORES as readonly string[]).includes(rawStore)
+    ? rawStore
+    : null;
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 
@@ -120,7 +107,6 @@ export async function POST(
     const items = Array.isArray(body) ? body : [body];
     const client = await pool.connect();
     const allowedCols = STORE_COLUMNS[store] || [];
-    /** آرایه‌ی id‌های نهایی به ترتیب آیتم‌های ورودی */
     const resultIds: string[] = [];
 
     try {
@@ -215,7 +201,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { store: rawStore } = await params;
-  const store = ALLOWED_STORES.includes(rawStore) ? rawStore : null;
+  const store = (ALLOWED_STORES as readonly string[]).includes(rawStore)
+    ? rawStore
+    : null;
   if (!store)
     return NextResponse.json({ error: "Invalid store" }, { status: 400 });
 

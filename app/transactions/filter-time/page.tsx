@@ -1,7 +1,9 @@
 "use client";
-
 import NavbarTitle from "@/components/NavbarTitle";
-import { toJalaliDateArray } from "@/utility/shared/timeMethods";
+import {
+  toJalaliDateArray,
+  getCutoffTimestamp,
+} from "@/utility/shared/timeMethods";
 import { useRouter, useSearchParams } from "next/navigation";
 import { filterToUrl, parseStringArray, timeFilters } from "../methods";
 import { PrimaryColors } from "@/utility/shared/colors";
@@ -16,8 +18,9 @@ export default function TimeFilter() {
   };
   const today = date.toLocaleDateString("fa-ir", dateOptions);
 
+  const timeParamStr = searchParams.get("time");
   const transactionsFilter = {
-    timeWindow: Number(searchParams.get("time") ?? 29) || 29,
+    timeWindow: timeParamStr ? Number(timeParamStr) : 30,
     accounts: parseStringArray(searchParams.get("accounts")),
     categories: parseStringArray(searchParams.get("categories")),
     tags: parseStringArray(searchParams.get("tags")),
@@ -28,7 +31,6 @@ export default function TimeFilter() {
       ...transactionsFilter,
       timeWindow: time,
     })}`;
-
     router.replace(newUrl);
   };
 
@@ -37,15 +39,14 @@ export default function TimeFilter() {
       <div className="grid gap-7.5">
         <NavbarTitle title="بازه زمانی" />
       </div>
-
       <div className="grid gap-5">
         {timeFilters(toJalaliDateArray(date)).map((item, index) => {
+          const cutoff = getCutoffTimestamp(item.time);
           const secondDay =
             item.time === 36500
               ? "بدون محدودیت زمانی"
-              : new Date(
-                  Date.now() - item.time * 1000 * 3600 * 24,
-                ).toLocaleDateString("fa-ir", dateOptions);
+              : new Date(cutoff).toLocaleDateString("fa-ir", dateOptions);
+
           return (
             <div
               key={index}

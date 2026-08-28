@@ -1,21 +1,10 @@
+import { castNumericFields } from "./castNumeric";
+
 const NUMERIC_FIELDS: Record<string, string[]> = {
   accounts: ["order"],
   transactions: ["time", "value"],
   tags: ["order"],
 };
-
-function castRow<T>(store: string, row: any): T {
-  if (!row) return row;
-  const fields = NUMERIC_FIELDS[store] || [];
-  for (let key in row) {
-    if (row[key] === null) {
-      row[key] = fields.includes(key) ? 0 : "";
-    } else if (fields.includes(key)) {
-      row[key] = Number(row[key]);
-    }
-  }
-  return row as T;
-}
 
 async function handleUnauthorized(res: Response) {
   if (res.status === 401) {
@@ -37,7 +26,9 @@ export async function getAll<T>(
   }
   const data = await res.json();
   if (!Array.isArray(data)) return [];
-  return data.map((row: any) => castRow<T>(store, row));
+  return data.map(
+    (row: Record<string, unknown>) => castNumericFields(row, store) as T,
+  );
 }
 
 export async function getItem<T>(
@@ -49,7 +40,7 @@ export async function getItem<T>(
   if (!res.ok) return undefined;
   const data = await res.json();
   if (!data) return undefined;
-  return castRow<T>(store, data);
+  return castNumericFields(data, store) as T;
 }
 
 export async function putItem<T extends { id: string } | { id: string }[]>(

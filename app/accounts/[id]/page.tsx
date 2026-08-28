@@ -17,14 +17,7 @@
  */
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  use,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import Capsule from "@/components/Capsule";
 import CapsuleLoading from "@/components/CapsuleLoading";
 import ChartView from "@/components/ChartContainer";
@@ -35,6 +28,8 @@ import SwipeableElement from "@/components/SwipeableElement";
 import TagBalanceItem from "@/components/TagBalanceItem";
 import TransactionItem from "@/components/TransactionItem";
 import TransactionItemLoading from "@/components/TransactionItemLoading";
+import TimeWindow from "@/components/TimeWindow";
+import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 import { AccountType } from "@/utility/accounts/types";
 import useBalances from "@/utility/balance/service/useBalances";
 import { deleteItem, getAll, getItem } from "@/utility/db/Database";
@@ -48,7 +43,7 @@ import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
 import Pen from "@/icons/Pen";
-import { TimeWindow } from "./components/TimeWindow";
+import Left from "@/icons/Left";
 
 /**
  * Represents a single transaction within the ledger response,
@@ -91,34 +86,6 @@ interface AccountsDetailsProps {
 }
 
 /**
- * Props for the TimeWindow component.
- */
-export interface TimeWindowProps {
-  /** Reference to the dropdown container element for click-outside detection. */
-  dropdownRef: React.RefObject<HTMLDivElement | null>;
-  /** State setter to toggle the dropdown visibility. */
-  setShowTimeDropdown: React.Dispatch<React.SetStateAction<boolean>>;
-  /** Display name of the currently selected time filter. */
-  currentTimeFilterName: string;
-  /** Whether the dropdown DOM element is currently mounted. */
-  isDropdownMounted: boolean;
-  /** Whether the dropdown is visible (for CSS transition control). */
-  isDropdownVisible: boolean;
-  /** Array of available time filter options. */
-  timeFilterOptions: { name: string; time: number }[];
-  /** Callback handler when a time filter option is selected. */
-  handleTimeFilterChange: (time: number) => void;
-  /** Currently active time filter value (in days). */
-  timeFilter: number;
-  /** Color scheme for the account-themed UI elements. */
-  accountColor: {
-    readonly text: string;
-    readonly border: string;
-    readonly surface: string;
-  };
-}
-
-/**
  * `AccountsDetails` Component
  *
  * Renders the detailed view for a specific financial account. It fetches and displays
@@ -145,12 +112,12 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
   const router = useRouter();
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
-  /** Time filter parameter from the URL (default: 29 days). */
+  /** Time filter parameter from the URL (default: 30 days). */
   const timeParam = searchParams.get("time");
   /** Tag filter parameter from the URL. Present when viewing a specific tag's ledger. */
   const tagParam = searchParams.get("tag");
-  /** Initial time filter value parsed from URL or defaulted to 29 days. */
-  const initialTimeFilter = timeParam ? Number(timeParam) : 29;
+  /** Initial time filter value parsed from URL or defaulted to 30 days. */
+  const initialTimeFilter = timeParam ? Number(timeParam) : 30;
 
   // --- Core Data States ---
   /** The currently viewed account object. */
@@ -173,12 +140,8 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
   const [timeFilter, setTimeFilter] = useState<number>(initialTimeFilter);
 
   // --- UI & Interaction States ---
-  /** Whether the time filter dropdown is currently open. */
-  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
-  /** Whether the dropdown DOM element is mounted (for animation). */
-  const [isDropdownMounted, setIsDropdownMounted] = useState(false);
-  /** Whether the dropdown is visible (for CSS transition). */
-  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const tw = useTimeWindow();
+
   /** ID of the currently swiped-open transaction item. */
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   /** Counter to signal swipeable elements to close. */
@@ -186,8 +149,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
   /** Balance state management hook. */
   const { setBalances } = useBalances();
 
-  /** Reference to the time filter dropdown container. */
-  const dropdownRef = useRef<HTMLDivElement>(null);
   /** Tracks component mount state to prevent state updates after unmount. */
   const isMountedRef = useRef(true);
 
@@ -243,40 +204,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  /**
-   * Manages the mount/unmount lifecycle and CSS transitions for the time filter dropdown.
-   * Applies a slight delay to allow CSS transitions to execute smoothly before unmounting.
-   */
-  useEffect(() => {
-    if (showTimeDropdown) {
-      setIsDropdownMounted(true);
-      const timer = setTimeout(() => setIsDropdownVisible(true), 15);
-      return () => clearTimeout(timer);
-    } else {
-      setIsDropdownVisible(false);
-      const timer = setTimeout(() => setIsDropdownMounted(false), 200);
-      return () => clearTimeout(timer);
-    }
-  }, [showTimeDropdown]);
-
-  /**
-   * Adds a global click listener to close the time filter dropdown
-   * when the user clicks outside of the dropdown container.
-   */
-  useEffect(() => {
-    if (!showTimeDropdown) return;
-    const handleClick = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowTimeDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showTimeDropdown]);
 
   /**
    * Redirects the user to the main accounts list if the dynamic route `id` is missing or invalid.
@@ -349,26 +276,14 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
   /**
    * Calculates the balance breakdown by tag for Book-type accounts.
-   *
-   * Groups all transactions related to this account by their `tag` field,
-   * sums the signed values for each group, and returns an array of
-   * `{ tagId, tagName, balance }` entries sorted by absolute balance (descending).
-   *
-   * Transactions without a tag are grouped under the sentinel ID `"__untagged__"`.
-   *
-   * Balance calculation logic:
-   * - `debit === accountID`: Adds to balance (money coming in) → positive.
-   * - `credit === accountID`: Subtracts from balance (money going out) → negative.
    */
   const tagBalances: TagBalanceEntry[] = useMemo(() => {
     if (!isBookAccount || !accountID) return [];
 
-    // Filter transactions that involve this account
     const accountTxs = allTransactions.filter(
       (tx) => tx.debit === accountID || tx.credit === accountID,
     );
 
-    // Group by tag and sum signed values
     const tagMap = new Map<string, number>();
 
     for (const tx of accountTxs) {
@@ -379,7 +294,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
     const results: TagBalanceEntry[] = [];
 
-    // Add untagged entry first (if exists)
     if (tagMap.has("__untagged__")) {
       results.push({
         tagId: "__untagged__",
@@ -388,7 +302,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
       });
     }
 
-    // Add named tag entries
     for (const [tagId, balance] of tagMap.entries()) {
       if (tagId === "__untagged__") continue;
       const tag = allTags.find((t) => t.id === tagId);
@@ -399,7 +312,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
       });
     }
 
-    // Sort by absolute balance descending (largest amounts first)
     results.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
 
     return results;
@@ -416,8 +328,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
   /**
    * Listens for browser history navigation events (`popstate`).
-   * Clears saved scroll positions when navigating away from the details page,
-   * and refetches the ledger when returning to it.
    */
   useEffect(() => {
     const handlePopState = () => {
@@ -437,10 +347,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
   /**
    * Handles the deletion of a transaction.
-   * Removes the transaction from the local database, updates the global transactions state,
-   * recalculates account balances, and refetches the ledger to reflect the changes.
-   *
-   * @param txId - The unique identifier of the transaction to delete.
    */
   const handleDeleteTransaction = async (txId: string) => {
     await deleteItem(transactionsStore, txId);
@@ -453,15 +359,11 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
   /**
    * Handles changes to the time filter dropdown.
-   * Updates the local state, modifies the URL search parameters without reloading the page,
-   * resets the scroll position, and clears any saved scroll restoration data.
-   *
-   * @param time - The new time filter value (in days).
    */
   const handleTimeFilterChange = useCallback(
     (time: number) => {
       setTimeFilter(time);
-      setShowTimeDropdown(false);
+      tw.close();
       const urlParams = new URLSearchParams(searchParams.toString());
       urlParams.set("time", String(time));
       clearSavedPosition();
@@ -470,12 +372,11 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
         scroll: false,
       });
     },
-    [searchParams, router, accountID, clearSavedPosition],
+    [searchParams, router, accountID, clearSavedPosition, tw],
   );
 
   /**
    * Navigates back to the tag breakdown view by removing the `tag` search param.
-   * Used when viewing a specific tag's ledger on a Book account.
    */
   const handleBackToTagBreakdown = useCallback(() => {
     const urlParams = new URLSearchParams(searchParams.toString());
@@ -497,7 +398,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
   /**
    * Resolves the display name of the currently selected tag.
-   * Used in the ledger section title when viewing a specific tag's transactions.
    */
   const currentTagName = useMemo(() => {
     if (!tagParam || tagParam === "untagged") return "بدون برچسب";
@@ -541,7 +441,6 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
               color={account?.color}
               timeSelector
               accountID={account?.id}
-              transactions={allTransactions}
             />
           </div>
         )}
@@ -602,17 +501,26 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
                       بازگشت
                     </button>
                   )}
-                  <TimeWindow
-                    dropdownRef={dropdownRef}
-                    setShowTimeDropdown={setShowTimeDropdown}
-                    currentTimeFilterName={currentTimeFilterName}
-                    isDropdownMounted={isDropdownMounted}
-                    isDropdownVisible={isDropdownVisible}
-                    timeFilterOptions={timeFilterOptions}
-                    handleTimeFilterChange={handleTimeFilterChange}
-                    timeFilter={timeFilter}
-                    accountColor={accountColor}
-                  />
+
+                  <div className="relative" ref={tw.dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={tw.toggle}
+                      className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer ${accountColor.surface} ${accountColor.border} ${accountColor.text}`}
+                    >
+                      {currentTimeFilterName}
+                      <Left height={15} width={15} className="fill-current" />
+                    </button>
+
+                    <TimeWindow
+                      isMounted={tw.isMounted}
+                      isVisible={tw.isVisible}
+                      options={timeFilterOptions}
+                      onSelect={handleTimeFilterChange}
+                      activeTime={timeFilter}
+                      align="left"
+                    />
+                  </div>
                 </div>
               }
             >

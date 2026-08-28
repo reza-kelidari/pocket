@@ -18,39 +18,13 @@ import type { PoolClient } from "pg";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
 import { sanitizeUuid } from "@/utility/validation";
-
-/** Whitelist of stores accessible through this route. */
-const ALLOWED_STORES = ["accounts", "transactions", "tags"] as const;
-
-/** Columns that should be cast from string/numeric to JS number in responses. */
-const NUMERIC_FIELDS: Record<string, string[]> = {
-  accounts: ["order"],
-  transactions: ["time", "value"],
-  tags: ["order"],
-};
+import { castNumericFields } from "@/utility/db/castNumeric";
+import { ALLOWED_STORES } from "@/utility/keys/database";
 
 /**
  * Route parameter shape for dynamic `[store]/[id]` segments.
  */
 type RouteParams = { params: Promise<{ store: string; id: string }> };
-
-/**
- * Casts numeric fields in a database row to JS numbers and normalizes
- * `NULL` values to `0` (for numeric fields) or `""` (for string fields).
- *
- * @param row - The raw database row to normalize (mutated in place).
- * @param store - The store name, used to determine which fields are numeric.
- */
-function castNumericFields(row: Record<string, unknown>, store: string): void {
-  const fields = NUMERIC_FIELDS[store] || [];
-  for (const key of Object.keys(row)) {
-    if (row[key] === null) {
-      row[key] = fields.includes(key) ? 0 : "";
-    } else if (fields.includes(key)) {
-      row[key] = Number(row[key]);
-    }
-  }
-}
 
 /**
  * Resolves and validates common request parameters.

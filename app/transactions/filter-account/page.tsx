@@ -23,8 +23,9 @@ export default function AccountFilter() {
   const [isLoading, setIsLoading] = useState(true);
   const [accountFilter, setAccountFilter] = useState<string[]>([]);
 
+  const timeParamStr = searchParams.get("time");
   const transactionsFilter = {
-    timeWindow: Number(searchParams.get("time") ?? 29),
+    timeWindow: timeParamStr ? Number(timeParamStr) : 30,
     accounts: parseStringArray(searchParams.get("accounts")),
     categories: parseStringArray(searchParams.get("categories")),
     tags: parseStringArray(searchParams.get("tags")),

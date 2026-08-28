@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
 import { sanitizeUuid } from "@/utility/validation";
+import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -19,17 +20,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const accountId = idResult.value;
 
   const url = new URL(req.url);
-  const timeWindow = Number(url.searchParams.get("time") || 29);
+  const timeWindow = Number(url.searchParams.get("time") || 30);
   const tagParam = url.searchParams.get("tag");
 
-  let timeFilter = 0;
-  if (timeWindow && timeWindow !== 36500) {
-    timeFilter = Date.now() - timeWindow * 24 * 60 * 60 * 1000;
-  }
+  const timeFilter = getCutoffTimestamp(timeWindow);
 
   let tagValue: string | null = null;
   let isUntagged = false;
-
   if (tagParam === "untagged") {
     isUntagged = true;
   } else if (tagParam) {
@@ -43,14 +40,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     let balanceBefore = 0;
     if (timeFilter > 0) {
       let beforeQuery = `SELECT COALESCE(SUM(
-        CASE
-          WHEN debit = $2 THEN value
-          WHEN credit = $2 THEN -value
-          ELSE 0
-        END
-      ), 0)::bigint AS balance_before
-      FROM transactions
-      WHERE user_id = $1 AND (debit = $2 OR credit = $2) AND time < $3`;
+          CASE 
+            WHEN debit = $2 THEN value 
+            WHEN credit = $2 THEN -value 
+            ELSE 0 
+          END
+        ), 0)::bigint AS balance_before
+        FROM transactions
+        WHERE user_id = $1 AND (debit = $2 OR credit = $2) AND time < $3`;
       let beforeParams: unknown[] = [userId, accountId, timeFilter];
 
       if (isUntagged) {
@@ -73,25 +70,23 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       : tagValue
         ? `AND tag = $${paramIdx++}`
         : "";
-
     if (tagValue) queryParams.push(tagValue);
 
     if (timeFilter > 0) {
       queryParams.push(timeFilter);
       const timeIdx = queryParams.length;
-
       query = `
         WITH all_txs AS (
-          SELECT
+          SELECT 
             id, time, name, type, debit, credit, value, note, tag,
             SUM(
-              CASE
-                WHEN debit = $2 THEN value
-                WHEN credit = $2 THEN -value
-                ELSE 0
+              CASE 
+                WHEN debit = $2 THEN value 
+                WHEN credit = $2 THEN -value 
+                ELSE 0 
               END
             ) OVER (
-              ORDER BY time ASC, id ASC
+              ORDER BY time ASC, id ASC 
               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
             )::bigint AS balance_after
           FROM transactions
@@ -102,16 +97,16 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         ORDER BY time DESC, id DESC`;
     } else {
       query = `
-        SELECT
+        SELECT 
           id, time, name, type, debit, credit, value, note, tag,
           SUM(
-            CASE
-              WHEN debit = $2 THEN value
-              WHEN credit = $2 THEN -value
-              ELSE 0
+            CASE 
+              WHEN debit = $2 THEN value 
+              WHEN credit = $2 THEN -value 
+              ELSE 0 
             END
           ) OVER (
-            ORDER BY time ASC, id ASC
+            ORDER BY time ASC, id ASC 
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
           )::bigint AS balance_after
         FROM transactions

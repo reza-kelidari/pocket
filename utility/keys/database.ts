@@ -6,3 +6,6 @@ export const DatabaseStores = {
 
 export type DatabaseStoreType =
   (typeof DatabaseStores)[keyof typeof DatabaseStores];
+
+/** Whitelist of stores accessible through this route. */
+export const ALLOWED_STORES = ["accounts", "transactions", "tags"] as const;

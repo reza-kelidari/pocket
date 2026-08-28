@@ -6,7 +6,6 @@ import ChartContainer from "@/components/ChartContainer";
 import QuickAccess from "@/app/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import useBalances from "@/utility/balance/service/useBalances";
-import { getLatestTransactions } from "@/utility/shared/transactionsMethods";
 import { getAccountBalances } from "@/utility/shared/balancesMethods";
 import { IconComponent } from "@/icons/types";
 import Receive from "@/icons/Receive";
@@ -181,7 +180,6 @@ export default function Home() {
       ) : (
         <ChartContainer
           title={"روند موجودی"}
-          transactions={transactions}
           timeSelector
           link="/analyze"
           linkTitle="تحلیل و بررسی پیشرفته"

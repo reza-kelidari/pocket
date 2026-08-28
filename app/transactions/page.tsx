@@ -6,7 +6,7 @@ import TransactionItem from "@/components/TransactionItem";
 import TransactionItemLoading from "@/components/TransactionItemLoading";
 import Left from "@/icons/Left";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   filterToUrl,
   parseStringArray,
@@ -24,38 +24,46 @@ import { deleteItem, getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import SwipeableElement from "@/components/SwipeableElement";
 import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
+import TimeWindow from "@/components/TimeWindow";
+import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 
 export default function Transactions() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const { accountsStore, transactionsStore } = DatabaseStores;
+
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
-  const [dragCounter, setDragCounter] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [dragCounter, setDragCounter] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Dropdown animation states
-  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
-  const [isDropdownMounted, setIsDropdownMounted] = useState(false);
-  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const tw = useTimeWindow();
 
-  const timeFilter = timeFilters(toJalaliDateArray(new Date()));
+  const timeFilterOptions = useMemo(
+    () => timeFilters(toJalaliDateArray(new Date())),
+    [],
+  );
 
-  const transactionsFilter: TransactionsFilterType = useMemo(
-    () => ({
-      timeWindow: Number(searchParams.get("time") ?? 29),
+  const transactionsFilter: TransactionsFilterType = useMemo(() => {
+    const timeParamStr = searchParams.get("time");
+    return {
+      timeWindow: timeParamStr ? Number(timeParamStr) : 30,
       accounts: parseStringArray(searchParams.get("accounts")),
       categories: parseStringArray(searchParams.get("categories")),
       tags: parseStringArray(searchParams.get("tags")),
-    }),
-    [searchParams],
+    };
+  }, [searchParams]);
+
+  const currentTimeFilterName = useMemo(
+    () =>
+      timeFilterOptions.find((o) => o.time === transactionsFilter.timeWindow)
+        ?.name ?? "۳۰ روز گذشته",
+    [transactionsFilter.timeWindow, timeFilterOptions],
   );
 
   // ==================== مدیریت اسکرول ====================
-  // تولید کلید پویا بر اساس فیلترها تا هر حالت فیلتر، اسکرول مستقل خود را داشته باشد
   const SCROLL_KEY = useMemo(
     () => `transactions-scroll-${JSON.stringify(transactionsFilter)}`,
     [transactionsFilter],
@@ -63,34 +71,7 @@ export default function Transactions() {
 
   const { clearSavedPosition } = useScrollRestoration(SCROLL_KEY, !isLoading);
 
-  // مدیریت چرخه‌ی انیمیشن دراپ‌داون
-  useEffect(() => {
-    if (showTimeDropdown) {
-      setIsDropdownMounted(true);
-      const timer = setTimeout(() => setIsDropdownVisible(true), 15);
-      return () => clearTimeout(timer);
-    } else {
-      setIsDropdownVisible(false);
-      const timer = setTimeout(() => setIsDropdownMounted(false), 200);
-      return () => clearTimeout(timer);
-    }
-  }, [showTimeDropdown]);
-
-  // بستن دراپ‌داون با کلیک بیرون
-  useEffect(() => {
-    if (!showTimeDropdown) return;
-    const handleClick = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowTimeDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showTimeDropdown]);
-
+  // ==================== دریافت دیتا ====================
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -115,6 +96,7 @@ export default function Transactions() {
     };
   }, [accountsStore, transactionsStore, transactionsFilter]);
 
+  // ==================== هندلرها ====================
   const navigateWithLoading = useCallback(
     (url: string) => {
       clearSavedPosition();
@@ -130,9 +112,9 @@ export default function Transactions() {
       window.scrollTo({ top: 0, behavior: "instant" });
       const newFilter = { ...transactionsFilter, timeWindow: time };
       router.replace(`/transactions${filterToUrl(newFilter)}`);
-      setShowTimeDropdown(false);
+      tw.close(); // ← به جای setShowTimeDropdown(false)
     },
-    [transactionsFilter, router, clearSavedPosition],
+    [transactionsFilter, router, clearSavedPosition, tw],
   );
 
   const selectedAccount =
@@ -145,19 +127,17 @@ export default function Transactions() {
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
 
-        {/* کانتینر relative برای دراپ‌داون */}
-        <div className="relative" ref={dropdownRef}>
+        {/* ✅ ref از هوک می‌آید */}
+        <div className="relative" ref={tw.dropdownRef}>
           <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-full scrollbar-none">
             <span className="me-2">فیلترها</span>
 
             <Capsule
               Icon={Left}
               primary={transactionsFilter.timeWindow !== 29}
-              onClick={() => setShowTimeDropdown((v) => !v)}
+              onClick={tw.toggle} // ← به جای () => setShowTimeDropdown(v => !v)
             >
-              {timeFilter.find(
-                (filter) => filter.time === transactionsFilter.timeWindow,
-              )?.name ?? "۳۰ روز گذشته"}
+              {currentTimeFilterName}
             </Capsule>
 
             <Capsule
@@ -180,30 +160,14 @@ export default function Transactions() {
             </Capsule>
           </div>
 
-          {isDropdownMounted && (
-            <div
-              className={`absolute top-full right-0 mt-2 p-2 flex flex-col gap-1 bg-white border border-elements-border rounded-2xl shadow-lg z-50 min-w-36 transition-all duration-300 ease-in-out transform origin-top-right ${
-                isDropdownVisible
-                  ? "opacity-100 translate-y-0 scale-100"
-                  : "opacity-0 -translate-y-2 scale-95 pointer-events-none"
-              }`}
-            >
-              {timeFilter.map((option) => (
-                <button
-                  key={option.time}
-                  type="button"
-                  onClick={() => handleTimeFilterChange(option.time)}
-                  className={`block w-full text-right px-4 rounded-md py-2.5 text-xs transition-colors cursor-pointer ${
-                    option.time === transactionsFilter.timeWindow
-                      ? "text-primary font-bold bg-primary-background"
-                      : "text-black hover:bg-elements-background"
-                  }`}
-                >
-                  {option.name}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* ✅ پنل dropdown عمومی */}
+          <TimeWindow
+            isMounted={tw.isMounted}
+            isVisible={tw.isVisible}
+            options={timeFilterOptions}
+            onSelect={handleTimeFilterChange}
+            activeTime={transactionsFilter.timeWindow}
+          />
         </div>
       </div>
 

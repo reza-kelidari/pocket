@@ -1,4 +1,4 @@
-import { pastDaysInYear } from "@/utility/shared/timeMethods";
+import { jalaliToTimestamp } from "@/utility/shared/timeMethods";
 
 export type TransactionsFilterType = {
   timeWindow: number;
@@ -10,14 +10,12 @@ export type TransactionsFilterType = {
 export const filterToUrl = (filter: TransactionsFilterType): string => {
   const { timeWindow, accounts, categories, tags } = filter;
   let result = "?";
-
   result += `time=${timeWindow}&`;
   if (accounts && accounts.length > 0)
     result += `accounts=${accounts.join(",")}&`;
   if (categories && categories.length > 0)
     result += `categories=${categories.join(",")}&`;
   if (tags && tags.length > 0) result += `tags=${tags.join(",")}&`;
-
   return result;
 };
 
@@ -26,11 +24,19 @@ export const parseStringArray = (param: string | null): string[] => {
   return param.split(",").filter((s) => s !== "");
 };
 
-export const timeFilters = (dateArray: number[]) => [
-  { name: "۷ روز گذشته", time: 7 - 1 },
-  { name: "۳۰ روز گذشته", time: 30 - 1 },
-  { name: "این ماه", time: dateArray[2] - 1 },
-  { name: "۹۰ روز گذشته", time: 90 - 1 },
-  { name: "امسال", time: pastDaysInYear(dateArray) - 1 },
-  { name: "از ابتدا", time: 36500 },
-];
+export const timeFilters = (dateArray: number[]) => {
+  const now = Date.now();
+  const startOfYear = jalaliToTimestamp([dateArray[0], 1, 1]);
+  const daysSinceStartOfYear = Math.ceil(
+    (now - startOfYear) / (24 * 60 * 60 * 1000),
+  );
+
+  return [
+    { name: "۷ روز گذشته", time: 7 - 1 },
+    { name: "۳۰ روز گذشته", time: 30 - 1 },
+    { name: "این ماه", time: dateArray[2] - 1 },
+    { name: "۹۰ روز گذشته", time: 90 - 1 },
+    { name: "امسال", time: daysSinceStartOfYear },
+    { name: "از ابتدا", time: 36500 },
+  ];
+};
