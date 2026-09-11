@@ -1,20 +1,15 @@
 "use client";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
 import { MessageType } from "@/app/message/page";
-import { AccountType } from "@/utility/accounts/types";
-import useBalances from "@/utility/balance/service/useBalances";
-import { getAll } from "@/utility/db/Database";
-import { DatabaseStores } from "@/utility/keys/database";
-import { getAccountBalances } from "@/utility/shared/balancesMethods";
-import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAccountsAndTransactions } from "@/utility/shared/useAccountsAndTransactions";
 
 export const RESTORE_DATA_KEY = "restore-backup-data";
 
 export default function RestoreProcessingPage() {
   const router = useRouter();
-  const { setBalances } = useBalances();
+  const fetchAll = useAccountsAndTransactions();
   const [stepText, setStepText] = useState("در حال آماده‌سازی...");
   const [progress, setProgress] = useState(0);
 
@@ -43,12 +38,7 @@ export default function RestoreProcessingPage() {
 
         setStepText("به‌روزرسانی موجودی‌ها...");
         setProgress(70);
-        const { accountsStore, transactionsStore } = DatabaseStores;
-        const finalAccounts = await getAll<AccountType>(accountsStore);
-        setProgress(80);
-        const finalTxs = await getAll<TransactionType>(transactionsStore);
-        setProgress(90);
-        setBalances(getAccountBalances(finalAccounts, finalTxs));
+        await fetchAll();
         setProgress(100);
 
         sessionStorage.removeItem(RESTORE_DATA_KEY);

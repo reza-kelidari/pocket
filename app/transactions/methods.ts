@@ -5,6 +5,8 @@ export type TransactionsFilterType = {
   tags: string[];
 };
 
+export const DEFAULT_TIME_WINDOW = 29;
+
 export const filterToUrl = (filter: TransactionsFilterType): string => {
   const { timeWindow, accounts, categories, tags } = filter;
   let result = "?";

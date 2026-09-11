@@ -4,7 +4,7 @@ import {
   toJalaliDateArray,
 } from "@/utility/shared/timeMethods";
 
-export const toPersianDigits = (value: string) =>
+const toPersianDigits = (value: string) =>
   value.replace(/\d/g, (d) => Number(d).toLocaleString("fa-IR"));
 
 function isJalaliLeapYear(year: number): boolean {
@@ -37,16 +37,22 @@ export function formatTimeInput(timestamp: number): string {
   return toPersianDigits(`${hours}:${minutes}`);
 }
 
+function daysInJalaliMonth(year: number, month: number): number {
+  if (month <= 6) return 31;
+  if (month <= 11) return 30;
+  return isJalaliLeapYear(year) ? 30 : 29;
+}
+
 export function parseJalaliInput(formattedValue: string): number {
   const raw = toEnglishDigits(formattedValue).replace(/\D/g, "");
   if (raw.length !== 8) return 0;
   const year = parseInt(raw.slice(0, 4), 10);
   const month = parseInt(raw.slice(4, 6), 10);
   const day = parseInt(raw.slice(6, 8), 10);
-  if (year >= 1300 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-    return jalaliToTimestamp([year, month, day]);
-  }
-  return 0;
+  if (year < 1300 || month < 1 || month > 12) return 0;
+  const maxDay = daysInJalaliMonth(year, month);
+  if (day < 1 || day > maxDay) return 0;
+  return jalaliToTimestamp([year, month, day]);
 }
 
 export function parseTimeInput(formattedValue: string): number {
@@ -172,7 +178,7 @@ export function formatJalaliInput(
         let dayNum = parseInt(dayStr) || 0;
         if (dayStr.length === 1) {
           if (dayStr === "0") {
-            res += "0"; 
+            res += "0";
             return toPersianDigits(res);
           } else if (
             (dayStr === "1" || dayStr === "2" || dayStr === "3") &&

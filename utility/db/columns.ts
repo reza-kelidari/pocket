@@ -43,19 +43,3 @@ export const ACCOUNT_TYPES = Object.keys(AccountTypes);
 export const ACCOUNT_COLORS = Object.keys(AccountColors);
 export const TRANSACTION_TYPES = TransactionKinds;
 export const TAG_TYPES = TagTypes;
-
-/**
- * Filters an object's keys, keeping only those present in the whitelist.
- */
-export function filterAllowedColumns(
-  data: Record<string, unknown>,
-  allowedColumns: readonly string[],
-): Record<string, unknown> {
-  const filtered: Record<string, unknown> = {};
-  for (const key of Object.keys(data)) {
-    if (allowedColumns.includes(key)) {
-      filtered[key] = data[key];
-    }
-  }
-  return filtered;
-}

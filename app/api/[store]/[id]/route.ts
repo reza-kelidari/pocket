@@ -62,10 +62,28 @@ async function handleAccountDeletion(
      LIMIT 1`,
     [userId],
   );
-  const transitId: string | null =
-    transitRes.rows.length > 0 ? transitRes.rows[0].id : null;
+  
+  const transferCountRes = await client.query(
+    `SELECT COUNT(*)::int AS count FROM transactions
+     WHERE user_id = $1 AND type = 'transfer'
+       AND (debit = $2 OR credit = $2)`,
+    [userId, accountId],
+  );
+  const transferCount: number = transferCountRes.rows[0]?.count ?? 0;
 
-  if (transitId) {
+  if (transferCount > 0 && transitRes.rows.length === 0) {
+    await client.query("ROLLBACK");
+    return NextResponse.json(
+      {
+        error:
+          "حساب «وجوه در راه» یافت نشد. برای حذف این حساب ابتدا باید حساب وجوه در راه بازیابی شود.",
+      },
+      { status: 409 },
+    );
+  }
+
+  if (transitRes.rows.length > 0) {
+    const transitId: string = transitRes.rows[0].id;
     await client.query(
       `UPDATE transactions SET debit = $3
        WHERE user_id = $1 AND type = 'transfer' AND debit = $2`,

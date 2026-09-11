@@ -31,14 +31,12 @@ export async function POST(req: NextRequest) {
     try {
       await client.query("BEGIN");
 
-      // پاکسازی کامل داده‌های قبلی
       await client.query(`DELETE FROM transactions WHERE user_id = $1`, [
         userId,
       ]);
       await client.query(`DELETE FROM tags WHERE user_id = $1`, [userId]);
       await client.query(`DELETE FROM accounts WHERE user_id = $1`, [userId]);
 
-      // بازیابی حساب‌ها
       for (const acc of backupData.accounts || []) {
         const idR = sanitizeUuid(acc.id);
         if (!idR.valid) continue;
@@ -61,7 +59,8 @@ export async function POST(req: NextRequest) {
              "order" = EXCLUDED."order",
              color = EXCLUDED.color,
              "default" = EXCLUDED."default",
-             hidden = EXCLUDED.hidden`,
+             hidden = EXCLUDED.hidden
+           WHERE accounts.user_id = $2`,
           [
             idR.value,
             userId,
@@ -75,7 +74,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // بازیابی برچسب‌ها
       for (const tag of backupData.tags || []) {
         const idR = sanitizeUuid(tag.id);
         if (!idR.valid) continue;
@@ -92,7 +90,8 @@ export async function POST(req: NextRequest) {
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              type = EXCLUDED.type,
-             "order" = EXCLUDED."order"`,
+             "order" = EXCLUDED."order"
+           WHERE tags.user_id = $2`,
           [
             idR.value,
             userId,
@@ -103,7 +102,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // بازیابی تراکنش‌ها
       for (const tx of backupData.transactions || []) {
         const idR = sanitizeUuid(tx.id);
         if (!idR.valid) continue;
@@ -131,7 +129,8 @@ export async function POST(req: NextRequest) {
              credit = EXCLUDED.credit,
              value = EXCLUDED.value,
              note = EXCLUDED.note,
-             tag = EXCLUDED.tag`,
+             tag = EXCLUDED.tag
+           WHERE transactions.user_id = $2`,
           [
             idR.value,
             userId,

@@ -3,6 +3,7 @@ import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
 import { sanitizeUuid } from "@/utility/validation";
 import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
+import { DEFAULT_TIME_WINDOW } from "@/app/transactions/methods";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const accountId = idResult.value;
 
   const url = new URL(req.url);
-  const timeWindow = Number(url.searchParams.get("time") || 30);
+  const timeWindow = Number(url.searchParams.get("time") || DEFAULT_TIME_WINDOW);
   const tagParam = url.searchParams.get("tag");
 
   const timeFilter = getCutoffTimestamp(timeWindow);
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         ), 0)::bigint AS balance_before
         FROM transactions
         WHERE user_id = $1 AND (debit = $2 OR credit = $2) AND time < $3`;
-      let beforeParams: unknown[] = [userId, accountId, timeFilter];
+      const beforeParams: unknown[] = [userId, accountId, timeFilter];
 
       if (isUntagged) {
         beforeQuery += ` AND tag IS NULL`;
@@ -61,22 +62,22 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       balanceBefore = Number(beforeRes.rows[0].balance_before) || 0;
     }
 
-    let query: string;
     const queryParams: unknown[] = [userId, accountId];
-    let paramIdx = 3;
 
-    const tagFilterSQL = isUntagged
-      ? `AND tag IS NULL`
-      : tagValue
-        ? `AND tag = $${paramIdx++}`
-        : "";
-    if (tagValue) queryParams.push(tagValue);
+    let tagFilterSQL = "";
+    if (isUntagged) {
+      tagFilterSQL = `AND tag IS NULL`;
+    } else if (tagValue) {
+      queryParams.push(tagValue);
+      tagFilterSQL = `AND tag = $${queryParams.length}`;
+    }
 
+    let query: string;
     if (timeFilter > 0) {
       queryParams.push(timeFilter);
       const timeIdx = queryParams.length;
       query = `
-        WITH all_txs AS (
+        WITH windowed AS (
           SELECT 
             id, time, name, type, debit, credit, value, note, tag,
             SUM(
@@ -88,12 +89,16 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             ) OVER (
               ORDER BY time ASC, id ASC 
               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-            )::bigint AS balance_after
+            )::bigint AS delta
           FROM transactions
-          WHERE user_id = $1 AND (debit = $2 OR credit = $2) ${tagFilterSQL}
+          WHERE user_id = $1 
+            AND (debit = $2 OR credit = $2) 
+            ${tagFilterSQL}
+            AND time >= $${timeIdx}
         )
-        SELECT * FROM all_txs
-        WHERE time >= $${timeIdx}
+        SELECT 
+          id, time, name, type, debit, credit, value, note, tag, delta
+        FROM windowed
         ORDER BY time DESC, id DESC`;
     } else {
       query = `
@@ -125,7 +130,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       value: Number(row.value),
       note: (row.note as string) || "",
       tag: (row.tag as string) || null,
-      balanceAfter: Number(row.balance_after),
+      balanceAfter:
+        timeFilter > 0
+          ? Number(row.delta) + balanceBefore
+          : Number(row.balance_after),
     }));
 
     return NextResponse.json({ balanceBefore, transactions });

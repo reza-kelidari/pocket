@@ -1,3 +1,4 @@
+import { AccountBalanceType } from "../balance/types";
 import { castNumericFields } from "./castNumeric";
 
 async function handleUnauthorized(res: Response) {
@@ -64,11 +65,24 @@ export async function deleteItem(store: string, id: string): Promise<void> {
   }
 }
 
-export async function clearStore(store: string): Promise<void> {
-  const res = await fetch(`/api/${store}`, { method: "DELETE" });
-  await handleUnauthorized(res);
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "خطا در پاکسازی اطلاعات");
+export async function getBalances(): Promise<AccountBalanceType[] | null> {
+  try {
+    const res = await fetch("/api/balances");
+
+    if (res.status === 401) {
+      window.location.href = "/splash";
+      return null;
+    }
+
+    if (!res.ok) {
+      console.warn(`/api/balances returned ${res.status}`);
+      return null;
+    }
+
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
+  } catch (err) {
+    console.warn("/api/balances fetch failed", err);
+    return null;
   }
 }

@@ -1,4 +1,8 @@
-import { toGregorian } from "jalaali-js";
+import { toGregorian, toJalaali } from "jalaali-js";
+
+const TEHRAN_OFFSET_MS = 3.5 * 60 * 60 * 1000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function toEnglishDigits(value: string): string {
   return value
@@ -7,23 +11,15 @@ export function toEnglishDigits(value: string): string {
 }
 
 export function toJalaliDateArray(date: Date): number[] {
-  return date
-    .toLocaleDateString("fa-ir", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-    })
-    .split("/")
-    .map((item) => Number(toEnglishDigits(item)));
-}
+  const tehranMs = date.getTime() + TEHRAN_OFFSET_MS;
+  const shifted = new Date(tehranMs);
 
-export function pastDaysInYear(date: number[]): number {
-  const [, month, day] = date;
-  let days = day;
-  if (month <= 6) days += (month - 1) * 31;
-  if (month > 6 && month < 12) days += 186 + (month - 7) * 30;
-  if (month === 12) days += 336;
-  return days;
+  const { jy, jm, jd } = toJalaali(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+  );
+  return [jy, jm, jd];
 }
 
 export function jalaliToTimestamp([year, month, day]: [
@@ -32,7 +28,10 @@ export function jalaliToTimestamp([year, month, day]: [
   number,
 ]): number {
   const { gy, gm, gd } = toGregorian(year, month, day);
-  return new Date(gy, gm - 1, gd).getTime();
+
+  const utcMidnight = Date.UTC(gy, gm - 1, gd);
+
+  return utcMidnight - TEHRAN_OFFSET_MS;
 }
 
 export function getCutoffTimestamp(timeParam: number): number {
@@ -53,8 +52,7 @@ export function getCutoffTimestamp(timeParam: number): number {
   }
 
   const daysAgo = timeParam - 1;
-  const startDate = new Date(now);
-  startDate.setDate(startDate.getDate() - daysAgo);
-  startDate.setHours(0, 0, 0, 0);
-  return startDate.getTime();
+  const shifted = new Date(now.getTime() - daysAgo * DAY_MS);
+  const [y, m, d] = toJalaliDateArray(shifted);
+  return jalaliToTimestamp([y, m, d]);
 }

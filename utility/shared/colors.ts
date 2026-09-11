@@ -114,5 +114,4 @@ export const AccountColors = {
   },
 } as const;
 
-export type PrimaryColorsType = keyof typeof PrimaryColors;
 export type PrimaryColorsItemType = (typeof PrimaryColors)["primary"];

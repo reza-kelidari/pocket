@@ -1,21 +1,30 @@
 import { TransactionCategories } from "./transactionCategories";
+import { TransactionType } from "./transactionTypes";
 
-export function getCategoryById(id: string) {
+const categoryById = (() => {
+  const map = new Map<number, any>();
+
   for (const cat of TransactionCategories.expense) {
-    if (cat.id === Number(id)) return cat;
-    if (cat.sub) {
-      const found = cat.sub.find((sub) => sub.id === Number(id));
-      if (found) return found;
+    map.set(cat.id, cat);
+    for (const sub of cat.sub) {
+      map.set(sub.id, sub);
     }
   }
 
   for (const cat of TransactionCategories.income) {
-    if (cat.id === Number(id)) return cat;
-    if (cat.sub) {
-      const found = cat.sub.find((sub) => sub.id === Number(id));
-      if (found) return found;
+    map.set(cat.id, cat);
+    for (const sub of cat.sub) {
+      map.set(sub.id, sub);
     }
   }
 
-  return null;
+  return map;
+})();
+
+export function getCategoryById(id: string | number) {
+  return categoryById.get(Number(id)) ?? null;
+}
+
+export function getTransactionPrimaryAccountId(tx: TransactionType): string {
+  return tx.type === "credit" ? tx.credit : tx.debit;
 }

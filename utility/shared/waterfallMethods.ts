@@ -16,36 +16,21 @@ export const JALALI_MONTH_NAMES = [
   "اسف",
 ];
 
-export const JALALI_MONTH_FULL_NAMES = [
-  "فروردین",
-  "اردیبهشت",
-  "خرداد",
-  "تیر",
-  "مرداد",
-  "شهریور",
-  "مهر",
-  "آبان",
-  "آذر",
-  "دی",
-  "بهمن",
-  "اسفند",
-];
-
 export interface WaterfallMonth {
   month: number;
   name: string;
-  value: number; // تغییر از pnl به value برای هماهنگی با Profit
+  value: number;
   startLevel: number;
   endLevel: number;
   isPositive: boolean;
-  isCurrentMonth?: boolean; // اضافه شدن فیلد اختیاری
+  isCurrentMonth?: boolean;
 }
 
 export interface WaterfallData {
   months: WaterfallMonth[];
   total: number;
   totalIsPositive: boolean;
-  year: number; // تغییر از jalaliYear به year
+  year: number;
 }
 
 function getJalaliMonthTimestamps(
@@ -122,16 +107,6 @@ export function calculateWaterfallData(
     months,
     total: cumulative,
     totalIsPositive: cumulative >= 0,
-    year: currentJalaliYear, // استفاده از year
+    year: currentJalaliYear,
   };
-}
-
-export function getCurrentJalaliMonth(now: number = Date.now()): number {
-  const nowDate = new Date(now);
-  const { jm } = toJalaali(
-    nowDate.getFullYear(),
-    nowDate.getMonth() + 1,
-    nowDate.getDate(),
-  );
-  return jm;
 }

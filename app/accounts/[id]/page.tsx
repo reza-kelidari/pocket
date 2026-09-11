@@ -31,19 +31,18 @@ import TransactionItemLoading from "@/components/Skeletons/TransactionItemLoadin
 import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 import { AccountType } from "@/utility/accounts/types";
-import useBalances from "@/utility/balance/service/useBalances";
-import { deleteItem, getAll, getItem } from "@/utility/db/Database";
+import { getAll, getItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
-import { getAccountBalances } from "@/utility/shared/balancesMethods";
-import { PrimaryColors, AccountColors } from "@/utility/shared/colors";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import { TagType } from "@/utility/shared/tagTypes";
-import { timeFilters } from "@/app/transactions/methods";
-import { toJalaliDateArray } from "@/utility/shared/timeMethods";
+import { DEFAULT_TIME_WINDOW } from "@/app/transactions/methods";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
 import Pen from "@/icons/Pen";
 import Left from "@/icons/Left";
+import { useTimeFilterOptions } from "@/utility/shared/useTimeFilterOptions";
+import { useDeleteTransaction } from "@/utility/shared/useDeleteTransaction";
+import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 
 /**
  * Represents a single transaction within the ledger response,
@@ -112,12 +111,12 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
   const router = useRouter();
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
 
-  /** Time filter parameter from the URL (default: 30 days). */
+  /** Time filter parameter from the URL (default: 29 days). */
   const timeParam = searchParams.get("time");
   /** Tag filter parameter from the URL. Present when viewing a specific tag's ledger. */
   const tagParam = searchParams.get("tag");
-  /** Initial time filter value parsed from URL or defaulted to 30 days. */
-  const initialTimeFilter = timeParam ? Number(timeParam) : 30;
+  /** Initial time filter value parsed from URL or defaulted to 29 days. */
+  const initialTimeFilter = timeParam ? Number(timeParam) : DEFAULT_TIME_WINDOW;
 
   // --- Core Data States ---
   /** The currently viewed account object. */
@@ -146,8 +145,8 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
   /** Counter to signal swipeable elements to close. */
   const [dragCounter, setDragCounter] = useState(0);
-  /** Balance state management hook. */
-  const { setBalances } = useBalances();
+
+  const deleteTransaction = useDeleteTransaction();
 
   /** Tracks component mount state to prevent state updates after unmount. */
   const isMountedRef = useRef(true);
@@ -173,10 +172,7 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
   const isViewingLedger = !isBookAccount || !!tagParam;
 
   /** Pre-calculated time filter options based on the current Jalali date. */
-  const timeFilterOptions = useMemo(
-    () => timeFilters(toJalaliDateArray(new Date())),
-    [],
-  );
+  const timeFilterOptions = useTimeFilterOptions();
 
   // ==================== Lifecycle Effects ====================
 
@@ -198,7 +194,7 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
    */
   useEffect(() => {
     const t = searchParams.get("time");
-    const newTime = t ? Number(t) : 29;
+    const newTime = t ? Number(t) : DEFAULT_TIME_WINDOW;
     if (newTime !== timeFilter) {
       setTimeFilter(newTime);
     }
@@ -349,10 +345,8 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
    * Handles the deletion of a transaction.
    */
   const handleDeleteTransaction = async (txId: string) => {
-    await deleteItem(transactionsStore, txId);
-    const newTxs = allTransactions.filter((t) => t.id !== txId);
+    const { transactions: newTxs } = await deleteTransaction(txId);
     setAllTransactions(newTxs);
-    setBalances(getAccountBalances(accounts, newTxs));
     setSwipedItem(null);
     fetchLedger();
   };

@@ -126,11 +126,13 @@ export default function AddAccount() {
 
   const handleSave = async () => {
     if (!isValid) return;
+
     const accounts = (await getAll(accountsStore)) as AccountType[];
     const maxOrder = accounts.reduce(
       (max, a) => Math.max(max, a.order ?? 0),
       0,
     );
+
     const accountToSave: AccountType = {
       id: form.id,
       name: form.name,
@@ -138,24 +140,39 @@ export default function AddAccount() {
       color: form.color,
       order: maxOrder + 1,
     };
-    await putItem(accountsStore, accountToSave);
-    const initialTransaction: TransactionType = {
-      id: crypto.randomUUID(),
-      type: "initial",
-      name: "موجودی اولیه",
-      time: form.createTimestamp,
-      value: form.initialBalance,
-      debit: form.id,
-      credit: "",
-    } as TransactionType;
-    await putItem(transactionsStore, initialTransaction);
-    addBalance({
-      id: form.id,
-      history: [{ time: form.createTimestamp, balance: form.initialBalance }],
-    });
-    sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
-    resetFormState();
-    router.back();
+
+    const initialTxId = crypto.randomUUID();
+
+    try {
+      const res = await fetch("/api/accounts/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          account: accountToSave,
+          initialTransaction: {
+            id: initialTxId,
+            value: form.initialBalance,
+            time: form.createTimestamp,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "خطا در ذخیره‌سازی");
+      }
+
+      addBalance({
+        id: form.id,
+        history: [{ time: form.createTimestamp, balance: form.initialBalance }],
+      });
+
+      sessionStorage.removeItem(CREATE_ACCOUNT_KEY);
+      resetFormState();
+      router.back();
+    } catch (error) {
+      console.error("Failed to save account:", error);
+      alert("خطا در ذخیره‌سازی. لطفاً دوباره تلاش کنید.");
+    }
   };
 
   const handleCancel = () => {

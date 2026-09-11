@@ -5,14 +5,14 @@ import Info from "@/icons/Info";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
 import { AccountColors } from "@/utility/shared/colors";
 import { DatabaseStores } from "@/utility/keys/database";
-import { deleteItem, getAll, getItem } from "@/utility/db/Database";
-import { getAccountBalances } from "@/utility/shared/balancesMethods";
+import { deleteItem, getItem } from "@/utility/db/Database";
 import useBalances from "@/utility/balance/service/useBalances";
 import { AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/shared/transactionTypes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { JSX, useEffect, useState } from "react";
 import { MessageType } from "@/app/message/page";
+import { useAccountsAndTransactions } from "@/utility/shared/useAccountsAndTransactions";
+import { TransactionType } from "@/utility/shared/transactionTypes";
 
 /**
  * @fileoverview Account deletion confirmation page.
@@ -61,6 +61,10 @@ interface UseFetchAccountDeleteDataResult {
  */
 function useFetchAccountDeleteData(
   accountID: string,
+  fetchAll: () => Promise<{
+    accounts: AccountType[];
+    transactions: TransactionType[];
+  }>,
 ): UseFetchAccountDeleteDataResult {
   const [data, setData] = useState<AccountDeleteData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -73,21 +77,19 @@ function useFetchAccountDeleteData(
     }
 
     let isMounted = true;
-    const { accountsStore, transactionsStore } = DatabaseStores;
+    const { accountsStore } = DatabaseStores;
 
     const fetchData = async () => {
       try {
-        const [targetAccount, allTransactions, allAccounts] = await Promise.all(
-          [
-            getItem<AccountType>(accountsStore, accountID),
-            getAll<TransactionType>(transactionsStore),
-            getAll<AccountType>(accountsStore),
-          ],
+        const targetAccount = await getItem<AccountType>(
+          accountsStore,
+          accountID,
         );
+        const { accounts, transactions } = await fetchAll();
 
         if (!isMounted) return;
 
-        const relatedTransactions = allTransactions.filter(
+        const relatedTransactions = transactions.filter(
           (tx) => tx.credit === accountID || tx.debit === accountID,
         );
 
@@ -99,7 +101,7 @@ function useFetchAccountDeleteData(
         );
 
         // The transit account is identified by being both a default system account and hidden.
-        const transitAccount = allAccounts.find(
+        const transitAccount = accounts.find(
           (acc) => acc.default === true && acc.hidden === true,
         );
 
@@ -123,7 +125,7 @@ function useFetchAccountDeleteData(
     return () => {
       isMounted = false;
     };
-  }, [accountID]);
+  }, [accountID, fetchAll]);
 
   return { data, isLoading, error };
 }
@@ -150,9 +152,10 @@ export default function AccountDelete(): JSX.Element | null {
   const searchParams = useSearchParams();
   const accountID = searchParams.get("id") ?? "";
   const router = useRouter();
+  const fetchAll = useAccountsAndTransactions();
 
-  const { removeBalance, setBalances } = useBalances();
-  const { data, isLoading } = useFetchAccountDeleteData(accountID);
+  const { removeBalance } = useBalances();
+  const { data, isLoading } = useFetchAccountDeleteData(accountID, fetchAll);
 
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -188,14 +191,8 @@ export default function AccountDelete(): JSX.Element | null {
       setProgress(66);
       setStepText("در حال محاسبه مجدد موجودی‌ها...");
 
-      // Phase 3: Refetch data to recalculate balances (transfers are now linked to transit account)
-      const { accountsStore, transactionsStore } = DatabaseStores;
-      const [finalAccounts, finalTransactions] = await Promise.all([
-        getAll<AccountType>(accountsStore),
-        getAll<TransactionType>(transactionsStore),
-      ]);
-
-      setBalances(getAccountBalances(finalAccounts, finalTransactions));
+      // Phase 3: Refetch data to recalculate balances
+      await fetchAll();
       setProgress(100);
 
       const message: MessageType = {

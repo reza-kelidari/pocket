@@ -3,7 +3,7 @@
 import NavbarTitle from "@/components/NavbarTitle";
 import { useState, useMemo, JSX, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { timeFilters } from "@/app/transactions/methods";
+import { DEFAULT_TIME_WINDOW, timeFilters } from "@/app/transactions/methods";
 import { toJalaliDateArray } from "@/utility/shared/timeMethods";
 import Left from "@/icons/Left";
 import CashFlow from "./components/CashFlow";
@@ -16,8 +16,7 @@ import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 import { TagType } from "@/utility/shared/tagTypes";
 import FinancialAnalysis from "./components/FinancialAnalysis";
-
-type TabType = { name: string; component: JSX.Element };
+import { useTimeFilterOptions } from "@/utility/shared/useTimeFilterOptions";
 
 function AnalyzeSkeleton() {
   return (
@@ -48,7 +47,7 @@ function AnalyzeSkeleton() {
 function AnalyzeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const timeParam = Number(searchParams.get("time") || 29);
+  const timeParam = Number(searchParams.get("time") || DEFAULT_TIME_WINDOW);
 
   const tw = useTimeWindow();
 
@@ -75,10 +74,7 @@ function AnalyzeContent() {
     };
   }, []);
 
-  const timeFilterOptions = useMemo(
-    () => timeFilters(toJalaliDateArray(new Date())),
-    [],
-  );
+  const timeFilterOptions = useTimeFilterOptions();
 
   const currentTimeFilterName = useMemo(
     () =>
@@ -92,51 +88,11 @@ function AnalyzeContent() {
     tw.close();
   };
 
-  const tabs: TabType[] = [
-    {
-      name: "جریان نقدی",
-      component: (
-        <CashFlow
-          timeParam={timeParam}
-          transactions={transactions}
-          isLoading={isLoading}
-        />
-      ),
-    },
-    {
-      name: "درآمد‌ها",
-      component: (
-        <FinancialAnalysis
-          type="income"
-          timeParam={timeParam}
-          transactions={transactions}
-          tags={tags}
-          isLoading={isLoading}
-        />
-      ),
-    },
-    {
-      name: "هزینه‌ها",
-      component: (
-        <FinancialAnalysis
-          type="expense"
-          timeParam={timeParam}
-          transactions={transactions}
-          tags={tags}
-          isLoading={isLoading}
-        />
-      ),
-    },
-    {
-      name: "سود و زیان",
-      component: (
-        <Profit
-          timeParam={timeParam}
-          transactions={transactions}
-          isLoading={isLoading}
-        />
-      ),
-    },
+  const tabs: { name: string }[] = [
+    { name: "جریان نقدی" },
+    { name: "درآمدها" },
+    { name: "هزینه‌ها" },
+    { name: "سود و زیان" },
   ];
 
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -182,14 +138,38 @@ function AnalyzeContent() {
           ))}
         </div>
 
-        {tabs.map((tab, index) => (
-          <div
-            key={tab.name}
-            className={activeTab === index ? "contents" : "hidden"}
-          >
-            {tab.component}
-          </div>
-        ))}
+        {activeTab === 0 && (
+          <CashFlow
+            timeParam={timeParam}
+            transactions={transactions}
+            isLoading={isLoading}
+          />
+        )}
+        {activeTab === 1 && (
+          <FinancialAnalysis
+            type="income"
+            timeParam={timeParam}
+            transactions={transactions}
+            tags={tags}
+            isLoading={isLoading}
+          />
+        )}
+        {activeTab === 2 && (
+          <FinancialAnalysis
+            type="expense"
+            timeParam={timeParam}
+            transactions={transactions}
+            tags={tags}
+            isLoading={isLoading}
+          />
+        )}
+        {activeTab === 3 && (
+          <Profit
+            timeParam={timeParam}
+            transactions={transactions}
+            isLoading={isLoading}
+          />
+        )}
       </div>
     </div>
   );

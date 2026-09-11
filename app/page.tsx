@@ -6,7 +6,6 @@ import ChartContainer from "@/components/ChartContainer";
 import QuickAccess from "@/app/components/QuickAccess";
 import Title from "@/components/SectionTitle";
 import useBalances from "@/utility/balance/service/useBalances";
-import { getAccountBalances } from "@/utility/shared/balancesMethods";
 import { IconComponent } from "@/icons/types";
 import Receive from "@/icons/Receive";
 import Send from "@/icons/Send";
@@ -16,8 +15,6 @@ import Transfer from "@/icons/Transfer";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { deleteItem, getAll } from "@/utility/db/Database";
-import { DatabaseStores } from "@/utility/keys/database";
 import { AccountType } from "@/utility/accounts/types";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import { SplashShownKey } from "@/utility/keys/sessionStore";
@@ -27,13 +24,14 @@ import { usePageShowSync } from "@/utility/shared/usePageShowSync";
 import AccountCardLoading from "@/components/Skeletons/AccountCardSkeleton";
 import TransactionItemLoading from "@/components/Skeletons/TransactionItemLoading";
 import ChartContainerLoading from "@/components/Skeletons/ChartContainerLoading";
+import { useAccountsAndTransactions } from "@/utility/shared/useAccountsAndTransactions";
+import { useDeleteTransaction } from "@/utility/shared/useDeleteTransaction";
 
 export default function Home() {
   const router = useRouter();
-  const { accountsStore, transactionsStore } = DatabaseStores;
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
-  const { getBalances, setBalances } = useBalances();
+  const { getBalances } = useBalances();
 
   const [splashGuard, setSplashGuard] = useState<boolean>(true);
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
@@ -41,8 +39,9 @@ export default function Home() {
   const [headerDate, setHeaderDate] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
-
   const accountsScrollRef = useRef<HTMLDivElement>(null);
+  const fetchAll = useAccountsAndTransactions();
+  const deleteTransaction = useDeleteTransaction();
 
   useEffect(() => {
     if (!sessionStorage.getItem(SplashShownKey)) router.replace("/splash");
@@ -56,13 +55,9 @@ export default function Home() {
   const loadData = async () => {
     const isFirstLoad = accounts.length === 0 && transactions.length === 0;
     if (isFirstLoad) setIsLoading(true);
-    const [accs, txs] = await Promise.all([
-      getAll<AccountType>(accountsStore),
-      getAll<TransactionType>(transactionsStore),
-    ]);
+    const { accounts: accs, transactions: txs } = await fetchAll();
     setAccounts(accs);
     setTransactions(txs);
-    setBalances(getAccountBalances(accs, txs));
     if (isFirstLoad) setIsLoading(false);
   };
 
@@ -117,10 +112,10 @@ export default function Home() {
   if (splashGuard) return null;
 
   const handleDeleteTransaction = async (id: string) => {
-    await deleteItem(transactionsStore, id);
-    const newTxs = transactions.filter((t) => t.id !== id);
+    const { accounts: freshAccs, transactions: newTxs } =
+      await deleteTransaction(id);
+    setAccounts(freshAccs);
     setTransactions(newTxs);
-    setBalances(getAccountBalances(accounts, newTxs));
     setSwipedItem(null);
   };
 
@@ -185,6 +180,7 @@ export default function Home() {
           timeSelector
           link="/analyze"
           linkTitle="تحلیل و بررسی پیشرفته"
+          transactions={transactions}
         />
       )}
 

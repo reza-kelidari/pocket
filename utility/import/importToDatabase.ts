@@ -36,13 +36,13 @@ type TransactionToSave = {
   tag?: string;
 };
 
-const chunkArray = (array: any[], size: number) => {
-  const result = [];
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const result: T[][] = [];
   for (let i = 0; i < array.length; i += size) {
     result.push(array.slice(i, i + size));
   }
   return result;
-};
+}
 
 export type ImportProgressCallback = (
   progress: number,

@@ -145,36 +145,50 @@ export default function AccountEdit() {
   const handleSave = async () => {
     if (!isValid || !account) return;
 
-    // ✅ اصلاح بحرانی: همه چیز در یک عملیات اتمیک
-    // ابتدا تراکنش اولیه را آماده می‌کنیم
-    const transactions = (await getAll(transactionsStore)) as TransactionType[];
-    const initialTx = transactions.find(
-      (t) => t.type === "initial" && t.debit === account.id,
-    );
-
-    const finalTx: TransactionType = initialTx
-      ? {
-          ...initialTx,
-          value: formValues.initialBalance,
-          time: formValues.createTimestamp,
-        }
-      : ({
-          id: generateUUId(),
-          type: "initial",
-          name: "موجودی اولیه",
-          time: formValues.createTimestamp,
-          value: formValues.initialBalance,
-          debit: account.id,
-          credit: "",
-        } as TransactionType);
-
     try {
-      // ✅ هر دو عملیات را در یک بلاک try قرار می‌دهیم
-      // اگر یکی شکست بخورد، هیچ‌کدام اعمال نمی‌شوند (از نظر UI)
-      await putItem(accountsStore, account);
-      await putItem(transactionsStore, finalTx);
+      const transactions = (await getAll(
+        transactionsStore,
+      )) as TransactionType[];
+      const existingInitialTx = transactions.find(
+        (t) => t.type === "initial" && t.debit === account.id,
+      );
 
-      // به‌روزرسانی balance state
+      const finalTxId = existingInitialTx?.id ?? generateUUId();
+
+      const res = await fetch("/api/accounts/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          account,
+          initialTransaction: {
+            id: finalTxId,
+            value: formValues.initialBalance,
+            time: formValues.createTimestamp,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "خطا در ذخیره‌سازی");
+      }
+
+      const finalTx: TransactionType = existingInitialTx
+        ? {
+            ...existingInitialTx,
+            value: formValues.initialBalance,
+            time: formValues.createTimestamp,
+          }
+        : ({
+            id: finalTxId,
+            type: "initial",
+            name: "موجودی اولیه",
+            time: formValues.createTimestamp,
+            value: formValues.initialBalance,
+            debit: account.id,
+            credit: "",
+          } as TransactionType);
+
       const accountTxs = transactions
         .filter((t) => t.debit === account.id || t.credit === account.id)
         .map((t) => (t.id === finalTx.id ? finalTx : t));
@@ -185,7 +199,6 @@ export default function AccountEdit() {
       router.back();
     } catch (error) {
       console.error("Failed to save account:", error);
-      // در صورت خطا، کاربر را مطلع می‌کنیم
       alert("خطا در ذخیره‌سازی اطلاعات. لطفاً دوباره تلاش کنید.");
     }
   };

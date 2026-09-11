@@ -13,9 +13,6 @@ export const faToEn = (s: string) =>
     ? s.toString().replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString())
     : "";
 
-/** Number format string for displaying amounts in Excel cells. */
-export const AMOUNT_NUMBER_FORMAT = '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)';
-
 /**
  * Generates color options for Excel data validation dropdowns.
  * Each option includes the color key, display label, and ARGB hex value.
@@ -28,12 +25,6 @@ export const excelColorOptions = Object.keys(AccountColors).map((key) => {
     argb: `FF${color.primaryValue.replace("#", "").toUpperCase()}`,
   };
 });
-
-/** Array of account type display names for use in Excel dropdowns. */
-export const excelTypeOptions = Object.values(AccountTypes).map((t) => t.name);
-
-/** Array of tag type display labels for use in Excel dropdowns. */
-export const excelTagTypeOptions = TagItemTypes.map((t) => t.label);
 
 /**
  * Preview data structure returned by parseExcelFile.

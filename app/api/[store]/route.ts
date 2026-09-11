@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
-import { sanitizeUuid } from "@/utility/validation";
-import { STORE_COLUMNS } from "@/utility/db/columns";
+import {
+  sanitizeUuid,
+  sanitizeName,
+  sanitizeNote,
+  sanitizeEnum,
+  sanitizeBoolean,
+  sanitizeInteger,
+  sanitizeTimestamp,
+  sanitizeAmount,
+  sanitizeIdOrCategory,
+  type SanitizeResult,
+} from "@/utility/validation";
+import {
+  ACCOUNT_TYPES,
+  ACCOUNT_COLORS,
+  TRANSACTION_TYPES,
+  TAG_TYPES,
+} from "@/utility/db/columns";
 import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
-import { castNumericFields, NUMERIC_FIELDS } from "@/utility/db/castNumeric";
+import { NUMERIC_FIELDS, castNumericFields } from "@/utility/db/castNumeric";
 import { ALLOWED_STORES } from "@/utility/keys/database";
 
 const STORE_QUERIES = {
@@ -18,6 +34,132 @@ function validateStore(rawStore: string): string | null {
     ? rawStore
     : null;
 }
+
+/* ─────────────────────────────────────────────────────────────
+ * Field validators per store/column
+ * ───────────────────────────────────────────────────────────── */
+
+type FieldValidator = {
+  sanitize: (value: unknown) => SanitizeResult<unknown>;
+  required: boolean;
+  emptyValue?: unknown;
+};
+
+const STORE_VALIDATORS: Record<string, Record<string, FieldValidator>> = {
+  accounts: {
+    name: { sanitize: sanitizeName, required: true },
+    type: {
+      sanitize: (v) => sanitizeEnum(v, ACCOUNT_TYPES),
+      required: true,
+    },
+    order: {
+      sanitize: (v) => sanitizeInteger(v, 0, 99999),
+      required: false,
+      emptyValue: 0,
+    },
+    color: {
+      sanitize: (v) => sanitizeEnum(v, ACCOUNT_COLORS),
+      required: true,
+    },
+    default: {
+      sanitize: sanitizeBoolean,
+      required: false,
+      emptyValue: false,
+    },
+    hidden: {
+      sanitize: sanitizeBoolean,
+      required: false,
+      emptyValue: false,
+    },
+  },
+  transactions: {
+    time: { sanitize: sanitizeTimestamp, required: true },
+    name: { sanitize: sanitizeName, required: true },
+    type: {
+      sanitize: (v) => sanitizeEnum(v, TRANSACTION_TYPES),
+      required: true,
+    },
+    debit: {
+      sanitize: sanitizeIdOrCategory,
+      required: false,
+      emptyValue: null,
+    },
+    credit: {
+      sanitize: sanitizeIdOrCategory,
+      required: false,
+      emptyValue: null,
+    },
+    value: { sanitize: sanitizeAmount, required: true },
+    note: {
+      sanitize: sanitizeNote,
+      required: false,
+      emptyValue: null,
+    },
+    tag: {
+      sanitize: sanitizeUuid,
+      required: false,
+      emptyValue: null,
+    },
+  },
+  tags: {
+    name: { sanitize: sanitizeName, required: true },
+    type: {
+      sanitize: (v) => sanitizeEnum(v, TAG_TYPES),
+      required: true,
+    },
+    order: {
+      sanitize: (v) => sanitizeInteger(v, 0, 99999),
+      required: false,
+      emptyValue: 0,
+    },
+  },
+};
+
+type ValidationOutcome =
+  | { valid: true; value: Record<string, unknown> }
+  | { valid: false; error: string };
+
+function validateItem(
+  store: string,
+  item: Record<string, unknown>,
+): ValidationOutcome {
+  const validators = STORE_VALIDATORS[store];
+  if (!validators) return { valid: false, error: "Invalid store" };
+
+  const result: Record<string, unknown> = {};
+
+  for (const [key, rawValue] of Object.entries(item)) {
+    const validator = validators[key];
+    if (!validator) continue;
+
+    if (rawValue === null || rawValue === undefined || rawValue === "") {
+      if (validator.required) {
+        return { valid: false, error: `مقدار «${key}» اجباری است.` };
+      }
+      result[key] = validator.emptyValue ?? null;
+      continue;
+    }
+
+    const sanitized = validator.sanitize(rawValue);
+    if (!sanitized.valid) {
+      if (!validator.required) {
+        result[key] = validator.emptyValue ?? null;
+        continue;
+      }
+      return {
+        valid: false,
+        error: `مقدار «${key}» نامعتبر است (${sanitized.reason}).`,
+      };
+    }
+    result[key] = sanitized.value;
+  }
+
+  return { valid: true, value: result };
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * GET
+ * ───────────────────────────────────────────────────────────── */
 
 export async function GET(
   req: NextRequest,
@@ -69,7 +211,10 @@ export async function GET(
     if (categories) {
       const catList = categories.split(",").filter((s) => s !== "");
       if (catList.length > 0) {
-        query += ` AND (debit = ANY($${paramIndex}) OR credit = ANY($${paramIndex}))`;
+        query += ` AND (
+          (type = 'debit'  AND credit = ANY($${paramIndex}))
+          OR (type = 'credit' AND debit  = ANY($${paramIndex}))
+        )`;
         queryParams.push(catList);
         paramIndex++;
       }
@@ -99,6 +244,10 @@ export async function GET(
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+ * POST
+ * ───────────────────────────────────────────────────────────── */
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ store: string }> },
@@ -114,7 +263,6 @@ export async function POST(
 
   try {
     const body = await req.json();
-    // ✅ اصلاح type safety: validation دقیق‌تر
     if (body === null || typeof body !== "object") {
       return NextResponse.json(
         { error: "Invalid request body" },
@@ -123,7 +271,6 @@ export async function POST(
     }
     const items = Array.isArray(body) ? body : [body];
 
-    // ✅ validation برای هر آیتم
     for (const item of items) {
       if (item === null || typeof item !== "object") {
         return NextResponse.json(
@@ -133,42 +280,46 @@ export async function POST(
       }
     }
 
+    const validatedItems: Array<{
+      id: string | null;
+      data: Record<string, unknown>;
+    }> = [];
+
+    for (const item of items) {
+      const {
+        id: rawId,
+        user_id: _ignoredUserId,
+        ...data
+      } = item as Record<string, unknown>;
+
+      const idRes = sanitizeUuid(rawId);
+
+      const outcome = validateItem(store, data);
+      if (!outcome.valid) {
+        return NextResponse.json({ error: outcome.error }, { status: 400 });
+      }
+
+      validatedItems.push({
+        id: idRes.valid ? idRes.value : null,
+        data: outcome.value,
+      });
+    }
+
     const client = await pool.connect();
-    const allowedCols = STORE_COLUMNS[store] || [];
     const resultIds: string[] = [];
 
     try {
       await client.query("BEGIN");
-      for (const item of items) {
-        const { id, user_id: _ignoredUserId, ...data } = item;
-        const idRes = sanitizeUuid(id);
-        const safeData: Record<string, unknown> = {};
 
-        for (const key of Object.keys(data)) {
-          if (allowedCols.includes(key)) {
-            safeData[key] = data[key];
-          }
-        }
-
+      for (const { id: safeId, data: safeData } of validatedItems) {
         if (store === "accounts") {
           delete safeData.create;
           delete safeData.initialBalance;
           delete safeData.createTimestamp;
         }
 
-        for (const key in safeData) {
-          if (safeData[key] === "") {
-            safeData[key] = null;
-          } else if (
-            typeof safeData[key] === "number" &&
-            ["debit", "credit", "tag"].includes(key)
-          ) {
-            safeData[key] = String(safeData[key]);
-          }
-        }
-
-        const fields = NUMERIC_FIELDS[store] || [];
-        for (const key of fields) {
+        const numericFields = NUMERIC_FIELDS[store] || [];
+        for (const key of numericFields) {
           if (safeData[key] !== null && safeData[key] !== undefined) {
             safeData[key] = Number(safeData[key]);
           }
@@ -177,19 +328,35 @@ export async function POST(
         const keys = Object.keys(safeData);
         const values = Object.values(safeData);
 
-        if (idRes.valid) {
-          const safeId = idRes.value;
+        if (safeId) {
           const allKeys = ["id", "user_id", ...keys];
           const allValues = [safeId, userId, ...values];
           const cols = allKeys.map((k) => `"${k}"`).join(", ");
           const vals = allKeys.map((_, i) => `$${i + 1}`).join(", ");
           const updates = keys.map((k, i) => `"${k}" = $${i + 3}`).join(", ");
-          const query =
-            keys.length === 0
-              ? `INSERT INTO ${store} (id, user_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`
-              : `INSERT INTO ${store} (${cols}) VALUES (${vals}) ON CONFLICT (id) DO UPDATE SET ${updates}`;
-          await client.query(query, allValues);
-          resultIds.push(safeId);
+
+          if (keys.length === 0) {
+            await client.query(
+              `INSERT INTO ${store} (id, user_id) VALUES ($1, $2)
+               ON CONFLICT (id) DO NOTHING`,
+              allValues,
+            );
+            resultIds.push(safeId);
+          } else {
+            const query = `INSERT INTO ${store} (${cols}) VALUES (${vals})
+                           ON CONFLICT (id) DO UPDATE SET ${updates}
+                           WHERE ${store}.user_id = $2`;
+            const result = await client.query(query, allValues);
+
+            if (result.rowCount === 0) {
+              await client.query("ROLLBACK");
+              return NextResponse.json(
+                { error: "Record is owned by another user" },
+                { status: 409 },
+              );
+            }
+            resultIds.push(safeId);
+          }
         } else {
           const allCols = ["id", "user_id", ...keys];
           const colStr = allCols.map((k) => `"${k}"`).join(", ");
@@ -202,6 +369,7 @@ export async function POST(
           resultIds.push(res.rows[0].id);
         }
       }
+
       await client.query("COMMIT");
       return NextResponse.json({ ok: true, ids: resultIds });
     } catch (error) {
@@ -215,6 +383,10 @@ export async function POST(
     return NextResponse.json({ error: "Database error" }, { status: 500 });
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+ * DELETE
+ * ───────────────────────────────────────────────────────────── */
 
 export async function DELETE(
   req: NextRequest,

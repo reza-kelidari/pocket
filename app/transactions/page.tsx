@@ -8,6 +8,7 @@ import Left from "@/icons/Left";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  DEFAULT_TIME_WINDOW,
   filterToUrl,
   parseStringArray,
   timeFilters,
@@ -27,6 +28,7 @@ import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
 import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 import { getCategoryById } from "@/utility/shared/transactionsMethods";
+import { useTimeFilterOptions } from "@/utility/shared/useTimeFilterOptions";
 
 export default function Transactions() {
   const searchParams = useSearchParams();
@@ -42,15 +44,12 @@ export default function Transactions() {
 
   const tw = useTimeWindow();
 
-  const timeFilterOptions = useMemo(
-    () => timeFilters(toJalaliDateArray(new Date())),
-    [],
-  );
+  const timeFilterOptions = useTimeFilterOptions();
 
   const transactionsFilter: TransactionsFilterType = useMemo(() => {
     const timeParamStr = searchParams.get("time");
     return {
-      timeWindow: timeParamStr ? Number(timeParamStr) : 30,
+      timeWindow: timeParamStr ? Number(timeParamStr) : DEFAULT_TIME_WINDOW,
       accounts: parseStringArray(searchParams.get("accounts")),
       categories: parseStringArray(searchParams.get("categories")),
       tags: parseStringArray(searchParams.get("tags")),
@@ -139,7 +138,7 @@ export default function Transactions() {
 
             <Capsule
               Icon={Left}
-              primary={transactionsFilter.timeWindow !== 29}
+              primary={transactionsFilter.timeWindow !== DEFAULT_TIME_WINDOW}
               onClick={tw.toggle}
             >
               {currentTimeFilterName}
@@ -213,7 +212,7 @@ export default function Transactions() {
             {transactionsFilter.accounts.length > 0 ||
             transactionsFilter.categories.length > 0 ||
             transactionsFilter.tags.length > 0 ||
-            transactionsFilter.timeWindow < 29 ? (
+            transactionsFilter.timeWindow < DEFAULT_TIME_WINDOW ? (
               <Button onClick={() => navigateWithLoading(pathname)}>
                 حذف همه فیلتر‌ها
               </Button>

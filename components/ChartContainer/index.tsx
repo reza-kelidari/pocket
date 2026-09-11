@@ -26,6 +26,7 @@ type ChartParamsType = {
   link?: string;
   linkTitle?: string;
   color?: AccountColorType;
+  transactions?: TransactionType[];
 };
 
 const FILTERS: Array<{ label: string; value: ChartWindow }> = [
@@ -44,29 +45,43 @@ export default function ChartContainer({
   link,
   linkTitle,
   color,
+  transactions,
 }: ChartParamsType) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [allTxs, setAllTxs] = useState<TransactionType[]>([]);
+  const isControlled = transactions !== undefined;
 
-  const normalizedDays = (days === 36500 ? "all" : (days ?? 30)) as ChartWindow;
-  const [activeFilter, setActiveFilter] = useState<ChartWindow>(normalizedDays);
+  const [isLoading, setIsLoading] = useState(!isControlled);
+  const [internalTxs, setInternalTxs] = useState<TransactionType[]>([]);
 
   useEffect(() => {
+    if (isControlled) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
     async function loadData() {
       setIsLoading(true);
-      const txs = await getAll<TransactionType>(
-        DatabaseStores.transactionsStore,
-      );
-      if (!isMounted) return;
-      setAllTxs(txs);
-      setIsLoading(false);
+      try {
+        const txs = await getAll<TransactionType>(
+          DatabaseStores.transactionsStore,
+        );
+        if (isMounted) setInternalTxs(txs);
+      } catch (err) {
+        console.error("ChartContainer: failed to fetch transactions", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }
     loadData();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isControlled]);
+
+  const sourceTxs = isControlled ? transactions : internalTxs;
+
+  const normalizedDays = (days === 36500 ? "all" : (days ?? 30)) as ChartWindow;
+  const [activeFilter, setActiveFilter] = useState<ChartWindow>(normalizedDays);
 
   const currentWindow: ChartWindow = timeSelector
     ? activeFilter
@@ -74,9 +89,9 @@ export default function ChartContainer({
 
   const fullHistory: BalanceType[] = useMemo(() => {
     return accountID
-      ? (getAccountBalanceHistory(allTxs, accountID).history ?? [])
-      : getTotalBalanceHistory(allTxs);
-  }, [allTxs, accountID]);
+      ? (getAccountBalanceHistory(sourceTxs, accountID).history ?? [])
+      : getTotalBalanceHistory(sourceTxs);
+  }, [sourceTxs, accountID]);
 
   const chartBalance: number = fullHistory.at(-1)?.balance ?? 0;
 

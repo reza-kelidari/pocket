@@ -64,17 +64,15 @@ export function getAccountBalances(
   accounts: AccountType[],
   transactions: TransactionType[],
 ): AccountBalanceType[] {
-  let balances: AccountBalanceType[] = [];
-  accounts.forEach((account) => {
-    const calculatedbalances = getAccountBalanceHistory(
-      transactions.filter(
-        (item) => item.debit === account.id || item.credit === account.id,
-      ),
-      account.id,
-    );
-    balances.push(calculatedbalances);
-  });
-  return balances;
+  const byAccount = new Map<string, TransactionType[]>();
+  for (const acc of accounts) byAccount.set(acc.id, []);
+  for (const tx of transactions) {
+    byAccount.get(tx.debit)?.push(tx);
+    if (tx.credit) byAccount.get(tx.credit)?.push(tx);
+  }
+  return accounts.map((acc) =>
+    getAccountBalanceHistory(byAccount.get(acc.id) ?? [], acc.id),
+  );
 }
 
 export function sliceDailySeriesForWindow(

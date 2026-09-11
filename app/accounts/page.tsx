@@ -25,9 +25,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { AccountType } from "@/utility/accounts/types";
-import { getAll, putItem } from "@/utility/db/Database";
+import { putItem } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import AccountsListElementLoading from "@/components/Skeletons/AccountsListElementLoading";
+import { useBalancesAndAccounts } from "@/utility/shared/useBalancesAndAccounts";
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
@@ -37,8 +38,8 @@ export default function Accounts() {
   const [showHint, setShowHint] = useState(true);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [dragCounter, setDragCounter] = useState(0);
-
   const [isLoading, setIsLoading] = useState(true);
+  const fetchAll = useBalancesAndAccounts();
 
   const haveUserAccount = accounts.filter((item) => !item.default).length > 0;
 
@@ -54,8 +55,8 @@ export default function Accounts() {
 
     (async () => {
       try {
-        const accs = await getAll<AccountType>(accountsStore);
-        setAccounts(accs);
+        const { accounts } = await fetchAll();
+        setAccounts(accounts);
       } catch (error) {
         console.error("Failed to load accounts:", error);
       } finally {
@@ -64,6 +65,7 @@ export default function Accounts() {
     })();
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -98,21 +100,24 @@ export default function Accounts() {
         order: index,
       }));
 
-      const updatedHiddenAccounts = hiddenAccounts.map((acc) => ({
+      const updatedHiddenAccounts = hiddenAccounts.map((acc, index) => ({
         ...acc,
-        order: 999,
+        order: 10000 + index,
       }));
 
       const updatedAccounts = [
         ...updatedVisibleAccounts,
         ...updatedHiddenAccounts,
       ];
-
       updatedAccounts.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       setAccounts(updatedAccounts);
 
-      for (const acc of updatedAccounts) {
-        await putItem(accountsStore, acc);
+      try {
+        await Promise.all(
+          updatedAccounts.map((acc) => putItem(accountsStore, acc)),
+        );
+      } catch (error) {
+        console.error("Failed to persist order:", error);
       }
     }
   };

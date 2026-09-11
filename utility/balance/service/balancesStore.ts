@@ -1,5 +1,34 @@
 "use client";
-import { AccountBalanceType } from "../types";
+import { AccountBalanceType, BalanceType } from "../types";
+
+function isSameHistory(
+  a: BalanceType[] | undefined,
+  b: BalanceType[] | undefined,
+): boolean {
+  if (a === b) return true;
+  const arrA = a ?? [];
+  const arrB = b ?? [];
+  if (arrA.length !== arrB.length) return false;
+  for (let i = 0; i < arrA.length; i++) {
+    if (arrA[i].time !== arrB[i].time || arrA[i].balance !== arrB[i].balance) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isSameBalances(
+  a: AccountBalanceType[],
+  b: AccountBalanceType[],
+): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false;
+    if (!isSameHistory(a[i].history, b[i].history)) return false;
+  }
+  return true;
+}
 
 class BalancesStore {
   private balances: AccountBalanceType[] = [];
@@ -14,10 +43,7 @@ class BalancesStore {
   }
 
   setBalances(data: AccountBalanceType[]) {
-    if (
-      this.balances.length === data.length &&
-      this.balances.every((b, i) => b.id === data[i].id)
-    ) {
+    if (isSameBalances(this.balances, data)) {
       return;
     }
     this.balances = [...data];
@@ -48,7 +74,9 @@ class BalancesStore {
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   };
 
   getSnapshot = () => this.balances;

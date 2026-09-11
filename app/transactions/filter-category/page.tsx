@@ -35,6 +35,11 @@ export default function CategoryFilter() {
     tags: parseStringArray(searchParams.get("tags")),
   })}`;
 
+  const INCOME_CATEGORY_IDS = new Set<number>();
+  TransactionCategories.income.forEach((g) => {
+    g.sub.forEach((s) => INCOME_CATEGORY_IDS.add(s.id));
+  });
+
   return (
     <div className="flex flex-col h-dvh overflow-hidden">
       {/* هدر */}
@@ -46,14 +51,15 @@ export default function CategoryFilter() {
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none p-7.5">
         <div className="grid gap-15 animate-fade-in">
           {allCategories.map((category) => {
-            const isIncome = category.id >= 0x03000000;
             return (
               <div key={category.id} className="grid gap-7.5">
                 <Title>{category.name}</Title>
                 <div className="grid grid-cols-3 gap-2.5 w-full">
                   {category.sub.map((sub) => {
+                    const isIncome = INCOME_CATEGORY_IDS.has(sub.id);
                     const id = sub.id.toString();
                     const isSelected = selectedCategories.includes(id);
+
                     return (
                       <div
                         key={sub.id}
