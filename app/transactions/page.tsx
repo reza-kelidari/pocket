@@ -26,6 +26,7 @@ import SwipeableElement from "@/components/SwipeableElement";
 import { useScrollRestoration } from "@/utility/shared/useScrollRestoration";
 import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
+import { getCategoryById } from "@/utility/shared/transactionsMethods";
 
 export default function Transactions() {
   const searchParams = useSearchParams();
@@ -122,12 +123,16 @@ export default function Transactions() {
       ? accounts.find((item) => item.id === transactionsFilter.accounts[0])
       : undefined;
 
+  const selectedCategory =
+    transactionsFilter.categories.length === 1
+      ? getCategoryById(transactionsFilter.categories[0])
+      : undefined;
+
   return (
     <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen">
       <div className="grid gap-7.5">
         <NavbarTitle title="تراکنش‌ها" />
 
-        {/* ✅ ref از هوک می‌آید */}
         <div className="relative" ref={tw.dropdownRef}>
           <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-full scrollbar-none">
             <span className="me-2">فیلترها</span>
@@ -135,7 +140,7 @@ export default function Transactions() {
             <Capsule
               Icon={Left}
               primary={transactionsFilter.timeWindow !== 29}
-              onClick={tw.toggle} // ← به جای () => setShowTimeDropdown(v => !v)
+              onClick={tw.toggle}
             >
               {currentTimeFilterName}
             </Capsule>
@@ -158,9 +163,28 @@ export default function Transactions() {
                   ? selectedAccount?.name
                   : `${transactionsFilter.accounts.length.toLocaleString("fa-ir")} حساب`}
             </Capsule>
+
+            <Capsule
+              Icon={Left}
+              href={`/transactions/filter-category${filterToUrl(transactionsFilter)}`}
+              replace
+              primary={transactionsFilter.categories.length > 0}
+              className={
+                selectedCategory
+                  ? selectedCategory.id >= 0x03000000
+                    ? "border-income-border text-income-primary bg-income-background"
+                    : "border-expense-border text-expense-primary bg-expense-background"
+                  : ""
+              }
+            >
+              {transactionsFilter.categories.length === 0
+                ? "همه دسته‌بندی‌ها"
+                : transactionsFilter.categories.length === 1
+                  ? (selectedCategory?.name ?? "دسته‌بندی")
+                  : `${transactionsFilter.categories.length.toLocaleString("fa-ir")} دسته‌بندی`}
+            </Capsule>
           </div>
 
-          {/* ✅ پنل dropdown عمومی */}
           <TimeWindow
             isMounted={tw.isMounted}
             isVisible={tw.isVisible}

@@ -47,8 +47,12 @@ export default function Capsule({
       <Icon
         height={15}
         width={15}
-        fill={accountColor ? AccountColors[accountColor].primaryValue : ""}
-        className={!props.className && primary ? "fill-primary" : ""}
+        className="fill-current"
+        style={
+          accountColor
+            ? { color: AccountColors[accountColor].primaryValue }
+            : undefined
+        }
       />
     </>
   );
@@ -71,7 +75,6 @@ export default function Capsule({
   const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     if (onClick) onClick(event);
     if (event.defaultPrevented) return;
-
     if (replace) {
       event.preventDefault();
       router.replace(href as string);
