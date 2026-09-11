@@ -1,9 +1,12 @@
 "use client";
+
 import Box from "@/components/Box";
 import { TransactionType } from "@/utility/shared/transactionTypes";
 import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
 import { getTotalBalanceHistory } from "@/utility/shared/balancesMethods";
 import { useMemo } from "react";
+import WaterfallChart from "@/components/WaterfallChart";
+import { calculateWaterfallData } from "@/utility/shared/waterfallMethods";
 
 const ALL_TIME_PARAM = 36500;
 
@@ -26,27 +29,26 @@ export default function Profit({
   transactions: TransactionType[];
   isLoading: boolean;
 }) {
+  const waterfallData = useMemo(
+    () => calculateWaterfallData(transactions),
+    [transactions],
+  );
+
+  // ─── محاسبه‌ی متریک‌های دوره (مثل قبل) ─────────────────
   const metrics = useMemo(() => {
-    const now = Date.now();
     const cutoff =
       timeParam === ALL_TIME_PARAM ? 0 : getCutoffTimestamp(timeParam);
-
     let income = 0;
     let expense = 0;
-
     for (const tx of transactions) {
       if (tx.time < cutoff) continue;
       if (tx.type === "debit") income += tx.value;
       else if (tx.type === "credit") expense += tx.value;
     }
-
     const profit = income - expense;
-
     const totalHistory = getTotalBalanceHistory(transactions);
-
     let startBalance = 0;
     let endBalance = 0;
-
     if (totalHistory.length > 0) {
       if (cutoff === 0) {
         startBalance = 0;
@@ -60,7 +62,6 @@ export default function Profit({
       }
       endBalance = totalHistory[totalHistory.length - 1].balance;
     }
-
     return {
       income,
       expense,
@@ -124,24 +125,33 @@ export default function Profit({
   ];
 
   return (
-    <Box className="gap-4">
-      {rows.map((row, i) => {
-        if (row.kind === "separator") {
-          return <div key={`sep-${i}`} />;
-        }
-        return (
-          <div key={i} className="flex items-center justify-between">
-            <span className="text-xs text-secondary">{row.label}</span>
-            <span className={row.color}>
-              <span className="text-sm font-bold">
-                {row.value.toLocaleString("fa-IR")}
-                {row.prefix || ""}{" "}
+    <div className="w-full flex flex-col gap-5">
+      <Box className="gap-3">
+        <h3 className="text-xs text-secondary">
+          روند سود و زیان ماهانه - {new Date().toLocaleString("fa-ir", {year: "numeric"})}
+        </h3>
+        <WaterfallChart data={waterfallData} />
+      </Box>
+
+      <Box className="gap-4">
+        {rows.map((row, i) => {
+          if (row.kind === "separator") {
+            return <div key={`sep-${i}`} className="h-px bg-elements-border" />;
+          }
+          return (
+            <div key={i} className="flex items-center justify-between">
+              <span className="text-xs text-secondary">{row.label}</span>
+              <span className={row.color}>
+                <span className="text-sm font-bold">
+                  {row.value.toLocaleString("fa-IR")}
+                  {row.prefix || ""}{" "}
+                </span>
+                <span className="text-xs font-normal">﷼</span>
               </span>
-              <span className="text-xs font-normal">﷼</span>
-            </span>
-          </div>
-        );
-      })}
-    </Box>
+            </div>
+          );
+        })}
+      </Box>
+    </div>
   );
 }
