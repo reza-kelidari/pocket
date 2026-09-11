@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const accountIdRaw = url.searchParams.get("accountId");
   const timeRaw = url.searchParams.get("time");
+  const tagRaw = url.searchParams.get("tag");
 
   let accountId: string | null = null;
   if (accountIdRaw && accountIdRaw !== "") {
@@ -38,18 +39,43 @@ export async function GET(req: NextRequest) {
     if (timeR.valid) time = timeR.value;
   }
 
-  try {
-    const query = accountId
-      ? `SELECT time, value, type, debit, credit
-           FROM transactions
-          WHERE user_id = $1 AND (debit = $2 OR credit = $2)
-          ORDER BY time ASC`
-      : `SELECT time, value, type, debit, credit
-           FROM transactions
-          WHERE user_id = $1
-          ORDER BY time ASC`;
+  // ─── Parse tag filter ───────────────────────────────────────
+  let tagValue: string | null = null;
+  let isUntagged = false;
+  if (tagRaw === "untagged") {
+    isUntagged = true;
+  } else if (tagRaw) {
+    const r = sanitizeUuid(tagRaw);
+    if (r.valid) tagValue = r.value;
+  }
 
-    const params: unknown[] = accountId ? [userId, accountId] : [userId];
+  try {
+    // ─── Build dynamic query with optional account & tag filters ─
+    const params: unknown[] = [userId];
+    const conditions: string[] = [];
+
+    if (accountId) {
+      params.push(accountId);
+      const idx = params.length;
+      conditions.push(`(debit = $${idx} OR credit = $${idx})`);
+    }
+
+    if (isUntagged) {
+      conditions.push(`tag IS NULL`);
+    } else if (tagValue) {
+      params.push(tagValue);
+      conditions.push(`tag = $${params.length}`);
+    }
+
+    const whereClause =
+      conditions.length > 0 ? ` AND ${conditions.join(" AND ")}` : "";
+
+    const query = `
+      SELECT time, value, type, debit, credit
+        FROM transactions
+       WHERE user_id = $1${whereClause}
+       ORDER BY time ASC`;
+
     const res = await pool.query(query, params);
 
     const balanceByDay = new Map<number, number>();

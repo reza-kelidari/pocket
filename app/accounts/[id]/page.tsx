@@ -329,6 +329,7 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
               title={`موجودی ${account.name}`}
               color={account.color}
               accountID={account.id}
+              tag={tagParam ?? undefined}
               time={timeFilter}
               windowLabel={`(${currentTimeFilterName})`}
             />
@@ -338,11 +339,34 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
 
       {isViewingTagBreakdown && (
         <div className="flex flex-col gap-8">
-          {isLoading ? (
-            <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
-          ) : (
-            <SectionTitle>{`مانده‌ی برچسب‌های ${account?.name}`}</SectionTitle>
-          )}
+          <div className="flex justify-between items-center gap-2">
+            {isLoading ? (
+              <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
+            ) : (
+              <SectionTitle>{`مانده‌ی برچسب‌های ${account?.name}`}</SectionTitle>
+            )}
+
+            {!isLoading && (
+              <div className="relative" ref={tw.dropdownRef}>
+                <button
+                  type="button"
+                  onClick={tw.toggle}
+                  className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer ${accountColor.surface} ${accountColor.border} ${accountColor.text}`}
+                >
+                  {currentTimeFilterName}
+                  <Left height={15} width={15} className="fill-current" />
+                </button>
+                <TimeWindow
+                  isMounted={tw.isMounted}
+                  isVisible={tw.isVisible}
+                  options={timeFilterOptions}
+                  onSelect={handleTimeFilterChange}
+                  activeTime={timeFilter}
+                  align="left"
+                />
+              </div>
+            )}
+          </div>
 
           {isTagBalancesLoading ? (
             <div className="flex flex-col w-full gap-4">
@@ -363,6 +387,7 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
                   accountColor={account?.color ?? "black"}
                   accountId={accountID}
                   tagId={item.tagId}
+                  time={timeFilter}
                 />
               ))}
             </div>
@@ -386,36 +411,38 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
                   : `گردش حساب ${account?.name}`}
               </SectionTitle>
 
-              {isBookAccount && tagParam && (
-                <button
-                  type="button"
-                  onClick={handleBackToTagBreakdown}
-                  className="border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer bg-elements-background border-elements-border text-black"
-                >
-                  بازگشت
-                </button>
-              )}
-
-              {!isLoading && (
-                <div className="relative" ref={tw.dropdownRef}>
+              <div className="flex items-center gap-2">
+                {isBookAccount && tagParam && (
                   <button
                     type="button"
-                    onClick={tw.toggle}
-                    className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer ${accountColor.surface} ${accountColor.border} ${accountColor.text}`}
+                    onClick={handleBackToTagBreakdown}
+                    className="border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer bg-elements-background border-elements-border text-black"
                   >
-                    {currentTimeFilterName}
-                    <Left height={15} width={15} className="fill-current" />
+                    بازگشت
                   </button>
-                  <TimeWindow
-                    isMounted={tw.isMounted}
-                    isVisible={tw.isVisible}
-                    options={timeFilterOptions}
-                    onSelect={handleTimeFilterChange}
-                    activeTime={timeFilter}
-                    align="left"
-                  />
-                </div>
-              )}
+                )}
+
+                {!isLoading && (
+                  <div className="relative" ref={tw.dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={tw.toggle}
+                      className={`border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer ${accountColor.surface} ${accountColor.border} ${accountColor.text}`}
+                    >
+                      {currentTimeFilterName}
+                      <Left height={15} width={15} className="fill-current" />
+                    </button>
+                    <TimeWindow
+                      isMounted={tw.isMounted}
+                      isVisible={tw.isVisible}
+                      options={timeFilterOptions}
+                      onSelect={handleTimeFilterChange}
+                      activeTime={timeFilter}
+                      align="left"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -21,7 +21,7 @@ type ChartPoint = {
 };
 
 interface BalanceChartProps {
-  data: BalancePoint[]; // دیتای از قبل برش‌خورده و پرشده
+  data: BalancePoint[];
   color?: AccountColorType;
   showTooltip?: boolean;
   minPointDistance?: number;

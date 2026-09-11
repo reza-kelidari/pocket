@@ -8,6 +8,7 @@ type TagBalanceItemProps = {
   accountColor: AccountColorType;
   accountId: string;
   tagId: string;
+  time: number;
 };
 
 export default function TagBalanceItem({
@@ -16,6 +17,7 @@ export default function TagBalanceItem({
   accountColor,
   accountId,
   tagId,
+  time,
 }: TagBalanceItemProps) {
   const isPositive = balance >= 0;
   const isZero = balance === 0;
@@ -24,7 +26,7 @@ export default function TagBalanceItem({
 
   return (
     <Link
-      href={`/accounts/${accountId}?tag=${tagParam}`}
+      href={`/accounts/${accountId}?tag=${tagParam}&time=${time}`}
       className={`w-full flex items-center justify-between p-4 rounded-2xl border ${colorClasses.border} ${colorClasses.surface}`}
     >
       <div className="flex items-center gap-2.5">

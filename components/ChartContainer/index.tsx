@@ -13,6 +13,7 @@ type ChartParamsType = {
   title: string;
   titlePrimary?: boolean;
   accountID?: string;
+  tag?: string;
   /** Time window in days. -1 = this month, -2 = this year, 36500 = all time. */
   time: number;
   /** When provided, shows the 7/30/90/all selector and calls back on change. */
@@ -46,6 +47,7 @@ export default function ChartContainer({
   title,
   titlePrimary,
   accountID,
+  tag,
   time,
   onTimeChange,
   windowLabel,
@@ -82,6 +84,7 @@ export default function ChartContainer({
         const params = new URLSearchParams();
         if (accountID) params.set("accountId", accountID);
         params.set("time", String(time));
+        if (tag) params.set("tag", tag);
 
         const res = await fetch(`/api/chart?${params.toString()}`);
         if (!res.ok) throw new Error("Failed to fetch chart data");
@@ -109,7 +112,7 @@ export default function ChartContainer({
     return () => {
       isMounted = false;
     };
-  }, [accountID, time]);
+  }, [accountID, time, tag]);
 
   if (isInitialLoading) {
     return (
