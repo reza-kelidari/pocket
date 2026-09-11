@@ -56,3 +56,8 @@ export function getCutoffTimestamp(timeParam: number): number {
   const [y, m, d] = toJalaliDateArray(shifted);
   return jalaliToTimestamp([y, m, d]);
 }
+
+export function toTehranDayStart(ts: number): number {
+  const shifted = ts + TEHRAN_OFFSET_MS;
+  return Math.floor(shifted / DAY_MS) * DAY_MS - TEHRAN_OFFSET_MS;
+}

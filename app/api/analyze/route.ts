@@ -1,0 +1,397 @@
+import { NextRequest, NextResponse } from "next/server";
+import pool from "@/utility/db/postgres";
+import { getCurrentUserId } from "@/utility/auth/methods";
+import { sanitizeInteger } from "@/utility/validation";
+import {
+  getCutoffTimestamp,
+  jalaliToTimestamp,
+  toJalaliDateArray,
+} from "@/utility/shared/timeMethods";
+import { DEFAULT_TIME_WINDOW } from "@/app/transactions/methods";
+import { TransactionCategories } from "@/utility/shared/transactionCategories";
+import { calculateWaterfallData } from "@/utility/shared/waterfallMethods";
+import { getTotalBalanceHistory } from "@/utility/shared/balancesMethods";
+import type { TransactionType } from "@/utility/shared/transactionTypes";
+
+const ALL_TIME = 36500;
+const UNCATEGORIZED_ID = -1;
+const MIN_PERCENT_FOR_CHART = 2;
+
+type TxRow = {
+  id: string;
+  time: number;
+  type: TransactionType["type"];
+  debit: string;
+  credit: string;
+  value: number;
+  tag: string | null;
+  name: string;
+};
+
+type ChartSlice = {
+  id: number | "other";
+  name: string;
+  amount: number;
+  percent: number;
+};
+
+type TagBreakdown = { tagId: string; tagName: string; amount: number };
+type CategoryBreakdown = {
+  id: number;
+  name: string;
+  amount: number;
+  tags: TagBreakdown[];
+  untaggedAmount: number;
+};
+type GroupBreakdown = {
+  id: number;
+  name: string;
+  amount: number;
+  categories: CategoryBreakdown[];
+};
+type BreakdownData = {
+  totalAmount: number;
+  chartSlices: ChartSlice[];
+  details: GroupBreakdown[];
+};
+
+/* ────────────────────────────────────────────────────────────
+ * Category metadata (name + parent group)
+ * ──────────────────────────────────────────────────────────── */
+function buildCategoryMeta() {
+  const meta = new Map<
+    number,
+    { name: string; groupId: number; groupName: string }
+  >();
+  for (const group of [
+    ...TransactionCategories.expense,
+    ...TransactionCategories.income,
+  ]) {
+    for (const sub of group.sub) {
+      meta.set(sub.id, {
+        name: sub.name,
+        groupId: group.id,
+        groupName: group.name,
+      });
+    }
+  }
+  meta.set(UNCATEGORIZED_ID, {
+    name: "دسته‌بندی‌نشده",
+    groupId: 0,
+    groupName: "سایر",
+  });
+  return meta;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * Breakdown (per-category, per-tag) for income or expense
+ * ──────────────────────────────────────────────────────────── */
+function computeBreakdown(
+  transactions: TxRow[],
+  tagNames: Map<string, string>,
+  kind: "income" | "expense",
+  timeParam: number,
+): BreakdownData {
+  const conf =
+    kind === "income"
+      ? { txType: "debit" as const, catField: "credit" as const }
+      : { txType: "credit" as const, catField: "debit" as const };
+
+  const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
+  const categoryMeta = buildCategoryMeta();
+
+  const catMap = new Map<
+    number,
+    { total: number; byTag: Map<string, number>; untagged: number }
+  >();
+  let total = 0;
+
+  for (const tx of transactions) {
+    if (tx.time < cutoff) continue;
+    if (tx.type !== conf.txType) continue;
+    total += tx.value;
+
+    const rawCatId = Number(tx[conf.catField]);
+    const catId = Number.isNaN(rawCatId) ? UNCATEGORIZED_ID : rawCatId;
+    let entry = catMap.get(catId);
+    if (!entry) {
+      entry = { total: 0, byTag: new Map(), untagged: 0 };
+      catMap.set(catId, entry);
+    }
+    entry.total += tx.value;
+    if (tx.tag) {
+      entry.byTag.set(tx.tag, (entry.byTag.get(tx.tag) || 0) + tx.value);
+    } else {
+      entry.untagged += tx.value;
+    }
+  }
+
+  // Chart slices
+  const slices: ChartSlice[] = [];
+  if (total > 0) {
+    const sorted = [...catMap.entries()]
+      .filter(([, e]) => e.total > 0)
+      .map(([id, e]) => ({
+        id,
+        name: categoryMeta.get(id)?.name ?? "نامشخص",
+        amount: e.total,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    let otherAmount = 0;
+    for (const cat of sorted) {
+      const pct = (cat.amount / total) * 100;
+      if (pct >= MIN_PERCENT_FOR_CHART) {
+        slices.push({
+          id: cat.id,
+          name: cat.name,
+          amount: cat.amount,
+          percent: cat.amount / total,
+        });
+      } else {
+        otherAmount += cat.amount;
+      }
+    }
+    if (otherAmount > 0) {
+      slices.push({
+        id: "other",
+        name: kind === "income" ? "سایر درآمد‌ها" : "سایر هزینه‌ها",
+        amount: otherAmount,
+        percent: otherAmount / total,
+      });
+    }
+  }
+
+  // Grouped details
+  const groupMap = new Map<
+    number,
+    { name: string; amount: number; categories: CategoryBreakdown[] }
+  >();
+
+  for (const [catId, entry] of catMap) {
+    if (entry.total <= 0) continue;
+    const meta = categoryMeta.get(catId);
+    if (!meta) continue;
+
+    const hasAnyTag = entry.byTag.size > 0;
+    const tagRows: TagBreakdown[] = hasAnyTag
+      ? [...entry.byTag.entries()]
+          .map(([tagId, amount]) => ({
+            tagId,
+            tagName: tagNames.get(tagId) || "برچسب ناشناخته",
+            amount,
+          }))
+          .sort((a, b) => b.amount - a.amount)
+      : [];
+
+    const catRow: CategoryBreakdown = {
+      id: catId,
+      name: meta.name,
+      amount: entry.total,
+      tags: tagRows,
+      untaggedAmount: hasAnyTag ? entry.untagged : 0,
+    };
+
+    let group = groupMap.get(meta.groupId);
+    if (!group) {
+      group = { name: meta.groupName, amount: 0, categories: [] };
+      groupMap.set(meta.groupId, group);
+    }
+    group.amount += entry.total;
+    group.categories.push(catRow);
+  }
+
+  const details: GroupBreakdown[] = [...groupMap.entries()]
+    .map(([id, g]) => ({
+      id,
+      name: g.name,
+      amount: g.amount,
+      categories: g.categories.sort((a, b) => b.amount - a.amount),
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  return { totalAmount: total, chartSlices: slices, details };
+}
+
+/* ────────────────────────────────────────────────────────────
+ * Cashflow (current window vs. previous equivalent window)
+ * ──────────────────────────────────────────────────────────── */
+function computeCashflow(transactions: TxRow[], timeParam: number) {
+  const now = Date.now();
+  const [jYear, jMonth] = toJalaliDateArray(new Date(now));
+
+  let currentCutoff = 0;
+  let pastCutoff = 0;
+  const currentEnd = now;
+  let pastEnd = 0;
+  let needPast = timeParam !== ALL_TIME;
+
+  if (timeParam === ALL_TIME) {
+    needPast = false;
+  } else if (timeParam === -1) {
+    currentCutoff = jalaliToTimestamp([jYear, jMonth, 1]);
+    let prevMonth = jMonth - 1;
+    let prevYear = jYear;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear -= 1;
+    }
+    pastCutoff = jalaliToTimestamp([prevYear, prevMonth, 1]);
+    pastEnd = currentCutoff - 1;
+  } else if (timeParam === -2) {
+    currentCutoff = jalaliToTimestamp([jYear, 1, 1]);
+    pastCutoff = jalaliToTimestamp([jYear - 1, 1, 1]);
+    pastEnd = currentCutoff - 1;
+  } else {
+    currentCutoff = getCutoffTimestamp(timeParam);
+    const duration = currentEnd - currentCutoff;
+    pastCutoff = currentCutoff - duration;
+    pastEnd = currentCutoff - 1;
+  }
+
+  let currentIncome = 0;
+  let currentExpense = 0;
+  let pastIncome = 0;
+  let pastExpense = 0;
+
+  for (const tx of transactions) {
+    const t = tx.time;
+    if (t >= currentCutoff && t <= currentEnd) {
+      if (tx.type === "debit") currentIncome += tx.value;
+      else if (tx.type === "credit") currentExpense += tx.value;
+    } else if (needPast && t >= pastCutoff && t <= pastEnd) {
+      if (tx.type === "debit") pastIncome += tx.value;
+      else if (tx.type === "credit") pastExpense += tx.value;
+    }
+  }
+
+  return {
+    currentIncome,
+    currentExpense,
+    pastIncome,
+    pastExpense,
+    isAllTime: timeParam === ALL_TIME,
+  };
+}
+
+/* ────────────────────────────────────────────────────────────
+ * Profit (period metrics, uses full history for start/end balance)
+ * ──────────────────────────────────────────────────────────── */
+function computeProfit(transactions: TxRow[], timeParam: number) {
+  const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
+
+  let income = 0;
+  let expense = 0;
+  for (const tx of transactions) {
+    if (tx.time < cutoff) continue;
+    if (tx.type === "debit") income += tx.value;
+    else if (tx.type === "credit") expense += tx.value;
+  }
+
+  const profit = income - expense;
+  const totalHistory = getTotalBalanceHistory(
+    transactions as unknown as TransactionType[],
+  );
+
+  let startBalance = 0;
+  let endBalance = 0;
+
+  if (totalHistory.length > 0) {
+    if (cutoff === 0) {
+      startBalance = 0;
+    } else {
+      for (let i = totalHistory.length - 1; i >= 0; i--) {
+        if (totalHistory[i].time < cutoff) {
+          startBalance = totalHistory[i].balance;
+          break;
+        }
+      }
+    }
+    endBalance = totalHistory[totalHistory.length - 1].balance;
+  }
+
+  return {
+    income,
+    expense,
+    profit,
+    startBalance,
+    endBalance,
+    isAllTime: timeParam === ALL_TIME,
+  };
+}
+
+/* ────────────────────────────────────────────────────────────
+ * Handler
+ * ──────────────────────────────────────────────────────────── */
+export async function GET(req: NextRequest) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const timeR = sanitizeInteger(
+    url.searchParams.get("time") ?? "",
+    -2,
+    ALL_TIME,
+  );
+  const timeParam = timeR.valid ? timeR.value : DEFAULT_TIME_WINDOW;
+
+  try {
+    const [txRes, tagRes] = await Promise.all([
+      pool.query(
+        `SELECT id, time, type, debit, credit, value, tag, name
+           FROM transactions
+          WHERE user_id = $1 AND type != 'transfer'
+          ORDER BY time ASC`,
+        [userId],
+      ),
+      pool.query(`SELECT id, name FROM tags WHERE user_id = $1`, [userId]),
+    ]);
+
+    const transactions: TxRow[] = txRes.rows.map((row) => ({
+      id: row.id as string,
+      time: Number(row.time),
+      type: row.type as TransactionType["type"],
+      debit: (row.debit as string) || "",
+      credit: (row.credit as string) || "",
+      value: Number(row.value),
+      tag: (row.tag as string) || null,
+      name: (row.name as string) || "",
+    }));
+
+    const tagNames = new Map<string, string>();
+    for (const row of tagRes.rows as { id: string; name: string }[]) {
+      tagNames.set(row.id, row.name);
+    }
+
+    const cashflow = computeCashflow(transactions, timeParam);
+    const income = computeBreakdown(
+      transactions,
+      tagNames,
+      "income",
+      timeParam,
+    );
+    const expense = computeBreakdown(
+      transactions,
+      tagNames,
+      "expense",
+      timeParam,
+    );
+    const profit = computeProfit(transactions, timeParam);
+    const waterfall = calculateWaterfallData(
+      transactions as unknown as TransactionType[],
+    );
+
+    return NextResponse.json({
+      cashflow,
+      income,
+      expense,
+      profit,
+      waterfall,
+    });
+  } catch (error) {
+    console.error("GET /api/analyze error:", error);
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
+}

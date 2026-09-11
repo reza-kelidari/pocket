@@ -32,6 +32,7 @@ export default function Home() {
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
   const { getBalances } = useBalances();
+  const [chartTime, setChartTime] = useState(30);
 
   const [splashGuard, setSplashGuard] = useState<boolean>(true);
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
@@ -177,10 +178,10 @@ export default function Home() {
       ) : (
         <ChartContainer
           title={"روند موجودی"}
-          timeSelector
+          time={chartTime}
+          onTimeChange={setChartTime}
           link="/analyze"
           linkTitle="تحلیل و بررسی پیشرفته"
-          transactions={transactions}
         />
       )}
 

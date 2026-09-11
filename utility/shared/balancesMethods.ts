@@ -1,7 +1,7 @@
 import { AccountType } from "../accounts/types";
 import { TransactionType } from "../shared/transactionTypes";
 import { AccountBalanceType, BalanceType } from "../balance/types";
-import { getCutoffTimestamp } from "./timeMethods";
+import { getCutoffTimestamp, toTehranDayStart } from "./timeMethods";
 
 export type ChartWindow = 7 | 30 | 90 | "all" | -1 | -2;
 
@@ -75,42 +75,6 @@ export function getAccountBalances(
   );
 }
 
-export function sliceDailySeriesForWindow(
-  history: BalanceType[],
-  window: ChartWindow,
-  now: number,
-): BalanceType[] {
-  if (window === "all" || history.length === 0) return history;
-
-  let cutoff: number;
-
-  if (window === -1 || window === -2) {
-    cutoff = getCutoffTimestamp(window);
-  } else {
-    const daysAgo = window - 1;
-    const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - daysAgo);
-    startDate.setHours(0, 0, 0, 0);
-    cutoff = startDate.getTime();
-  }
-
-  let firstPointBeforeWindow: BalanceType | null = null;
-  const pointsInWindow: BalanceType[] = [];
-
-  for (const point of history) {
-    if (point.time < cutoff) {
-      firstPointBeforeWindow = point;
-    } else {
-      pointsInWindow.push(point);
-    }
-  }
-
-  if (firstPointBeforeWindow && pointsInWindow.length > 0) {
-    return [firstPointBeforeWindow, ...pointsInWindow];
-  }
-  return pointsInWindow;
-}
-
 export function getAllTimeSpanDays(
   history: BalanceType[],
   now: number,
@@ -122,4 +86,33 @@ export function getAllTimeSpanDays(
   today.setHours(0, 0, 0, 0);
   const diffTime = today.getTime() - firstDay.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+}
+
+export function fillDailySeriesForWindow(
+  fullHistory: BalanceType[],
+  window: ChartWindow,
+  now: number,
+): BalanceType[] {
+  if (window === "all") return fullHistory;
+
+  const todayStart = toTehranDayStart(now);
+  const cutoffDay = getCutoffTimestamp(window);
+
+  let idx = 0;
+  let currentBalance = 0;
+  while (idx < fullHistory.length && fullHistory[idx].time < cutoffDay) {
+    currentBalance = fullHistory[idx].balance;
+    idx++;
+  }
+
+  const points: BalanceType[] = [];
+  for (let day = cutoffDay; day <= todayStart; day += 24 * 60 * 60 * 1000) {
+    while (idx < fullHistory.length && fullHistory[idx].time <= day) {
+      currentBalance = fullHistory[idx].balance;
+      idx++;
+    }
+    points.push({ time: day, balance: currentBalance });
+  }
+
+  return points;
 }

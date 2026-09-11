@@ -1,22 +1,91 @@
 "use client";
 
 import NavbarTitle from "@/components/NavbarTitle";
-import { useState, useMemo, JSX, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { DEFAULT_TIME_WINDOW, timeFilters } from "@/app/transactions/methods";
-import { toJalaliDateArray } from "@/utility/shared/timeMethods";
+import { DEFAULT_TIME_WINDOW } from "@/app/transactions/methods";
 import Left from "@/icons/Left";
 import CashFlow from "./components/CashFlow";
 import Profit from "./components/Profit";
 import { PrimaryColors } from "@/utility/shared/colors";
-import { getAll } from "@/utility/db/Database";
-import { DatabaseStores } from "@/utility/keys/database";
-import { TransactionType } from "@/utility/shared/transactionTypes";
 import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
-import { TagType } from "@/utility/shared/tagTypes";
 import FinancialAnalysis from "./components/FinancialAnalysis";
 import { useTimeFilterOptions } from "@/utility/shared/useTimeFilterOptions";
+
+/* ─── Shapes matching the /api/analyze response ─────────────── */
+
+export type ChartSlice = {
+  id: number | "other";
+  name: string;
+  amount: number;
+  percent: number;
+};
+
+export type TagBreakdown = { tagId: string; tagName: string; amount: number };
+
+export type CategoryBreakdown = {
+  id: number;
+  name: string;
+  amount: number;
+  tags: TagBreakdown[];
+  untaggedAmount: number;
+};
+
+export type GroupBreakdown = {
+  id: number;
+  name: string;
+  amount: number;
+  categories: CategoryBreakdown[];
+};
+
+export type BreakdownData = {
+  totalAmount: number;
+  chartSlices: ChartSlice[];
+  details: GroupBreakdown[];
+};
+
+export type CashflowMetrics = {
+  currentIncome: number;
+  currentExpense: number;
+  pastIncome: number;
+  pastExpense: number;
+  isAllTime: boolean;
+};
+
+export type ProfitMetrics = {
+  income: number;
+  expense: number;
+  profit: number;
+  startBalance: number;
+  endBalance: number;
+  isAllTime: boolean;
+};
+
+export type WaterfallDataShape = {
+  months: {
+    month: number;
+    name: string;
+    value: number;
+    startLevel: number;
+    endLevel: number;
+    isPositive: boolean;
+    isCurrentMonth?: boolean;
+  }[];
+  total: number;
+  totalIsPositive: boolean;
+  year: number;
+};
+
+export type AnalyzeResponse = {
+  cashflow: CashflowMetrics;
+  income: BreakdownData;
+  expense: BreakdownData;
+  profit: ProfitMetrics;
+  waterfall: WaterfallDataShape;
+};
+
+/* ─── Skeleton (unchanged visual) ──────────────────────────── */
 
 function AnalyzeSkeleton() {
   return (
@@ -30,10 +99,12 @@ function AnalyzeSkeleton() {
           <div className="h-9 w-32 bg-elements-border rounded-2xl animate-pulse" />
         </div>
         <div className="flex items-center justify-between w-full bg-neutral-200 p-2 rounded-2xl gap-2">
-          <div className="h-9 flex-1 bg-elements-border rounded-xl animate-pulse" />
-          <div className="h-9 flex-1 bg-elements-border rounded-xl animate-pulse" />
-          <div className="h-9 flex-1 bg-elements-border rounded-xl animate-pulse" />
-          <div className="h-9 flex-1 bg-elements-border rounded-xl animate-pulse" />
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-9 flex-1 bg-elements-border rounded-xl animate-pulse"
+            />
+          ))}
         </div>
         <div className="flex flex-col gap-5">
           <div className="h-52 w-full bg-elements-background border border-elements-border rounded-4xl animate-pulse" />
@@ -44,58 +115,56 @@ function AnalyzeSkeleton() {
   );
 }
 
+/* ─── Content ──────────────────────────────────────────────── */
+
 function AnalyzeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const timeParam = Number(searchParams.get("time") || DEFAULT_TIME_WINDOW);
 
   const tw = useTimeWindow();
-
-  const [transactions, setTransactions] = useState<TransactionType[]>([]);
-  const [tags, setTags] = useState<TagType[]>([]);
+  const [data, setData] = useState<AnalyzeResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<number>(0);
 
   useEffect(() => {
     let isMounted = true;
-    async function loadData() {
-      setIsLoading(true);
-      const [txs, allTags] = await Promise.all([
-        getAll<TransactionType>(DatabaseStores.transactionsStore),
-        getAll<TagType>(DatabaseStores.tagsStore),
-      ]);
-      if (!isMounted) return;
-      setTransactions(txs.filter((tx) => tx.type !== "transfer"));
-      setTags(allTags);
-      setIsLoading(false);
-    }
-    loadData();
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/analyze?time=${timeParam}`);
+        if (!res.ok) throw new Error("Failed to fetch analytics");
+        const json = (await res.json()) as AnalyzeResponse;
+        if (isMounted) setData(json);
+      } catch (err) {
+        console.error("Failed to load analytics:", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    })();
+
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [timeParam]);
 
   const timeFilterOptions = useTimeFilterOptions();
 
-  const currentTimeFilterName = useMemo(
-    () =>
-      timeFilterOptions.find((o) => o.time === timeParam)?.name ??
-      "۳۰ روز گذشته",
-    [timeParam, timeFilterOptions],
-  );
+  const currentTimeFilterName =
+    timeFilterOptions.find((o) => o.time === timeParam)?.name ?? "۳۰ روز گذشته";
 
   const handleTimeFilterChange = (time: number) => {
     router.replace(`/analyze?time=${time}`, { scroll: false });
     tw.close();
   };
 
-  const tabs: { name: string }[] = [
+  const tabs = [
     { name: "جریان نقدی" },
     { name: "درآمدها" },
     { name: "هزینه‌ها" },
     { name: "سود و زیان" },
   ];
-
-  const [activeTab, setActiveTab] = useState<number>(0);
 
   return (
     <div className="p-7.5 flex flex-col gap-15 w-full max-w-full min-w-0 overflow-x-hidden min-h-screen">
@@ -141,7 +210,7 @@ function AnalyzeContent() {
         {activeTab === 0 && (
           <CashFlow
             timeParam={timeParam}
-            transactions={transactions}
+            data={data?.cashflow}
             isLoading={isLoading}
           />
         )}
@@ -149,8 +218,7 @@ function AnalyzeContent() {
           <FinancialAnalysis
             type="income"
             timeParam={timeParam}
-            transactions={transactions}
-            tags={tags}
+            data={data?.income}
             isLoading={isLoading}
           />
         )}
@@ -158,15 +226,14 @@ function AnalyzeContent() {
           <FinancialAnalysis
             type="expense"
             timeParam={timeParam}
-            transactions={transactions}
-            tags={tags}
+            data={data?.expense}
             isLoading={isLoading}
           />
         )}
         {activeTab === 3 && (
           <Profit
-            timeParam={timeParam}
-            transactions={transactions}
+            data={data?.profit}
+            waterfall={data?.waterfall}
             isLoading={isLoading}
           />
         )}
