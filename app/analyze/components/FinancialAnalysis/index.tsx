@@ -1,5 +1,6 @@
 "use client";
 import { memo, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Box from "@/components/Box";
 import DonutChart from "@/components/DonutChart";
 import { TransactionType } from "@/utility/shared/transactionTypes";
@@ -7,6 +8,7 @@ import { TransactionCategories } from "@/utility/shared/transactionCategories";
 import { TagType } from "@/utility/shared/tagTypes";
 import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
 import AnalyzeIncomeLoading from "@/components/Skeletons/AnalyzeIncomeLoading";
+import { filterToUrl } from "@/app/transactions/methods";
 
 const ALL_TIME_PARAM = 36500;
 const UNCATEGORIZED_ID = -1;
@@ -51,11 +53,7 @@ const CONFIG = {
 } as const;
 
 type AnalysisType = keyof typeof CONFIG;
-type TagBreakdown = {
-  tagId: string;
-  tagName: string;
-  amount: number;
-};
+type TagBreakdown = { tagId: string; tagName: string; amount: number };
 type CategoryBreakdown = {
   id: number;
   name: string;
@@ -77,11 +75,7 @@ type ChartSlice = {
   color: string;
   dotClass: string;
 };
-type CatAgg = {
-  total: number;
-  byTag: Map<string, number>;
-  untagged: number;
-};
+type CatAgg = { total: number; byTag: Map<string, number>; untagged: number };
 
 function FinancialAnalysis({
   type,
@@ -96,7 +90,22 @@ function FinancialAnalysis({
   tags?: TagType[];
   isLoading: boolean;
 }) {
-  const conf = CONFIG[type];
+  const conf = CONFIG[type] ?? CONFIG.income; // ← فالبک امن به‌جای return null، تا کامپوننت همیشه رندر بشه
+  const router = useRouter();
+
+  // ← گارد دفاعی: هر جا این کامپوننت رندر بشه، حتی اگه transactions/tags هنوز نیومده باشن، کرش نمی‌کنه
+  const safeTransactions = transactions ?? [];
+  const safeTags = tags ?? [];
+
+  const handleCategoryClick = (categoryId: number) => {
+    const url = `/transactions${filterToUrl({
+      timeWindow: timeParam,
+      accounts: [],
+      categories: [String(categoryId)],
+      tags: [],
+    })}`;
+    router.push(url);
+  };
 
   const { totalAmount, chartSlices, details } = useMemo(() => {
     const cutoff =
@@ -120,11 +129,11 @@ function FinancialAnalysis({
       groupName: "سایر",
     });
 
-    const tagNameById = new Map(tags.map((t) => [t.id, t.name]));
+    const tagNameById = new Map(safeTags.map((t) => [t.id, t.name]));
     const catMap = new Map<number, CatAgg>();
     let total = 0;
 
-    for (const tx of transactions) {
+    for (const tx of safeTransactions) {
       if (tx.time < cutoff) continue;
       if (tx.type !== conf.txType) continue;
       total += tx.value;
@@ -153,18 +162,13 @@ function FinancialAnalysis({
           amount: e.total,
         }))
         .sort((a, b) => b.amount - a.amount);
-
       const top: typeof sorted = [];
       let otherAmount = 0;
       for (const cat of sorted) {
         const percent = (cat.amount / total) * 100;
-        if (percent >= 2) {
-          top.push(cat);
-        } else {
-          otherAmount += cat.amount;
-        }
+        if (percent >= 2) top.push(cat);
+        else otherAmount += cat.amount;
       }
-
       top.forEach((cat, i) => {
         slices.push({
           id: cat.id,
@@ -176,7 +180,6 @@ function FinancialAnalysis({
             conf.dotClasses[i] ?? conf.dotClasses[conf.dotClasses.length - 1],
         });
       });
-
       if (otherAmount > 0) {
         slices.push({
           id: "other",
@@ -232,22 +235,8 @@ function FinancialAnalysis({
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    return {
-      totalAmount: total,
-      chartSlices: slices,
-      details: groupedDetails,
-    };
-  }, [
-    transactions,
-    timeParam,
-    tags,
-    conf.txType,
-    conf.catField,
-    conf.categories,
-    conf.colors,
-    conf.dotClasses,
-    conf.otherLabel,
-  ]);
+    return { totalAmount: total, chartSlices: slices, details: groupedDetails };
+  }, [safeTransactions, timeParam, safeTags, conf]);
 
   const donutData = useMemo(
     () => chartSlices.map((s) => ({ percent: s.percent, color: s.color })),
@@ -302,6 +291,7 @@ function FinancialAnalysis({
           </p>
         )}
       </Box>
+
       <Box className="gap-10">
         <h3 className="text-xs text-secondary">{conf.detailsTitle}</h3>
         {details.length === 0 ? (
@@ -328,7 +318,10 @@ function FinancialAnalysis({
                     cat.tags.length > 0 || cat.untaggedAmount > 0;
                   return (
                     <div key={cat.id} className="flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between">
+                      <div
+                        className="flex items-center justify-between cursor-pointer rounded-xl px-2 py-1.5 -mx-2 transition-colors active:bg-elements-background"
+                        onClick={() => handleCategoryClick(cat.id)}
+                      >
                         <span className="text-xs text-secondary">
                           {cat.name}
                         </span>
