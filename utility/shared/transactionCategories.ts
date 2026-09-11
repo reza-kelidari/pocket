@@ -79,6 +79,7 @@ export const TransactionCategories = {
         { id: 0x02070004, name: "سفیدکننده لباس", icon: Wallet },
         { id: 0x02070005, name: "مایع ظرفشویی", icon: Wallet },
         { id: 0x02070006, name: "شوینده‌های قوی و جرم‌گیر", icon: Wallet },
+        { id: 0x02070007, name: "اسپری، ژل، تافت مو", icon: Wallet },
       ],
     },
     {
