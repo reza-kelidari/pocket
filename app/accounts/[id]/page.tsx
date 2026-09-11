@@ -379,24 +379,22 @@ export default function AccountsDetails({ params }: AccountsDetailsProps) {
           {isLoading ? (
             <div className="h-6 w-40 bg-elements-border rounded-md animate-pulse"></div>
           ) : (
-            <div className="flex justify-between">
-              <SectionTitle
-                action={
-                  isBookAccount && tagParam ? (
-                    <button
-                      type="button"
-                      onClick={handleBackToTagBreakdown}
-                      className="border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer bg-elements-background border-elements-border text-black"
-                    >
-                      بازگشت
-                    </button>
-                  ) : undefined
-                }
-              >
+            <div className="flex justify-between items-center gap-2">
+              <SectionTitle>
                 {isBookAccount && tagParam
                   ? `گردش ${tagName}`
                   : `گردش حساب ${account?.name}`}
               </SectionTitle>
+
+              {isBookAccount && tagParam && (
+                <button
+                  type="button"
+                  onClick={handleBackToTagBreakdown}
+                  className="border px-2.5 py-2 rounded-4xl text-xs flex items-center gap-1 text-nowrap cursor-pointer bg-elements-background border-elements-border text-black"
+                >
+                  بازگشت
+                </button>
+              )}
 
               {!isLoading && (
                 <div className="relative" ref={tw.dropdownRef}>

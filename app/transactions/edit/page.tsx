@@ -25,6 +25,7 @@ import { TagType } from "@/utility/shared/tagTypes";
 import { getAll, getItem, putItem } from "@/utility/db/Database";
 import { AccountType } from "@/utility/accounts/types";
 import { DatabaseStores } from "@/utility/keys/database";
+import { useAccountsAndTransactions } from "@/utility/shared/useAccountsAndTransactions";
 
 /**
  * The main component for editing an existing transaction.
@@ -44,6 +45,7 @@ export default function TransactionEdit() {
   const [dateInput, setDateInput] = useState("");
   const [timeInput, setTimeInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const fetchAll = useAccountsAndTransactions();
 
   /**
    * Persists the transaction draft to session storage.
@@ -272,6 +274,7 @@ export default function TransactionEdit() {
   const handleSave = async () => {
     if (!isValid || !transaction) return;
     await putItem(transactionsStore, transaction);
+    await fetchAll();
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     router.back();
   };

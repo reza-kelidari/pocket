@@ -116,7 +116,7 @@ function computeChartLayout(
   const svgWidth = Math.max(containerWidth, requiredWidth);
   const usableWidth = Math.max(1, svgWidth - paddingX * 2);
 
-  const values = chartData.map((item) => item.balance);
+  const values = chartData.map((item) => Math.abs(item.balance));
   const { min, max } = getValueBounds(values);
   const range = max - min || 1;
 
@@ -124,7 +124,9 @@ function computeChartLayout(
     x: round(
       paddingX + (index / Math.max(1, chartData.length - 1)) * usableWidth,
     ),
-    y: round(CHART_HEIGHT - ((item.balance - min) / range) * CHART_HEIGHT),
+    y: round(
+      CHART_HEIGHT - ((Math.abs(item.balance) - min) / range) * CHART_HEIGHT,
+    ),
     time: item.time,
     balance: item.balance,
     date: formatDate(item.time),
@@ -389,7 +391,7 @@ export default function BalanceChart({
             transform: "translateX(-50%)",
           }}
         >
-          <span>{formatNumber(selectedPoint.balance)} ﷼</span>
+          <span>{formatNumber(Math.abs(selectedPoint.balance))} ﷼</span>
           <span className="text-secondary">{selectedPoint.date}</span>
         </div>
       )}

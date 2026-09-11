@@ -24,6 +24,7 @@ import { getAll, putItem } from "@/utility/db/Database";
 import { TagType } from "@/utility/shared/tagTypes";
 import { DatabaseStores } from "@/utility/keys/database";
 import { generateUUId } from "@/utility/shared/idGenerationMethods";
+import { useAccountsAndTransactions } from "@/utility/shared/useAccountsAndTransactions";
 
 export const CREATE_TRANSACTION_KEY = "new-transaction";
 
@@ -72,6 +73,7 @@ export default function AddTransaction() {
   const [tags, setTags] = useState<TagType[]>([]);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const { accountsStore, transactionsStore, tagsStore } = DatabaseStores;
+  const fetchAll = useAccountsAndTransactions();
 
   const [transaction, setTransaction] = useState<TransactionType>(() =>
     createBlankTransaction(transactionType || "credit"),
@@ -217,6 +219,7 @@ export default function AddTransaction() {
   const handleSave = async () => {
     if (!isValid) return;
     await putItem(transactionsStore, transaction);
+    await fetchAll();
     sessionStorage.removeItem(CREATE_TRANSACTION_KEY);
     resetFormState();
     router.back();

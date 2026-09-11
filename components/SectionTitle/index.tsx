@@ -6,7 +6,7 @@ type TitleParamsType = {
 
 export default function Title({ children, action }: TitleParamsType) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-2">
       <div>
         <h1 className="text-lg font-bold">{children}</h1>
         <div className="w-6 h-0.75 bg-primary rounded-xl"></div>
