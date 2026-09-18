@@ -39,11 +39,23 @@ function validateStore(rawStore: string): string | null {
  * Field validators per store/column
  * ───────────────────────────────────────────────────────────── */
 
+const NAMELESS_TRANSACTION_TYPES: ReadonlySet<string> = new Set(["transfer"]);
+
 type FieldValidator = {
   sanitize: (value: unknown) => SanitizeResult<unknown>;
-  required: boolean;
+
+  required: boolean | ((item: Record<string, unknown>) => boolean);
   emptyValue?: unknown;
 };
+
+function resolveRequired(
+  validator: FieldValidator,
+  item: Record<string, unknown>,
+): boolean {
+  return typeof validator.required === "function"
+    ? validator.required(item)
+    : validator.required;
+}
 
 const STORE_VALIDATORS: Record<string, Record<string, FieldValidator>> = {
   accounts: {
@@ -74,7 +86,12 @@ const STORE_VALIDATORS: Record<string, Record<string, FieldValidator>> = {
   },
   transactions: {
     time: { sanitize: sanitizeTimestamp, required: true },
-    name: { sanitize: sanitizeName, required: true },
+    name: {
+      sanitize: sanitizeName,
+      required: (item) =>
+        !NAMELESS_TRANSACTION_TYPES.has(String(item.type ?? "")),
+      emptyValue: null,
+    },
     type: {
       sanitize: (v) => sanitizeEnum(v, TRANSACTION_TYPES),
       required: true,
@@ -132,8 +149,10 @@ function validateItem(
     const validator = validators[key];
     if (!validator) continue;
 
+    const isRequired = resolveRequired(validator, item);
+
     if (rawValue === null || rawValue === undefined || rawValue === "") {
-      if (validator.required) {
+      if (isRequired) {
         return { valid: false, error: `مقدار «${key}» اجباری است.` };
       }
       result[key] = validator.emptyValue ?? null;
@@ -142,7 +161,7 @@ function validateItem(
 
     const sanitized = validator.sanitize(rawValue);
     if (!sanitized.valid) {
-      if (!validator.required) {
+      if (!isRequired) {
         result[key] = validator.emptyValue ?? null;
         continue;
       }
@@ -152,6 +171,14 @@ function validateItem(
       };
     }
     result[key] = sanitized.value;
+  }
+
+  if (
+    store === "transactions" &&
+    NAMELESS_TRANSACTION_TYPES.has(String(item.type ?? "")) &&
+    !("name" in result)
+  ) {
+    result.name = null;
   }
 
   return { valid: true, value: result };
