@@ -19,17 +19,33 @@
  * ```
  * {
  *   points:            ChartPoint[],  // one entry per Tehran day in the window
- *   currentBalance:    number,        // balance at the last point
+ *   currentBalance:    number,        // balance as of "now"
  *   allTimeSpanDays:   number,        // days since first transaction
  *   cashOnHand:        number | null  // "available cash" (see below)
  * }
  * ```
  *
- * `cashOnHand` is only computed when no `accountId` and no `tag` filter are
- * applied (i.e. the "total balance" view). It excludes all `Book` accounts
- * (طلب‌ها / بدهی‌ها / وجوه در راه) so it represents liquid money the user
- * actually has available, as opposed to net worth including receivables and
- * payables.
+ * ### Window end behavior
+ *
+ * For the two "current period" windows (`-1` this month, `-2` this year),
+ * the chart's visible range extends to the **end** of that period — not to
+ * today — so future-dated transactions inside the period are included and
+ * the line continues to the last day of the period. Other windows end at
+ * the start of today, matching their "N days ago" semantics.
+ *
+ * ### `currentBalance`
+ *
+ * This figure reflects the balance **as of now** (through the end of
+ * today, Tehran time), regardless of the selected window. Future-dated
+ * transactions are intentionally excluded so the label "موجودی" always
+ * describes what the user currently has.
+ *
+ * ### `cashOnHand`
+ *
+ * Only computed when no `accountId` and no `tag` filter are applied (i.e.
+ * the "total balance" view). It excludes all `Book` accounts (طلب‌ها /
+ * بدهی‌ها / وجوه در راه) and any future-dated transactions, so it
+ * represents liquid money the user actually has available right now.
  *
  * @module app/api/chart/route
  */
@@ -41,6 +57,8 @@ import { sanitizeUuid, sanitizeInteger } from "@/utility/validation";
 import {
   toTehranDayStart,
   getCutoffTimestamp,
+  getUpperBoundTimestamp,
+  NO_UPPER_BOUND,
 } from "@/utility/shared/timeMethods";
 
 /** Milliseconds in one day. Used to iterate day-by-day when filling gaps. */
@@ -61,10 +79,6 @@ type ChartPoint = { time: number; balance: number };
  * Builds a running balance series from the user's transactions, densified to
  * one point per Tehran calendar day within the requested window so the chart
  * renders a continuous line even on days without activity.
- *
- * When the request is for the "total balance" view (no `accountId`, no `tag`),
- * the response additionally includes `cashOnHand`, which is the sum of all
- * money held in non-`Book` accounts.
  *
  * @param req - The incoming Next.js request.
  * @returns A JSON response containing `points`, `currentBalance`,
@@ -138,11 +152,17 @@ export async function GET(req: NextRequest) {
     const res = await pool.query(query, params);
 
     // ─── Aggregate into one balance point per Tehran day ────────
+    const nowMs = Date.now();
+    /** End of today, Tehran time — used as the cutoff for "current" figures. */
+    const endOfTodayMs = toTehranDayStart(nowMs + DAY_MS) - 1;
+
     const balanceByDay = new Map<number, number>();
     let runningBalance = 0;
+    let balanceAtNow = 0;
 
     for (const row of res.rows) {
-      const dayKey = toTehranDayStart(Number(row.time));
+      const txTime = Number(row.time);
+      const dayKey = toTehranDayStart(txTime);
       const value = Number(row.value);
 
       if (accountId) {
@@ -154,22 +174,34 @@ export async function GET(req: NextRequest) {
         else if (row.type === "credit") runningBalance -= value;
       }
       balanceByDay.set(dayKey, runningBalance);
+
+      // `balanceAtNow` reflects the balance through the end of today.
+      // Future-dated transactions are intentionally excluded.
+      if (txTime <= endOfTodayMs) balanceAtNow = runningBalance;
     }
 
     const fullHistory: ChartPoint[] = [...balanceByDay.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([t, balance]) => ({ time: t, balance }));
 
-    const todayStart = toTehranDayStart(Date.now());
-    const currentBalance =
-      fullHistory.length > 0 ? fullHistory[fullHistory.length - 1].balance : 0;
+    const todayStart = toTehranDayStart(nowMs);
+
+    // The chart's visible range ends at `todayStart` for most windows, but
+    // for the two "current period" windows (`-1` this month, `-2` this year)
+    // it extends to the end of that period so future-dated transactions
+    // inside the period are included.
+    const upperBound = getUpperBoundTimestamp(time);
+    const endDay =
+      upperBound === NO_UPPER_BOUND ? todayStart : toTehranDayStart(upperBound);
 
     const allTimeSpanDays =
       fullHistory.length > 0
         ? Math.ceil((todayStart - fullHistory[0].time) / DAY_MS) + 1
         : 0;
 
-    // ─── Densify the series to one point per day in the window ──
+    // `currentBalance` is the balance as of now, NOT as of the window end.
+    const currentBalance = balanceAtNow;
+
     let points: ChartPoint[];
 
     if (time === ALL_TIME || fullHistory.length === 0) {
@@ -193,10 +225,10 @@ export async function GET(req: NextRequest) {
         idx++;
       }
 
-      // Fill one point per day from the cutoff through today.
+      // Fill one point per day from the cutoff through `endDay`.
       let current = balanceBefore;
       const filled: ChartPoint[] = [];
-      for (let day = cutoffDay; day <= todayStart; day += DAY_MS) {
+      for (let day = cutoffDay; day <= endDay; day += DAY_MS) {
         while (idx < fullHistory.length && fullHistory[idx].time <= day) {
           current = fullHistory[idx].balance;
           idx++;
@@ -209,8 +241,9 @@ export async function GET(req: NextRequest) {
     // ─── Compute cash-on-hand (only for the total-balance view) ─
     //
     // `Book` accounts are ledger containers (receivables / payables /
-    // funds-in-transit) rather than real money. Excluding them yields the
-    // amount of liquid cash the user actually has available right now.
+    // funds-in-transit) rather than real money. Future-dated transactions
+    // are also excluded, so this figure represents liquid money available
+    // right now.
     let cashOnHand: number | null = null;
     if (!accountId && !tagValue && !isUntagged) {
       const bookRes = await pool.query<{ id: string }>(
@@ -221,13 +254,14 @@ export async function GET(req: NextRequest) {
 
       let cash = 0;
       for (const row of res.rows) {
+        if (Number(row.time) > endOfTodayMs) continue;
+
         const value = Number(row.value);
         const type = row.type as string;
         const debit = (row.debit as string) || "";
         const credit = (row.credit as string) || "";
 
         if (type === "transfer") {
-          // `credit` = source, `debit` = destination.
           if (credit && !bookIds.has(credit)) cash -= value;
           if (debit && !bookIds.has(debit)) cash += value;
         } else if (type === "debit" || type === "initial") {

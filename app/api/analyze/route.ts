@@ -14,11 +14,18 @@
  * - **waterfall** — monthly cumulative profit/loss for the current Jalali
  *   year, used by the Profit tab's waterfall chart.
  *
- * `cashOnHand` is computed from the *entire* transaction history (not the
- * selected window), because it represents the user's present liquid money
- * rather than a period-scoped metric. It excludes `Book` accounts
- * (receivables / payables / funds-in-transit) and correctly accounts for
- * transfers that move money into or out of those ledger accounts.
+ * ### Window-end behavior
+ *
+ * For the two "current period" windows (`-1` this month, `-2` this year),
+ * the aggregation extends to the **end** of that period — not to today —
+ * so future-dated transactions inside the period are counted. Other
+ * windows end at "now", matching their "N days ago" semantics.
+ *
+ * ### `cashOnHand`
+ *
+ * Computed from the entire transaction history, ignoring future-dated
+ * transactions and `Book` accounts (receivables / payables / funds-in-
+ * transit). It represents the user's present liquid money.
  *
  * @module app/api/analyze/route
  */
@@ -29,8 +36,11 @@ import { getCurrentUserId } from "@/utility/auth/methods";
 import { sanitizeInteger } from "@/utility/validation";
 import {
   getCutoffTimestamp,
+  getUpperBoundTimestamp,
   jalaliToTimestamp,
   toJalaliDateArray,
+  toTehranDayStart,
+  NO_UPPER_BOUND,
 } from "@/utility/shared/timeMethods";
 import { DEFAULT_TIME_WINDOW } from "@/app/transactions/methods";
 import { TransactionCategories } from "@/utility/shared/transactionCategories";
@@ -40,6 +50,9 @@ import type { TransactionType } from "@/utility/shared/transactionTypes";
 
 /** Sentinel value meaning "no time restriction" (≈ 100 years). */
 const ALL_TIME = 36500;
+
+/** Milliseconds in one day — used for the end-of-today cutoff. */
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Synthetic category id used for transactions whose category is missing. */
 const UNCATEGORIZED_ID = -1;
@@ -142,8 +155,11 @@ function buildCategoryMeta() {
  * ──────────────────────────────────────────────────────────── */
 
 /**
- * Aggregates transactions into a two-level breakdown (groups → categories →
- * tags) and prepares the donut-chart slices.
+ * Aggregates transactions into a two-level breakdown (groups → categories
+ * → tags) and prepares the donut-chart slices.
+ *
+ * Only transactions within `[getCutoffTimestamp(timeParam),
+ * getUpperBoundTimestamp(timeParam)]` are counted.
  *
  * @param transactions - All non-transfer transactions for the user.
  * @param tagNames - Map of tag id → display name.
@@ -163,6 +179,7 @@ function computeBreakdown(
       : { txType: "credit" as const, catField: "debit" as const };
 
   const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
+  const upperBound = getUpperBoundTimestamp(timeParam);
   const categoryMeta = buildCategoryMeta();
 
   const catMap = new Map<
@@ -173,6 +190,7 @@ function computeBreakdown(
 
   for (const tx of transactions) {
     if (tx.time < cutoff) continue;
+    if (tx.time > upperBound) continue;
     if (tx.type !== conf.txType) continue;
     total += tx.value;
 
@@ -286,6 +304,10 @@ function computeBreakdown(
  * Computes income and expense for the current window and the equivalent
  * previous window, so the UI can show "vs. last period" deltas.
  *
+ * For the two "current period" windows (`-1`, `-2`), `currentEnd` is set
+ * to the end of that period (not to now) so future-dated transactions
+ * inside the period are included.
+ *
  * @param transactions - All non-transfer transactions for the user.
  * @param timeParam - The selected time window (see module docs).
  * @returns Current and previous income/expense figures.
@@ -296,9 +318,15 @@ function computeCashflow(transactions: TxRow[], timeParam: number) {
 
   let currentCutoff = 0;
   let pastCutoff = 0;
-  const currentEnd = now;
   let pastEnd = 0;
   let needPast = timeParam !== ALL_TIME;
+
+  // End of the current window. For the two "current period" windows the
+  // window extends to the end of that period; otherwise it ends at "now".
+  const currentEnd =
+    timeParam === -1 || timeParam === -2
+      ? getUpperBoundTimestamp(timeParam)
+      : now;
 
   if (timeParam === ALL_TIME) {
     needPast = false;
@@ -318,7 +346,7 @@ function computeCashflow(transactions: TxRow[], timeParam: number) {
     pastEnd = currentCutoff - 1;
   } else {
     currentCutoff = getCutoffTimestamp(timeParam);
-    const duration = currentEnd - currentCutoff;
+    const duration = now - currentCutoff;
     pastCutoff = currentCutoff - duration;
     pastEnd = currentCutoff - 1;
   }
@@ -356,22 +384,25 @@ function computeCashflow(transactions: TxRow[], timeParam: number) {
  * Computes income, expense, net profit, start balance, and end balance
  * for the selected time window.
  *
- * `startBalance` and `endBalance` are derived from the *full* balance
- * history (not just the window) so that endBalance always reflects the
- * user's current total balance.
+ * Income/expense only count transactions within
+ * `[getCutoffTimestamp(timeParam), getUpperBoundTimestamp(timeParam)]`.
+ * `startBalance` / `endBalance` are derived from the *full* balance
+ * history but are clamped to the same window bounds, so `endBalance`
+ * reflects the balance at the end of the selected window.
  *
  * @param transactions - All non-transfer transactions for the user.
  * @param timeParam - The selected time window (see module docs).
- * @returns Profit metrics for the window (excluding `cashOnHand`, which
- *          is attached separately in the handler).
+ * @returns Profit metrics for the window.
  */
 function computeProfit(transactions: TxRow[], timeParam: number) {
   const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
+  const upperBound = getUpperBoundTimestamp(timeParam);
 
   let income = 0;
   let expense = 0;
   for (const tx of transactions) {
     if (tx.time < cutoff) continue;
+    if (tx.time > upperBound) continue;
     if (tx.type === "debit") income += tx.value;
     else if (tx.type === "credit") expense += tx.value;
   }
@@ -395,7 +426,14 @@ function computeProfit(transactions: TxRow[], timeParam: number) {
         }
       }
     }
-    endBalance = totalHistory[totalHistory.length - 1].balance;
+
+    // Balance at the end of the selected window.
+    for (let i = totalHistory.length - 1; i >= 0; i--) {
+      if (totalHistory[i].time <= upperBound) {
+        endBalance = totalHistory[i].balance;
+        break;
+      }
+    }
   }
 
   return {
@@ -409,20 +447,18 @@ function computeProfit(transactions: TxRow[], timeParam: number) {
 }
 
 /* ────────────────────────────────────────────────────────────
- * Cash on hand (excludes Book accounts)
+ * Cash on hand (excludes Book accounts and future transactions)
  * ──────────────────────────────────────────────────────────── */
 
 /**
  * Computes the user's current **liquid** money, i.e. the sum of balances
- * across all non-`Book` accounts.
+ * across all non-`Book` accounts as of the end of today.
  *
  * `Book` accounts (receivables, payables, funds-in-transit) represent
- * ledger entries rather than actual cash, so they are excluded. This
- * produces a figure the user can interpret as "money I actually have
- * available right now".
+ * ledger entries rather than actual cash. Future-dated transactions are
+ * also excluded, so this figure represents money available right now.
  *
- * Transfers involving a `Book` account are handled explicitly because
- * they move money between the ledger and real accounts:
+ * Transfers involving a `Book` account are handled explicitly:
  * - paying off a debt (`credit` = real, `debit` = Book) reduces cash,
  * - collecting a receivable (`credit` = Book, `debit` = real) increases cash.
  *
@@ -439,9 +475,12 @@ function computeCashOnHand(
   bookTransfers: BookTransfer[],
   bookIds: Set<string>,
 ): number {
+  const endOfTodayMs = toTehranDayStart(Date.now() + DAY_MS) - 1;
   let cash = 0;
 
   for (const tx of nonTransferTxs) {
+    if (tx.time > endOfTodayMs) continue;
+
     const value = tx.value;
     const debit = tx.debit || "";
     const credit = tx.credit || "";

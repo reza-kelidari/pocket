@@ -348,7 +348,7 @@ export default function ChartContainer({
             {isCashTooltipOpen && (
               <div
                 role="tooltip"
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 text-[10px] leading-5 text-center bg-white border border-elements-border rounded-2xl p-3 shadow-lg z-50 animate-fade-in"
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 text-[10px] leading-5 text-center bg-white border border-elements-border rounded-2xl p-3 shadow-lg z-50 animate-fade-in"
               >
                 {CASH_TOOLTIP_TEXT}
               </div>

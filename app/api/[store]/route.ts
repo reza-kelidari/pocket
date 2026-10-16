@@ -1,3 +1,30 @@
+/**
+ * @fileoverview Generic Store CRUD API Route
+ *
+ * Provides `GET`, `POST`, and `DELETE` handlers for the three user-data
+ * stores (`accounts`, `transactions`, `tags`). All access is scoped to the
+ * authenticated user, and every write goes through a per-column validator
+ * before touching the database.
+ *
+ * ### `GET` filtering (transactions only)
+ *
+ * For the `transactions` store the following query params are honored:
+ * - `time` (number): time window. Special values: `-1` (this month),
+ *   `-2` (this year), `36500` (all time), any positive N (last N days).
+ *   For the two "current period" windows, the upper bound is the end of
+ *   that period (not "now"), so future-dated transactions inside the
+ *   period are returned.
+ * - `accounts` (comma-separated UUIDs): restrict to transactions touching
+ *   any of these accounts on either side.
+ * - `categories` (comma-separated numeric ids): restrict to income/expense
+ *   transactions whose category (on the opposite side of the account) is
+ *   in the set.
+ * - `tags` (comma-separated UUIDs): restrict to transactions carrying any
+ *   of these tags.
+ *
+ * @module app/api/[store]/route
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
@@ -19,7 +46,11 @@ import {
   TRANSACTION_TYPES,
   TAG_TYPES,
 } from "@/utility/db/columns";
-import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
+import {
+  getCutoffTimestamp,
+  getUpperBoundTimestamp,
+  NO_UPPER_BOUND,
+} from "@/utility/shared/timeMethods";
 import { NUMERIC_FIELDS, castNumericFields } from "@/utility/db/castNumeric";
 import { ALLOWED_STORES } from "@/utility/keys/database";
 
@@ -29,6 +60,12 @@ const STORE_QUERIES = {
   tags: 'SELECT * FROM tags WHERE user_id = $1 ORDER BY "order" ASC',
 } as const;
 
+/**
+ * Validates that a raw store name is one of the allowed stores.
+ *
+ * @param rawStore - The store name from the URL.
+ * @returns The store name if valid, otherwise `null`.
+ */
 function validateStore(rawStore: string): string | null {
   return (ALLOWED_STORES as readonly string[]).includes(rawStore)
     ? rawStore
@@ -39,15 +76,23 @@ function validateStore(rawStore: string): string | null {
  * Field validators per store/column
  * ───────────────────────────────────────────────────────────── */
 
+/** Transaction types that do not require a `name` field. */
 const NAMELESS_TRANSACTION_TYPES: ReadonlySet<string> = new Set(["transfer"]);
 
 type FieldValidator = {
   sanitize: (value: unknown) => SanitizeResult<unknown>;
-
   required: boolean | ((item: Record<string, unknown>) => boolean);
   emptyValue?: unknown;
 };
 
+/**
+ * Resolves whether a given validator is required for a particular item,
+ * handling validators whose `required` is a predicate function.
+ *
+ * @param validator - The validator definition.
+ * @param item - The item being validated.
+ * @returns `true` if the field must be present.
+ */
 function resolveRequired(
   validator: FieldValidator,
   item: Record<string, unknown>,
@@ -136,6 +181,14 @@ type ValidationOutcome =
   | { valid: true; value: Record<string, unknown> }
   | { valid: false; error: string };
 
+/**
+ * Validates and normalizes a single item against the store's column
+ * validators. Unknown columns are silently dropped.
+ *
+ * @param store - The store name.
+ * @param item - The raw item from the request body.
+ * @returns Either the sanitized value or a human-readable error.
+ */
 function validateItem(
   store: string,
   item: Record<string, unknown>,
@@ -188,6 +241,14 @@ function validateItem(
  * GET
  * ───────────────────────────────────────────────────────────── */
 
+/**
+ * GET handler. Returns all rows belonging to the user for the requested
+ * store, optionally filtered (transactions only).
+ *
+ * @param req - The incoming Next.js request.
+ * @param ctx - Route params: `{ store }`.
+ * @returns A JSON array of rows.
+ */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ store: string }> },
@@ -215,10 +276,21 @@ export async function GET(
     if (timeWindow && timeWindow !== "36500") {
       const days = Number(timeWindow);
       if (!isNaN(days)) {
-        const limitTime = getCutoffTimestamp(days);
+        const lower = getCutoffTimestamp(days);
+        const upper = getUpperBoundTimestamp(days);
+
         query += ` AND time >= $${paramIndex}`;
-        queryParams.push(limitTime);
+        queryParams.push(lower);
         paramIndex++;
+
+        // For the two "current period" windows, also clamp to the end of
+        // that period so future-dated transactions inside the period are
+        // returned. Other windows have no upper bound.
+        if (upper !== NO_UPPER_BOUND) {
+          query += ` AND time <= $${paramIndex}`;
+          queryParams.push(upper);
+          paramIndex++;
+        }
       }
     }
 
@@ -275,6 +347,13 @@ export async function GET(
  * POST
  * ───────────────────────────────────────────────────────────── */
 
+/**
+ * POST handler. Upserts one or more rows into the given store.
+ *
+ * @param req - The incoming Next.js request (body = single item or array).
+ * @param ctx - Route params: `{ store }`.
+ * @returns `{ ok: true, ids: string[] }` on success.
+ */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ store: string }> },
@@ -415,6 +494,13 @@ export async function POST(
  * DELETE
  * ───────────────────────────────────────────────────────────── */
 
+/**
+ * DELETE handler. Removes all rows belonging to the user for the store.
+ *
+ * @param req - The incoming Next.js request.
+ * @param ctx - Route params: `{ store }`.
+ * @returns `{ ok: true }` on success.
+ */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ store: string }> },

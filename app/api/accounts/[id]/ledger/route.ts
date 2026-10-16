@@ -1,12 +1,58 @@
+/**
+ * @fileoverview Account Ledger API Route
+ *
+ * Returns the running transaction ledger for a single account, scoped to
+ * an optional time window and optional tag filter.
+ *
+ * Query params:
+ * - `time` (number): time window. Special values:
+ *   - `-1` = this Jalali month
+ *   - `-2` = this Jalali year
+ *   - `36500` = all time
+ *   - any positive number = last N days
+ * - `tag` (optional, UUID or `"untagged"`): when present, restricts the
+ *   ledger to transactions carrying that tag (or lacking any tag).
+ *
+ * Response shape:
+ * ```
+ * {
+ *   balanceBefore: number,           // running balance just before the window
+ *   transactions: LedgerTransaction[] // newest first, with `balanceAfter`
+ * }
+ * ```
+ *
+ * ### Window-end behavior
+ *
+ * For the two "current period" windows (`-1` this month, `-2` this year),
+ * the ledger includes all transactions up to the **end** of that period —
+ * not to "now" — so future-dated transactions inside the period appear in
+ * the ledger, consistent with the chart and analyze screens. Other windows
+ * extend to "now", matching their "N days ago" semantics.
+ *
+ * @module app/api/accounts/[id]/ledger/route
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
 import { sanitizeUuid } from "@/utility/validation";
-import { getCutoffTimestamp } from "@/utility/shared/timeMethods";
+import {
+  getCutoffTimestamp,
+  getUpperBoundTimestamp,
+  NO_UPPER_BOUND,
+} from "@/utility/shared/timeMethods";
 import { DEFAULT_TIME_WINDOW } from "@/app/transactions/methods";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+/**
+ * GET handler for `/api/accounts/[id]/ledger`.
+ *
+ * @param req - The incoming Next.js request.
+ * @param ctx - Route params containing the account id.
+ * @returns A JSON response with `balanceBefore` and the list of
+ *          transactions, each augmented with `balanceAfter`.
+ */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -21,11 +67,19 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const accountId = idResult.value;
 
   const url = new URL(req.url);
-  const timeWindow = Number(url.searchParams.get("time") || DEFAULT_TIME_WINDOW);
+  const timeWindow = Number(
+    url.searchParams.get("time") || DEFAULT_TIME_WINDOW,
+  );
   const tagParam = url.searchParams.get("tag");
 
+  // ─── Resolve window bounds ──────────────────────────────────
+  // For "this month" and "this year", the window extends to the end of
+  // the period; every other window ends at "now" (upperBound = NO_UPPER_BOUND).
   const timeFilter = getCutoffTimestamp(timeWindow);
+  const upperBound = getUpperBoundTimestamp(timeWindow);
+  const hasUpperBound = upperBound !== NO_UPPER_BOUND;
 
+  // ─── Parse tag filter ───────────────────────────────────────
   let tagValue: string | null = null;
   let isUntagged = false;
   if (tagParam === "untagged") {
@@ -38,6 +92,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
+    // ─── Balance before the window ─────────────────────────────
     let balanceBefore = 0;
     if (timeFilter > 0) {
       let beforeQuery = `SELECT COALESCE(SUM(
@@ -62,6 +117,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       balanceBefore = Number(beforeRes.rows[0].balance_before) || 0;
     }
 
+    // ─── Build the main query ──────────────────────────────────
     const queryParams: unknown[] = [userId, accountId];
 
     let tagFilterSQL = "";
@@ -75,7 +131,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     let query: string;
     if (timeFilter > 0) {
       queryParams.push(timeFilter);
-      const timeIdx = queryParams.length;
+      const lowerIdx = queryParams.length;
+
+      // Upper bound is only applied for "this month" / "this year".
+      let upperClause = "";
+      if (hasUpperBound) {
+        queryParams.push(upperBound);
+        upperClause = `AND time <= $${queryParams.length}`;
+      }
+
       query = `
         WITH windowed AS (
           SELECT 
@@ -94,13 +158,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
           WHERE user_id = $1 
             AND (debit = $2 OR credit = $2) 
             ${tagFilterSQL}
-            AND time >= $${timeIdx}
+            AND time >= $${lowerIdx}
+            ${upperClause}
         )
         SELECT 
           id, time, name, type, debit, credit, value, note, tag, delta
         FROM windowed
         ORDER BY time DESC, id DESC`;
     } else {
+      // All-time: no lower bound, and no upper bound either.
       query = `
         SELECT 
           id, time, name, type, debit, credit, value, note, tag,
