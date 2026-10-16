@@ -29,6 +29,7 @@ import TimeWindow from "@/components/TimeWindow";
 import { useTimeWindow } from "@/utility/shared/useTimeWindow";
 import FinancialAnalysis from "./components/FinancialAnalysis";
 import { useTimeFilterOptions } from "@/utility/shared/useTimeFilterOptions";
+import type { ForecastMethod } from "@/utility/shared/forecastMethods";
 
 /* ─── Shapes matching the /api/analyze response ─────────────── */
 
@@ -60,11 +61,37 @@ export type GroupBreakdown = {
   categories: CategoryBreakdown[];
 };
 
+/**
+ * A single point on the forecast chart.
+ *
+ * `time` is the Unix timestamp (ms) of the bucket's start;
+ * `cumulative` is the running total of that side (income or expense)
+ * from the start of the window through `time`.
+ */
+export type ForecastSeriesPoint = { time: number; cumulative: number };
+
+/**
+ * Forecast bundle for one side (income or expense).
+ *
+ * - `historical` — cumulative totals from the window start through
+ *   "now", one point per bucket.
+ * - `byMethod`   — four future series, one per supported forecasting
+ *   method, each starting from the last historical bucket.
+ * - `bucketSize` — granularity of both series, chosen automatically
+ *   from the window's length.
+ */
+export type ForecastBundle = {
+  historical: ForecastSeriesPoint[];
+  byMethod: Record<ForecastMethod, ForecastSeriesPoint[]>;
+  bucketSize: "day" | "week" | "month";
+};
+
 /** Full breakdown payload for one side (income or expense). */
 export type BreakdownData = {
   totalAmount: number;
   chartSlices: ChartSlice[];
   details: GroupBreakdown[];
+  forecast: ForecastBundle;
 };
 
 /** Income / expense metrics for the current and previous window. */
@@ -95,21 +122,63 @@ export type ProfitMetrics = {
   cashOnHand: number;
 };
 
+/**
+ * One monthly column in the waterfall chart.
+ *
+ * `isForecast` is `true` for months whose `income` / `expense` were
+ * predicted rather than observed — the chart renders those columns with
+ * a dashed, semi-transparent style.
+ */
+export type WaterfallMonthShape = {
+  month: number;
+  name: string;
+  value: number;
+  income: number;
+  expense: number;
+  startLevel: number;
+  endLevel: number;
+  isPositive: boolean;
+  isCurrentMonth?: boolean;
+  isForecast?: boolean;
+};
+
 /** Monthly cumulative profit/loss data for the waterfall chart. */
 export type WaterfallDataShape = {
-  months: {
-    month: number;
-    name: string;
-    value: number;
-    startLevel: number;
-    endLevel: number;
-    isPositive: boolean;
-    isCurrentMonth?: boolean;
-  }[];
+  months: WaterfallMonthShape[];
   total: number;
   totalIsPositive: boolean;
   year: number;
 };
+
+/**
+ * Precomputed waterfall dataset for every supported forecasting method.
+ *
+ * The client uses this to swap the chart's data when the user changes
+ * the forecast method, without triggering a network request.
+ */
+export type WaterfallForecastMap = Record<ForecastMethod, WaterfallDataShape>;
+
+/**
+ * Forecast totals for one side (income or expense) scoped to the
+ * target window's forecast horizon, one entry per method.
+ *
+ * - `income` / `expense` — total predicted flow within the horizon.
+ * - `profit` — predicted net (`income − expense`).
+ * - `projectedBalance` — projected balance at the end of the horizon
+ *   (`profit.endBalance + profit`).
+ */
+export type ProfitForecastEntry = {
+  income: number;
+  expense: number;
+  profit: number;
+  projectedBalance: number;
+};
+
+/**
+ * Precomputed profit forecast for every supported method, keyed by
+ * method identifier.
+ */
+export type ProfitForecastMap = Record<ForecastMethod, ProfitForecastEntry>;
 
 /** Complete response from `/api/analyze`. */
 export type AnalyzeResponse = {
@@ -118,9 +187,11 @@ export type AnalyzeResponse = {
   expense: BreakdownData;
   profit: ProfitMetrics;
   waterfall: WaterfallDataShape;
+  waterfallForecast: WaterfallForecastMap;
+  profitForecast: ProfitForecastMap;
 };
 
-/* ─── Skeleton (unchanged visual) ──────────────────────────── */
+/* ─── Skeleton ──────────────────────────────────────────────── */
 
 /**
  * Full-screen skeleton shown while the initial analyze fetch is in flight
@@ -288,6 +359,8 @@ function AnalyzeContent() {
           <Profit
             data={data?.profit}
             waterfall={data?.waterfall}
+            waterfallForecast={data?.waterfallForecast}
+            profitForecast={data?.profitForecast}
             isLoading={isLoading}
           />
         )}

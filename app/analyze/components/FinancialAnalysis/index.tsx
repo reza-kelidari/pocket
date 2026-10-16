@@ -1,12 +1,43 @@
+/**
+ * @fileoverview Financial Analysis Tab
+ *
+ * Renders one side (income or expense) of the Financial Analysis tab in
+ * the analyze screen. Three stacked blocks:
+ *
+ * 1. **Donut chart** — share of each category in the selected window,
+ *    with a compact legend listing each category's percentage.
+ * 2. **Details tree** — grouped by parent category, each category
+ *    expanded into its per-tag split (or a single "بدون برچسب" row).
+ *    Each category row links to the transactions list pre-filtered to
+ *    that category and window.
+ * 3. **Forecast chart** — cumulative history plus projected values for
+ *    four forecasting methods; the user picks the active method from a
+ *    dropdown without re-fetching.
+ *
+ * The `type` prop selects the side (`"income"` / `"expense"`) and swaps
+ * the palette and copy accordingly.
+ *
+ * @module app/analyze/components/FinancialAnalysis
+ */
+
 "use client";
-import { memo, useMemo } from "react";
+
+import { memo, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Box from "@/components/Box";
 import DonutChart from "@/components/DonutChart";
 import AnalyzeIncomeLoading from "@/components/Skeletons/AnalyzeIncomeLoading";
 import { filterToUrl } from "@/app/transactions/methods";
 import type { BreakdownData, ChartSlice } from "../../page";
+import ForecastChart from "../ForecastChart";
+import type { ForecastMethod } from "@/utility/shared/forecastMethods";
 
+/**
+ * Static configuration for each analysis side.
+ *
+ * Defines the palette, the tailwind class names used for the legend
+ * dots, the section titles, and the empty-state copy.
+ */
 const CONFIG = {
   income: {
     colors: ["#009764", "#19af7c", "#55c28b", "#79d99e", "#97e3ba"] as const,
@@ -19,8 +50,10 @@ const CONFIG = {
     ] as const,
     title: "سهم منابع درآمدی",
     detailsTitle: "جزئیات درآمدها",
+    forecastTitle: "پیش‌بینی روند درآمد",
     emptyText: "در این بازه درآمدی ثبت نشده است.",
     primaryColorClass: "text-income-primary",
+    forecastColor: "#009764",
   },
   expense: {
     colors: ["#a40000", "#b42a2a", "#c25555", "#d97979", "#e39797"] as const,
@@ -33,16 +66,29 @@ const CONFIG = {
     ] as const,
     title: "سهم منابع هزینه‌ای",
     detailsTitle: "جزئیات هزینه‌ها",
+    forecastTitle: "پیش‌بینی روند هزینه",
     emptyText: "در این بازه هزینه‌ای ثبت نشده است.",
     primaryColorClass: "text-expense-primary",
+    forecastColor: "#a40000",
   },
 } as const;
 
+/** Discriminator for which side of the analysis this instance renders. */
 type AnalysisType = keyof typeof CONFIG;
 
 /** Slice enriched with presentation color/class (added client-side). */
 type DecoratedSlice = ChartSlice & { color: string; dotClass: string };
 
+/**
+ * Renders the income or expense analysis tab.
+ *
+ * @param props - Component props.
+ * @param props.type - Which side of the analysis to render.
+ * @param props.timeParam - The active time-window selector value.
+ * @param props.data - The breakdown payload from `/api/analyze`.
+ * @param props.isLoading - When `true`, renders the skeleton state.
+ * @returns The rendered analysis tab.
+ */
 function FinancialAnalysis({
   type,
   timeParam,
@@ -56,7 +102,14 @@ function FinancialAnalysis({
 }) {
   const conf = CONFIG[type];
   const router = useRouter();
+  const [forecastMethod, setForecastMethod] = useState<ForecastMethod>("sma");
 
+  /**
+   * Navigates to the transactions list, pre-filtered to the tapped
+   * category and the current time window.
+   *
+   * @param categoryId - The numeric id of the category that was tapped.
+   */
   const handleCategoryClick = (categoryId: number) => {
     const url = `/transactions${filterToUrl({
       timeWindow: timeParam,
@@ -67,6 +120,7 @@ function FinancialAnalysis({
     router.push(url);
   };
 
+  /** Category slices decorated with their palette color and dot class. */
   const decoratedSlices: DecoratedSlice[] = useMemo(() => {
     if (!data) return [];
     return data.chartSlices.map((slice, i) => ({
@@ -77,6 +131,7 @@ function FinancialAnalysis({
     }));
   }, [data, conf]);
 
+  /** Donut-chart payload derived from the decorated slices. */
   const donutData = useMemo(
     () => decoratedSlices.map((s) => ({ percent: s.percent, color: s.color })),
     [decoratedSlices],
@@ -86,6 +141,13 @@ function FinancialAnalysis({
     return <AnalyzeIncomeLoading />;
   }
 
+  /**
+   * Converts a category amount into its percentage of the total, rounded
+   * to one decimal place for display.
+   *
+   * @param amount - The category amount in Rials.
+   * @returns The percentage of the total, or `0` when the total is `0`.
+   */
   const getCategoryPercent = (amount: number) => {
     if (data.totalAmount === 0) return 0;
     return Number(((amount / data.totalAmount) * 100).toFixed(1));
@@ -93,6 +155,7 @@ function FinancialAnalysis({
 
   return (
     <div className="w-full flex flex-col gap-15">
+      {/* ─── Donut chart ─────────────────────────────────────── */}
       <Box className="flex flex-col gap-4 p-6">
         <div className="flex items-center justify-between">
           <span className="text-xs text-secondary">{conf.title}</span>
@@ -135,6 +198,7 @@ function FinancialAnalysis({
         )}
       </Box>
 
+      {/* ─── Details tree ────────────────────────────────────── */}
       <Box className="gap-10">
         <h3 className="text-xs text-secondary">{conf.detailsTitle}</h3>
         {data.details.length === 0 ? (
@@ -208,6 +272,18 @@ function FinancialAnalysis({
           ))
         )}
       </Box>
+
+      {/* ─── Forecast chart ──────────────────────────────────── */}
+      {data.forecast && (
+        <ForecastChart
+          historical={data.forecast.historical}
+          byMethod={data.forecast.byMethod}
+          selectedMethod={forecastMethod}
+          onSelectMethod={setForecastMethod}
+          primaryColor={conf.forecastColor}
+          title={conf.forecastTitle}
+        />
+      )}
     </div>
   );
 }

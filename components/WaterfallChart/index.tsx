@@ -759,6 +759,7 @@ export default function WaterfallChart({ data, color }: WaterfallChartProps) {
         {chartLayout.bars.map((bar) => {
           const isHovered = hoveredIndex === bar.index;
           const isCurrent = bar.isCurrentMonth;
+          const isForecast = !!bar.isForecast;
 
           return (
             <g
@@ -767,12 +768,6 @@ export default function WaterfallChart({ data, color }: WaterfallChartProps) {
               onMouseLeave={() => handleBarHover(null)}
               className="cursor-pointer"
             >
-              {/*
-                Invisible hit-area: wider than the visible bar to make
-                hovering easier, especially on touch devices. Spans the
-                full drawable height so the user doesn't have to target
-                the bar precisely.
-              */}
               <rect
                 x={bar.x - 4}
                 y={TOP_PADDING}
@@ -781,7 +776,13 @@ export default function WaterfallChart({ data, color }: WaterfallChartProps) {
                 fill="transparent"
               />
 
-              {/* Visible bar rectangle. */}
+              {/*
+        Visible bar.
+        - Historical columns use the standard fill with the usual opacity.
+        - Forecast columns are drawn with a semi-transparent fill and a
+          dashed outline so they read as projections rather than as
+          observed data.
+      */}
               <rect
                 x={bar.x}
                 y={bar.barTop}
@@ -790,15 +791,15 @@ export default function WaterfallChart({ data, color }: WaterfallChartProps) {
                 rx={3}
                 ry={3}
                 fill={bar.fill}
-                opacity={isHovered ? 1 : isCurrent ? 0.95 : 0.85}
+                opacity={
+                  isHovered ? 1 : isForecast ? 0.35 : isCurrent ? 0.95 : 0.85
+                }
+                stroke={isForecast ? bar.fill : "none"}
+                strokeWidth={isForecast ? 1 : 0}
+                strokeDasharray={isForecast ? "3 2" : undefined}
                 className="transition-opacity duration-200"
               />
 
-              {/*
-                Highlight ring for the current Jalali month.
-                Rendered as a slightly larger, semi-transparent stroked
-                rectangle around the bar.
-              */}
               {isCurrent && (
                 <rect
                   x={bar.x - 2}
@@ -814,7 +815,6 @@ export default function WaterfallChart({ data, color }: WaterfallChartProps) {
                 />
               )}
 
-              {/* Month name label below the bar. */}
               <text
                 x={bar.centerX}
                 y={CHART_HEIGHT - 12}
@@ -822,6 +822,7 @@ export default function WaterfallChart({ data, color }: WaterfallChartProps) {
                 fontSize={9}
                 fill={isCurrent ? bar.fill : LABEL_COLOR}
                 fontWeight={isCurrent ? "bold" : "normal"}
+                opacity={isForecast ? 0.7 : 1}
               >
                 {bar.name}
               </text>
