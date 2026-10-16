@@ -63,7 +63,7 @@ export default function Transactions() {
     [transactionsFilter.timeWindow, timeFilterOptions],
   );
 
-  // ==================== مدیریت اسکرول ====================
+  // ==================== Scroll Management ====================
   const SCROLL_KEY = useMemo(
     () => `transactions-scroll-${JSON.stringify(transactionsFilter)}`,
     [transactionsFilter],
@@ -71,7 +71,7 @@ export default function Transactions() {
 
   const { clearSavedPosition } = useScrollRestoration(SCROLL_KEY, !isLoading);
 
-  // ==================== دریافت دیتا ====================
+  // ==================== Fetching Data ====================
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -96,7 +96,7 @@ export default function Transactions() {
     };
   }, [accountsStore, transactionsStore, transactionsFilter]);
 
-  // ==================== هندلرها ====================
+  // ==================== Handlers ====================
   const navigateWithLoading = useCallback(
     (url: string) => {
       clearSavedPosition();
@@ -112,7 +112,7 @@ export default function Transactions() {
       window.scrollTo({ top: 0, behavior: "instant" });
       const newFilter = { ...transactionsFilter, timeWindow: time };
       router.replace(`/transactions${filterToUrl(newFilter)}`);
-      tw.close(); // ← به جای setShowTimeDropdown(false)
+      tw.close();
     },
     [transactionsFilter, router, clearSavedPosition, tw],
   );
@@ -128,16 +128,19 @@ export default function Transactions() {
       : undefined;
 
   return (
-    <div className="p-7.5 flex flex-col gap-15 w-screen overflow-hidden min-h-screen">
-      <div className="grid gap-7.5">
-        <NavbarTitle title="تراکنش‌ها" />
+    <div className="py-7.5 flex flex-col gap-15 w-full overflow-hidden min-h-screen">
+      <div className="grid gap-7.5 min-w-0">
+        <div className="px-7.5">
+          <NavbarTitle title="تراکنش‌ها" />
+        </div>
 
-        <div className="relative" ref={tw.dropdownRef}>
-          <div className="flex items-center gap-2 overflow-x-scroll scroll-auto w-full scrollbar-none">
-            <span className="me-2">فیلترها</span>
+        <div className="relative min-w-0" ref={tw.dropdownRef}>
+          <div className="flex items-center px-7.5 gap-2 overflow-x-auto w-full min-w-0 scrollbar-none">
+            <span className="me-2 shrink-0 text-nowrap">فیلترها</span>
 
             <Capsule
               Icon={Left}
+              className="shrink-0 text-nowrap"
               primary={transactionsFilter.timeWindow !== DEFAULT_TIME_WINDOW}
               onClick={tw.toggle}
             >
@@ -150,11 +153,11 @@ export default function Transactions() {
               replace
               primary={transactionsFilter.accounts.length > 0}
               accountColor={selectedAccount?.color}
-              className={
+              className={`shrink-0 text-nowrap ${
                 selectedAccount
                   ? `${AccountColors[selectedAccount.color].border} ${AccountColors[selectedAccount.color].text} ${AccountColors[selectedAccount.color].surface}`
                   : ""
-              }
+              }`}
             >
               {transactionsFilter.accounts.length === 0
                 ? "همه حساب‌ها"
@@ -168,13 +171,13 @@ export default function Transactions() {
               href={`/transactions/filter-category${filterToUrl(transactionsFilter)}`}
               replace
               primary={transactionsFilter.categories.length > 0}
-              className={
+              className={`shrink-0 text-nowrap ${
                 selectedCategory
                   ? selectedCategory.id >= 0x03000000
                     ? "border-income-border text-income-primary bg-income-background"
                     : "border-expense-border text-expense-primary bg-expense-background"
                   : ""
-              }
+              }`}
             >
               {transactionsFilter.categories.length === 0
                 ? "همه دسته‌بندی‌ها"
@@ -194,7 +197,7 @@ export default function Transactions() {
         </div>
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 px-7.5">
         {isLoading ? (
           <div className="grid gap-4">
             <TransactionItemLoading />
