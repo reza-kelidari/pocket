@@ -1,3 +1,20 @@
+/**
+ * @fileoverview Advanced Analytics Page
+ *
+ * The "تحلیل و بررسی پیشرفته" screen. Presents four tabs over a shared
+ * time-window selector:
+ * - Cash Flow  → {@link CashFlow}
+ * - Income     → {@link FinancialAnalysis} (`type="income"`)
+ * - Expense    → {@link FinancialAnalysis} (`type="expense"`)
+ * - Profit     → {@link Profit}
+ *
+ * All tabs read from a single `/api/analyze` response whose shape is
+ * declared below as {@link AnalyzeResponse}. The whole screen re-fetches
+ * whenever the time window changes.
+ *
+ * @module app/analyze/page
+ */
+
 "use client";
 
 import NavbarTitle from "@/components/NavbarTitle";
@@ -15,6 +32,7 @@ import { useTimeFilterOptions } from "@/utility/shared/useTimeFilterOptions";
 
 /* ─── Shapes matching the /api/analyze response ─────────────── */
 
+/** A single slice of the income/expense donut chart. */
 export type ChartSlice = {
   id: number | "other";
   name: string;
@@ -22,8 +40,10 @@ export type ChartSlice = {
   percent: number;
 };
 
+/** Per-tag amount within one category. */
 export type TagBreakdown = { tagId: string; tagName: string; amount: number };
 
+/** Per-category breakdown with its per-tag split. */
 export type CategoryBreakdown = {
   id: number;
   name: string;
@@ -32,6 +52,7 @@ export type CategoryBreakdown = {
   untaggedAmount: number;
 };
 
+/** Group of categories sharing a parent heading. */
 export type GroupBreakdown = {
   id: number;
   name: string;
@@ -39,12 +60,14 @@ export type GroupBreakdown = {
   categories: CategoryBreakdown[];
 };
 
+/** Full breakdown payload for one side (income or expense). */
 export type BreakdownData = {
   totalAmount: number;
   chartSlices: ChartSlice[];
   details: GroupBreakdown[];
 };
 
+/** Income / expense metrics for the current and previous window. */
 export type CashflowMetrics = {
   currentIncome: number;
   currentExpense: number;
@@ -53,6 +76,14 @@ export type CashflowMetrics = {
   isAllTime: boolean;
 };
 
+/**
+ * Profit / loss metrics for the selected window.
+ *
+ * - `startBalance` / `endBalance` come from the *full* balance history, so
+ *   `endBalance` always reflects the user's current total balance.
+ * - `cashOnHand` is the user's current liquid money (excluding `Book`
+ *   accounts) and is *not* window-scoped.
+ */
 export type ProfitMetrics = {
   income: number;
   expense: number;
@@ -60,8 +91,11 @@ export type ProfitMetrics = {
   startBalance: number;
   endBalance: number;
   isAllTime: boolean;
+  /** Liquid money (excludes `Book` accounts). Always the current value. */
+  cashOnHand: number;
 };
 
+/** Monthly cumulative profit/loss data for the waterfall chart. */
 export type WaterfallDataShape = {
   months: {
     month: number;
@@ -77,6 +111,7 @@ export type WaterfallDataShape = {
   year: number;
 };
 
+/** Complete response from `/api/analyze`. */
 export type AnalyzeResponse = {
   cashflow: CashflowMetrics;
   income: BreakdownData;
@@ -87,6 +122,12 @@ export type AnalyzeResponse = {
 
 /* ─── Skeleton (unchanged visual) ──────────────────────────── */
 
+/**
+ * Full-screen skeleton shown while the initial analyze fetch is in flight
+ * or while the component tree is being lazy-loaded via `<Suspense>`.
+ *
+ * @returns A skeleton mirroring the final layout.
+ */
 function AnalyzeSkeleton() {
   return (
     <div className="p-7.5 flex flex-col gap-15 w-full max-w-full min-w-0 overflow-x-hidden min-h-screen">
@@ -117,6 +158,12 @@ function AnalyzeSkeleton() {
 
 /* ─── Content ──────────────────────────────────────────────── */
 
+/**
+ * Main content component. Owns the tab state, the shared time-window
+ * selector, and the single `/api/analyze` fetch that feeds all four tabs.
+ *
+ * @returns The rendered analytics screen.
+ */
 function AnalyzeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -127,6 +174,7 @@ function AnalyzeContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<number>(0);
 
+  /** Re-fetches analytics whenever the time window changes. */
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -154,6 +202,12 @@ function AnalyzeContent() {
   const currentTimeFilterName =
     timeFilterOptions.find((o) => o.time === timeParam)?.name ?? "۳۰ روز گذشته";
 
+  /**
+   * Replaces the current route with a new time window and closes the
+   * time-window dropdown.
+   *
+   * @param time - The newly selected time window.
+   */
   const handleTimeFilterChange = (time: number) => {
     router.replace(`/analyze?time=${time}`, { scroll: false });
     tw.close();
@@ -242,6 +296,12 @@ function AnalyzeContent() {
   );
 }
 
+/**
+ * Route entry point. Wraps {@link AnalyzeContent} in a `<Suspense>` boundary
+ * so `useSearchParams` doesn't force the entire route to be dynamic.
+ *
+ * @returns The rendered page.
+ */
 export default function Analyze() {
   return (
     <Suspense fallback={<AnalyzeSkeleton />}>

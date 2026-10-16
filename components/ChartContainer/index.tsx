@@ -1,3 +1,23 @@
+/**
+ * @fileoverview Balance Chart Container
+ *
+ * A self-contained chart widget that:
+ * - Fetches balance data from `/api/chart` for a given time window.
+ * - Renders an inline SVG line/area chart via {@link ChartBox}.
+ * - Optionally shows an inline 7 / 30 / 90 / all-time selector.
+ * - Optionally shows a secondary "cash on hand" figure below the total
+ *   balance, excluding `Book` accounts (receivables / payables), with a
+ *   help icon placed to the right of the label that reveals an
+ *   explanatory tooltip on click.
+ *
+ * The component distinguishes between two loading states:
+ * - **Initial load** — nothing has been rendered yet; a skeleton is shown.
+ * - **Refresh** — data is being refetched (e.g. after changing the time
+ *   window); the existing chart stays visible, dimmed, with a small spinner.
+ *
+ * @module components/ChartContainer
+ */
+
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Button from "../Button";
@@ -6,25 +26,60 @@ import { AccountColorType } from "@/utility/accounts/types";
 import { AccountColors, PrimaryColors } from "@/utility/shared/colors";
 import ChartBox from "./ChartBox";
 import Box from "../Box";
+import Info from "@/icons/Info";
 
+/** Sentinel value meaning "no time restriction" (≈ 100 years). */
 const ALL_TIME = 36500;
 
+/** Explanatory text shown in the help tooltip next to the cash figure. */
+const CASH_TOOLTIP_TEXT =
+  "موجودی بعد از کسر بدهی‌ها و طلب‌ها";
+
+/**
+ * Props accepted by {@link ChartContainer}.
+ */
 type ChartParamsType = {
+  /** Chart title, e.g. "موجودی کل" or "موجودی بانک ملی". */
   title: string;
+  /** When true, the title uses the default foreground color instead of secondary. */
   titlePrimary?: boolean;
+  /** When provided, restricts the chart to this account only. */
   accountID?: string;
+  /** When provided, restricts the chart to transactions carrying this tag. */
   tag?: string;
-  /** Time window in days. -1 = this month, -2 = this year, 36500 = all time. */
+  /**
+   * Time window in days.
+   * - `-1` = this Jalali month
+   * - `-2` = this Jalali year
+   * - `36500` = all time
+   * - any positive number = last N days
+   */
   time: number;
-  /** When provided, shows the 7/30/90/all selector and calls back on change. */
+  /**
+   * When provided, renders the 7 / 30 / 90 / all-time selector and calls
+   * this callback with the newly selected window.
+   */
   onTimeChange?: (time: number) => void;
-  /** Optional override for the "(...)" suffix shown next to the title. */
+  /** Optional override for the "(...)" suffix next to the title. */
   windowLabel?: string;
+  /** When provided, renders a footer button linking to this URL. */
   link?: string;
+  /** Label text for the footer button. */
   linkTitle?: string;
+  /** Optional account color used to theme the chart and selector. */
   color?: AccountColorType;
+  /**
+   * When `true`, renders "در دسترس" (available cash) below the total
+   * balance, together with a help icon placed to the right of the label
+   * whose tooltip explains what the figure represents. The value comes
+   * from the API's `cashOnHand` field, which excludes `Book` accounts.
+   * Useful on the home page; should stay off on account-detail pages
+   * where the concept doesn't apply.
+   */
+  showCashOnHand?: boolean;
 };
 
+/** Preset buttons shown inside the inline time selector. */
 const FILTERS: Array<{ label: string; value: number }> = [
   { label: "۷", value: 7 },
   { label: "۳۰", value: 30 },
@@ -32,6 +87,13 @@ const FILTERS: Array<{ label: string; value: number }> = [
   { label: "همه", value: ALL_TIME },
 ];
 
+/**
+ * Builds the default "(...)" window label shown next to the chart title.
+ *
+ * @param time - The current time window.
+ * @param allTimeSpanDays - Days since the first transaction (used for "all time").
+ * @returns A Persian, parenthesized label describing the window.
+ */
 function defaultWindowLabel(time: number, allTimeSpanDays: number): string {
   if (time === ALL_TIME) {
     return allTimeSpanDays > 0
@@ -43,6 +105,23 @@ function defaultWindowLabel(time: number, allTimeSpanDays: number): string {
   return `(${time.toLocaleString("fa-ir")} روز گذشته)`;
 }
 
+/**
+ * Renders a balance chart with an optional time-window selector and an
+ * optional "cash on hand" line (with an explanatory help tooltip).
+ *
+ * @param props - See {@link ChartParamsType}.
+ * @returns The chart container UI.
+ *
+ * @example
+ * ```tsx
+ * <ChartContainer
+ *   title="روند موجودی"
+ *   time={chartTime}
+ *   onTimeChange={setChartTime}
+ *   showCashOnHand
+ * />
+ * ```
+ */
 export default function ChartContainer({
   title,
   titlePrimary,
@@ -54,22 +133,42 @@ export default function ChartContainer({
   link,
   linkTitle,
   color,
+  showCashOnHand = false,
 }: ChartParamsType) {
-  /** Whether we've ever successfully received data. Used to decide
-   *  between full skeleton and in-place chart loading. */
+  /**
+   * Whether data has ever been received successfully. Distinguishes the
+   * first load (skeleton) from a subsequent refetch (dimmed chart).
+   */
   const hasLoadedOnceRef = useRef(false);
 
-  /** True only on the very first load (before any data). */
+  /** `true` only on the very first load, before any data is available. */
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  /** True while a refetch (time change) is in flight, when we already
-   *  have data to keep showing. */
+  /** `true` while a refetch is in flight and old data is still visible. */
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  /** Balance points returned by the API, one per Tehran day in the window. */
   const [points, setPoints] = useState<BalanceType[]>([]);
+
+  /** Balance at the most recent point. */
   const [currentBalance, setCurrentBalance] = useState(0);
+
+  /** Days since the earliest transaction, used by the "all time" label. */
   const [allTimeSpanDays, setAllTimeSpanDays] = useState(0);
 
+  /**
+   * Available cash (excluding `Book` accounts) as returned by the API.
+   * `null` when the API omits it (e.g. account-scoped requests).
+   */
+  const [cashOnHand, setCashOnHand] = useState<number | null>(null);
+
+  /** `true` while the help tooltip next to the cash figure is visible. */
+  const [isCashTooltipOpen, setIsCashTooltipOpen] = useState(false);
+
+  /** Ref wrapping the help icon + tooltip so we can detect outside clicks. */
+  const cashHelpRef = useRef<HTMLDivElement>(null);
+
+  // ─── Fetch data whenever the input parameters change ─────────
   useEffect(() => {
     let isMounted = true;
 
@@ -92,12 +191,14 @@ export default function ChartContainer({
           points: BalanceType[];
           currentBalance: number;
           allTimeSpanDays: number;
+          cashOnHand?: number | null;
         };
         if (!isMounted) return;
 
         setPoints(data.points ?? []);
         setCurrentBalance(data.currentBalance ?? 0);
         setAllTimeSpanDays(data.allTimeSpanDays ?? 0);
+        setCashOnHand(data.cashOnHand ?? null);
         hasLoadedOnceRef.current = true;
       } catch (err) {
         console.error("ChartContainer fetch failed:", err);
@@ -114,6 +215,29 @@ export default function ChartContainer({
     };
   }, [accountID, time, tag]);
 
+  /**
+   * Closes the help tooltip when the user clicks anywhere outside of it.
+   * Only active while the tooltip is open.
+   */
+  useEffect(() => {
+    if (!isCashTooltipOpen) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (
+        cashHelpRef.current &&
+        !cashHelpRef.current.contains(e.target as Node)
+      ) {
+        setIsCashTooltipOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [isCashTooltipOpen]);
+
+  // ─── Initial-load skeleton ───────────────────────────────────
   if (isInitialLoading) {
     return (
       <Box className="overflow-hidden animate-fade-in">
@@ -134,6 +258,7 @@ export default function ChartContainer({
 
   return (
     <Box className="overflow-hidden animate-fade-in">
+      {/* ─── Header: title + optional time selector ───────────── */}
       <div className="flex items-center justify-between mb-4">
         <h3
           className={`${titlePrimary ? "forground" : "text-secondary"} text-xs`}
@@ -163,6 +288,7 @@ export default function ChartContainer({
         )}
       </div>
 
+      {/* ─── Chart body, dimmed while refreshing ──────────────── */}
       <div className="relative">
         <div
           className={`transition-opacity duration-200 ${
@@ -188,6 +314,7 @@ export default function ChartContainer({
         )}
       </div>
 
+      {/* ─── Total balance ─────────────────────────────────────── */}
       <div className="flex gap-1.5 mr-auto items-center mt-4">
         <h1
           className={`font-bold transition-opacity duration-200 ${
@@ -198,7 +325,49 @@ export default function ChartContainer({
         </h1>
         <span className="text-xs">﷼</span>
       </div>
-      {link && <Button href={link}>{linkTitle || ""}</Button>}
+
+      {/* ─── Optional: cash on hand (excludes Book accounts) ──── */}
+      {showCashOnHand && cashOnHand !== null && (
+        <div className="flex gap-1.5 mr-auto items-center text-secondary -mt-2">
+          {/* Help icon sits to the right of the label (rightmost in RTL) */}
+          <div className="relative" ref={cashHelpRef}>
+            <button
+              type="button"
+              aria-label="توضیح موجودی در دسترس"
+              aria-expanded={isCashTooltipOpen}
+              onClick={() => setIsCashTooltipOpen((v) => !v)}
+              className="grid place-content-center cursor-pointer"
+            >
+              <Info
+                height={16}
+                width={16}
+                className="fill-secondary hover:fill-primary transition-colors"
+              />
+            </button>
+
+            {isCashTooltipOpen && (
+              <div
+                role="tooltip"
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 text-[10px] leading-5 text-center bg-white border border-elements-border rounded-2xl p-3 shadow-lg z-50 animate-fade-in"
+              >
+                {CASH_TOOLTIP_TEXT}
+              </div>
+            )}
+          </div>
+
+          <span className="text-[10px]">در دسترس:</span>
+          <span
+            className={`text-xs font-medium transition-opacity duration-200 ${
+              isRefreshing ? "opacity-50" : "opacity-100"
+            }`}
+          >
+            {cashOnHand.toLocaleString("fa-ir")} ﷼
+          </span>
+        </div>
+      )}
+
+      {/* ─── Optional: footer link ─────────────────────────────── */}
+      {link && <Button href={link} className="mt-4">{linkTitle || ""}</Button>}
     </Box>
   );
 }

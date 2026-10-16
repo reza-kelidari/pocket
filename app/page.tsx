@@ -1,3 +1,20 @@
+/**
+ * @fileoverview Home Page
+ *
+ * The application landing screen. Renders:
+ * - A header with today's Jalali date and a link to the options menu.
+ * - A horizontally scrollable strip of account cards.
+ * - Three quick-access shortcuts: receive / pay / transfer.
+ * - The overall balance chart (with the "cash on hand" figure).
+ * - The five most recent transactions, each swipeable for edit/delete.
+ *
+ * On first mount it enforces the splash guard: if the splash screen has not
+ * been shown in this session, the user is redirected to `/splash` so that
+ * authentication and initial account setup can run.
+ *
+ * @module app/page
+ */
+
 "use client";
 
 import AccountCard from "@/components/AccountCard";
@@ -27,32 +44,70 @@ import ChartContainerLoading from "@/components/Skeletons/ChartContainerLoading"
 import { useAccountsAndTransactions } from "@/utility/shared/useAccountsAndTransactions";
 import { useDeleteTransaction } from "@/utility/shared/useDeleteTransaction";
 
+/**
+ * Home page component.
+ *
+ * @returns The rendered home page.
+ */
 export default function Home() {
   const router = useRouter();
+
+  /** All accounts belonging to the current user. */
   const [accounts, setAccounts] = useState<AccountType[]>([]);
+
+  /** All transactions belonging to the current user. */
   const [transactions, setTransactions] = useState<TransactionType[]>([]);
+
   const { getBalances } = useBalances();
+
+  /** Time window (in days) currently selected for the balance chart. */
   const [chartTime, setChartTime] = useState(30);
 
+  /** Blocks rendering until the splash guard has decided whether to redirect. */
   const [splashGuard, setSplashGuard] = useState<boolean>(true);
+
+  /** ID of the transaction whose swipe actions are currently open, if any. */
   const [swipedItem, setSwipedItem] = useState<string | null>(null);
+
+  /**
+   * Monotonic counter used to force-close the delete confirmation dialog
+   * on any other swipeable element when a new one is opened.
+   */
   const [dragCounter, setDragCounter] = useState(0);
+
+  /** Today's date, formatted in Persian, shown in the header. */
   const [headerDate, setHeaderDate] = useState("");
+
+  /** `true` while initial data is being fetched. */
   const [isLoading, setIsLoading] = useState(false);
+
   const pathname = usePathname();
+
+  /** Ref to the horizontal account cards strip, used for scroll resets. */
   const accountsScrollRef = useRef<HTMLDivElement>(null);
+
   const fetchAll = useAccountsAndTransactions();
   const deleteTransaction = useDeleteTransaction();
 
+  /**
+   * Enforce the splash guard: if the splash screen has not been shown in
+   * this session, redirect there so authentication and initial setup run.
+   */
   useEffect(() => {
     if (!sessionStorage.getItem(SplashShownKey)) router.replace("/splash");
     else setSplashGuard(false);
   }, [router]);
 
+  /** Scroll to top whenever the route changes back to home. */
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  /**
+   * Loads accounts + transactions and populates the balances store.
+   * Only shows the skeleton on the very first load; subsequent refreshes
+   * swap data silently.
+   */
   const loadData = async () => {
     const isFirstLoad = accounts.length === 0 && transactions.length === 0;
     if (isFirstLoad) setIsLoading(true);
@@ -62,29 +117,40 @@ export default function Home() {
     if (isFirstLoad) setIsLoading(false);
   };
 
+  /** Initial data load. */
   useEffect(() => {
     loadData();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Resets the horizontal account cards strip to its rightmost (RTL start) position. */
   const resetAccountsScroll = () => {
     if (accountsScrollRef.current) {
       accountsScrollRef.current.scrollTo({ left: 0, behavior: "auto" });
     }
   };
 
+  /**
+   * Runs on mount and whenever loading state or accounts change, to keep
+   * the account strip scrolled to the correct start position (RTL).
+   */
   useLayoutEffect(() => {
     resetAccountsScroll();
     const raf = requestAnimationFrame(resetAccountsScroll);
     return () => cancelAnimationFrame(raf);
   }, [isLoading, accounts]);
 
+  /**
+   * Refreshes data and resets the account strip scroll whenever the page
+   * becomes visible again (e.g. returning from a detail screen).
+   */
   usePageShowSync(() => {
     loadData();
     requestAnimationFrame(resetAccountsScroll);
   }, []);
 
+  /** Recomputes the header date whenever the route changes. */
   useEffect(() => {
     setHeaderDate(
       new Date().toLocaleDateString("fa-IR", {
@@ -95,10 +161,12 @@ export default function Home() {
     );
   }, [pathname]);
 
+  /** The five most recent transactions, newest first. */
   const latestTransactions = useMemo(() => {
     return transactions.slice(0, 5);
   }, [transactions]);
 
+  /** Shortcuts displayed in the center of the home screen. */
   const quickAccessList: { name: string; link: string; icon: IconComponent }[] =
     [
       { name: "دریافت", link: "/transactions/add?type=debit", icon: Receive },
@@ -112,6 +180,11 @@ export default function Home() {
 
   if (splashGuard) return null;
 
+  /**
+   * Deletes a transaction and refreshes accounts + transactions + balances.
+   *
+   * @param id - The ID of the transaction to delete.
+   */
   const handleDeleteTransaction = async (id: string) => {
     const { accounts: freshAccs, transactions: newTxs } =
       await deleteTransaction(id);
@@ -122,6 +195,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-15 p-7.5 pb-15 overflow-x-hidden">
+      {/* ─── Header: date + options menu ──────────────────────── */}
       <header className="flex justify-between p-2.5">
         <div className="flex w-7.5"></div>
         <h3 className="text-secondary text-center">{headerDate}</h3>
@@ -130,6 +204,7 @@ export default function Home() {
         </Link>
       </header>
 
+      {/* ─── Accounts strip ───────────────────────────────────── */}
       <div className="grid gap-7.5">
         <Link href="/accounts" className="w-fit">
           <Title>
@@ -165,6 +240,7 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ─── Quick access shortcuts ───────────────────────────── */}
       <div className="flex gap-16 w-full content-around justify-center">
         {quickAccessList.map((item) => (
           <QuickAccess key={item.link} Icon={item.icon} link={item.link}>
@@ -173,6 +249,7 @@ export default function Home() {
         ))}
       </div>
 
+      {/* ─── Balance chart (with cash-on-hand figure) ─────────── */}
       {isLoading ? (
         <ChartContainerLoading />
       ) : (
@@ -182,9 +259,11 @@ export default function Home() {
           onTimeChange={setChartTime}
           link="/analyze"
           linkTitle="تحلیل و بررسی پیشرفته"
+          showCashOnHand
         />
       )}
 
+      {/* ─── Latest transactions ──────────────────────────────── */}
       <div className={`grid gap-7.5 ${!isLoading ? "animate-fade-in" : ""}`}>
         <Title>تراکنش‌های اخیر</Title>
 

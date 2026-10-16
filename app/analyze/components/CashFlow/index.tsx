@@ -23,7 +23,7 @@ export default function CashFlow({
 
   return (
     <div className="w-full flex flex-col gap-15">
-      <ChartContainer title="روند موجودی" time={timeParam} />
+      <ChartContainer title="روند موجودی" time={timeParam} showCashOnHand />
       <IncomeVsExpense
         variant="current"
         metrics={metrics}

@@ -1,3 +1,39 @@
+/**
+ * @fileoverview Balance Chart API Route
+ *
+ * Returns a time-series of balance points for a chart, plus summary values.
+ *
+ * Query params:
+ * - `accountId` (optional, UUID): when present, the chart reflects only that
+ *   account's balance. When absent, the chart reflects the total balance
+ *   across all non-`Book` accounts.
+ * - `time` (number): time window in days. Special values:
+ *   - `-1` = this Jalali month
+ *   - `-2` = this Jalali year
+ *   - `36500` = all time
+ *   - any positive number = last N days
+ * - `tag` (optional, UUID or `"untagged"`): when present, restricts the
+ *   chart to transactions carrying that tag (or lacking any tag).
+ *
+ * Response shape:
+ * ```
+ * {
+ *   points:            ChartPoint[],  // one entry per Tehran day in the window
+ *   currentBalance:    number,        // balance at the last point
+ *   allTimeSpanDays:   number,        // days since first transaction
+ *   cashOnHand:        number | null  // "available cash" (see below)
+ * }
+ * ```
+ *
+ * `cashOnHand` is only computed when no `accountId` and no `tag` filter are
+ * applied (i.e. the "total balance" view). It excludes all `Book` accounts
+ * (طلب‌ها / بدهی‌ها / وجوه در راه) so it represents liquid money the user
+ * actually has available, as opposed to net worth including receivables and
+ * payables.
+ *
+ * @module app/api/chart/route
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
@@ -7,12 +43,33 @@ import {
   getCutoffTimestamp,
 } from "@/utility/shared/timeMethods";
 
+/** Milliseconds in one day. Used to iterate day-by-day when filling gaps. */
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Sentinel value meaning "no time restriction" (≈ 100 years). */
 const ALL_TIME = 36500;
+
+/** Default window (in days) when the client omits the `time` param. */
 const DEFAULT_WINDOW = 29;
 
+/** A single point on the balance chart. */
 type ChartPoint = { time: number; balance: number };
 
+/**
+ * GET handler for `/api/chart`.
+ *
+ * Builds a running balance series from the user's transactions, densified to
+ * one point per Tehran calendar day within the requested window so the chart
+ * renders a continuous line even on days without activity.
+ *
+ * When the request is for the "total balance" view (no `accountId`, no `tag`),
+ * the response additionally includes `cashOnHand`, which is the sum of all
+ * money held in non-`Book` accounts.
+ *
+ * @param req - The incoming Next.js request.
+ * @returns A JSON response containing `points`, `currentBalance`,
+ *          `allTimeSpanDays`, and optionally `cashOnHand`.
+ */
 export async function GET(req: NextRequest) {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -24,6 +81,7 @@ export async function GET(req: NextRequest) {
   const timeRaw = url.searchParams.get("time");
   const tagRaw = url.searchParams.get("tag");
 
+  // ─── Validate optional accountId ─────────────────────────────
   let accountId: string | null = null;
   if (accountIdRaw && accountIdRaw !== "") {
     const r = sanitizeUuid(accountIdRaw);
@@ -33,13 +91,14 @@ export async function GET(req: NextRequest) {
     accountId = r.value;
   }
 
+  // ─── Validate optional time window ───────────────────────────
   let time = DEFAULT_WINDOW;
   if (timeRaw) {
     const timeR = sanitizeInteger(timeRaw, -2, ALL_TIME);
     if (timeR.valid) time = timeR.value;
   }
 
-  // ─── Parse tag filter ───────────────────────────────────────
+  // ─── Parse tag filter ────────────────────────────────────────
   let tagValue: string | null = null;
   let isUntagged = false;
   if (tagRaw === "untagged") {
@@ -50,7 +109,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // ─── Build dynamic query with optional account & tag filters ─
+    // ─── Build the base query with optional filters ─────────────
     const params: unknown[] = [userId];
     const conditions: string[] = [];
 
@@ -78,6 +137,7 @@ export async function GET(req: NextRequest) {
 
     const res = await pool.query(query, params);
 
+    // ─── Aggregate into one balance point per Tehran day ────────
     const balanceByDay = new Map<number, number>();
     let runningBalance = 0;
 
@@ -109,6 +169,7 @@ export async function GET(req: NextRequest) {
         ? Math.ceil((todayStart - fullHistory[0].time) / DAY_MS) + 1
         : 0;
 
+    // ─── Densify the series to one point per day in the window ──
     let points: ChartPoint[];
 
     if (time === ALL_TIME || fullHistory.length === 0) {
@@ -124,6 +185,7 @@ export async function GET(req: NextRequest) {
     } else {
       const cutoffDay = toTehranDayStart(getCutoffTimestamp(time));
 
+      // Walk back to find the balance just before the window opens.
       let balanceBefore = 0;
       let idx = 0;
       while (idx < fullHistory.length && fullHistory[idx].time < cutoffDay) {
@@ -131,6 +193,7 @@ export async function GET(req: NextRequest) {
         idx++;
       }
 
+      // Fill one point per day from the cutoff through today.
       let current = balanceBefore;
       const filled: ChartPoint[] = [];
       for (let day = cutoffDay; day <= todayStart; day += DAY_MS) {
@@ -143,10 +206,44 @@ export async function GET(req: NextRequest) {
       points = filled;
     }
 
+    // ─── Compute cash-on-hand (only for the total-balance view) ─
+    //
+    // `Book` accounts are ledger containers (receivables / payables /
+    // funds-in-transit) rather than real money. Excluding them yields the
+    // amount of liquid cash the user actually has available right now.
+    let cashOnHand: number | null = null;
+    if (!accountId && !tagValue && !isUntagged) {
+      const bookRes = await pool.query<{ id: string }>(
+        `SELECT id FROM accounts WHERE user_id = $1 AND type = 'Book'`,
+        [userId],
+      );
+      const bookIds = new Set<string>(bookRes.rows.map((r) => r.id));
+
+      let cash = 0;
+      for (const row of res.rows) {
+        const value = Number(row.value);
+        const type = row.type as string;
+        const debit = (row.debit as string) || "";
+        const credit = (row.credit as string) || "";
+
+        if (type === "transfer") {
+          // `credit` = source, `debit` = destination.
+          if (credit && !bookIds.has(credit)) cash -= value;
+          if (debit && !bookIds.has(debit)) cash += value;
+        } else if (type === "debit" || type === "initial") {
+          if (debit && !bookIds.has(debit)) cash += value;
+        } else if (type === "credit") {
+          if (credit && !bookIds.has(credit)) cash -= value;
+        }
+      }
+      cashOnHand = cash;
+    }
+
     return NextResponse.json({
       points,
       currentBalance,
       allTimeSpanDays,
+      cashOnHand,
     });
   } catch (error) {
     console.error("GET /api/chart error:", error);

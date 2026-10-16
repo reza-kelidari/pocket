@@ -1,3 +1,28 @@
+/**
+ * @fileoverview Advanced Analytics API Route
+ *
+ * Computes aggregated financial metrics for the "analyze" screen over a
+ * requested time window. Returns four independent sections:
+ *
+ * - **cashflow** — income vs. expense for the current window and the
+ *   equivalent previous window, used by the Cash-Flow tab.
+ * - **income** / **expense** — per-category, per-tag breakdowns of money
+ *   received and paid, used by the Financial Analysis tab.
+ * - **profit** — start balance, income, expense, net profit, end balance,
+ *   and the current **cash-on-hand** figure (liquid money excluding
+ *   `Book` accounts). Used by the Profit tab.
+ * - **waterfall** — monthly cumulative profit/loss for the current Jalali
+ *   year, used by the Profit tab's waterfall chart.
+ *
+ * `cashOnHand` is computed from the *entire* transaction history (not the
+ * selected window), because it represents the user's present liquid money
+ * rather than a period-scoped metric. It excludes `Book` accounts
+ * (receivables / payables / funds-in-transit) and correctly accounts for
+ * transfers that move money into or out of those ledger accounts.
+ *
+ * @module app/api/analyze/route
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/utility/db/postgres";
 import { getCurrentUserId } from "@/utility/auth/methods";
@@ -13,10 +38,16 @@ import { calculateWaterfallData } from "@/utility/shared/waterfallMethods";
 import { getTotalBalanceHistory } from "@/utility/shared/balancesMethods";
 import type { TransactionType } from "@/utility/shared/transactionTypes";
 
+/** Sentinel value meaning "no time restriction" (≈ 100 years). */
 const ALL_TIME = 36500;
+
+/** Synthetic category id used for transactions whose category is missing. */
 const UNCATEGORIZED_ID = -1;
+
+/** Minimum slice size (in %) for a category to appear in the donut chart. */
 const MIN_PERCENT_FOR_CHART = 2;
 
+/** Row shape returned by the main transactions query. */
 type TxRow = {
   id: string;
   time: number;
@@ -28,6 +59,7 @@ type TxRow = {
   name: string;
 };
 
+/** A single slice in the income/expense donut chart. */
 type ChartSlice = {
   id: number | "other";
   name: string;
@@ -35,7 +67,10 @@ type ChartSlice = {
   percent: number;
 };
 
+/** Per-tag amount within a category. */
 type TagBreakdown = { tagId: string; tagName: string; amount: number };
+
+/** Per-category breakdown including its per-tag split. */
 type CategoryBreakdown = {
   id: number;
   name: string;
@@ -43,21 +78,40 @@ type CategoryBreakdown = {
   tags: TagBreakdown[];
   untaggedAmount: number;
 };
+
+/** Group of categories sharing a parent heading (e.g. "خورد و خوراک"). */
 type GroupBreakdown = {
   id: number;
   name: string;
   amount: number;
   categories: CategoryBreakdown[];
 };
+
+/** Full breakdown payload for one side (income or expense). */
 type BreakdownData = {
   totalAmount: number;
   chartSlices: ChartSlice[];
   details: GroupBreakdown[];
 };
 
+/** A transfer transaction involving at least one `Book` account. */
+type BookTransfer = {
+  debit: string;
+  credit: string;
+  value: number;
+};
+
 /* ────────────────────────────────────────────────────────────
  * Category metadata (name + parent group)
  * ──────────────────────────────────────────────────────────── */
+
+/**
+ * Builds a lookup from category id → `{ name, groupId, groupName }`
+ * for every income/expense subcategory, plus a synthetic entry for
+ * uncategorized transactions.
+ *
+ * @returns A map keyed by category id.
+ */
 function buildCategoryMeta() {
   const meta = new Map<
     number,
@@ -86,6 +140,17 @@ function buildCategoryMeta() {
 /* ────────────────────────────────────────────────────────────
  * Breakdown (per-category, per-tag) for income or expense
  * ──────────────────────────────────────────────────────────── */
+
+/**
+ * Aggregates transactions into a two-level breakdown (groups → categories →
+ * tags) and prepares the donut-chart slices.
+ *
+ * @param transactions - All non-transfer transactions for the user.
+ * @param tagNames - Map of tag id → display name.
+ * @param kind - Whether to aggregate income or expense.
+ * @param timeParam - The selected time window (see module docs).
+ * @returns The breakdown payload for this side.
+ */
 function computeBreakdown(
   transactions: TxRow[],
   tagNames: Map<string, string>,
@@ -216,6 +281,15 @@ function computeBreakdown(
 /* ────────────────────────────────────────────────────────────
  * Cashflow (current window vs. previous equivalent window)
  * ──────────────────────────────────────────────────────────── */
+
+/**
+ * Computes income and expense for the current window and the equivalent
+ * previous window, so the UI can show "vs. last period" deltas.
+ *
+ * @param transactions - All non-transfer transactions for the user.
+ * @param timeParam - The selected time window (see module docs).
+ * @returns Current and previous income/expense figures.
+ */
 function computeCashflow(transactions: TxRow[], timeParam: number) {
   const now = Date.now();
   const [jYear, jMonth] = toJalaliDateArray(new Date(now));
@@ -277,6 +351,20 @@ function computeCashflow(transactions: TxRow[], timeParam: number) {
 /* ────────────────────────────────────────────────────────────
  * Profit (period metrics, uses full history for start/end balance)
  * ──────────────────────────────────────────────────────────── */
+
+/**
+ * Computes income, expense, net profit, start balance, and end balance
+ * for the selected time window.
+ *
+ * `startBalance` and `endBalance` are derived from the *full* balance
+ * history (not just the window) so that endBalance always reflects the
+ * user's current total balance.
+ *
+ * @param transactions - All non-transfer transactions for the user.
+ * @param timeParam - The selected time window (see module docs).
+ * @returns Profit metrics for the window (excluding `cashOnHand`, which
+ *          is attached separately in the handler).
+ */
 function computeProfit(transactions: TxRow[], timeParam: number) {
   const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
 
@@ -321,8 +409,74 @@ function computeProfit(transactions: TxRow[], timeParam: number) {
 }
 
 /* ────────────────────────────────────────────────────────────
+ * Cash on hand (excludes Book accounts)
+ * ──────────────────────────────────────────────────────────── */
+
+/**
+ * Computes the user's current **liquid** money, i.e. the sum of balances
+ * across all non-`Book` accounts.
+ *
+ * `Book` accounts (receivables, payables, funds-in-transit) represent
+ * ledger entries rather than actual cash, so they are excluded. This
+ * produces a figure the user can interpret as "money I actually have
+ * available right now".
+ *
+ * Transfers involving a `Book` account are handled explicitly because
+ * they move money between the ledger and real accounts:
+ * - paying off a debt (`credit` = real, `debit` = Book) reduces cash,
+ * - collecting a receivable (`credit` = Book, `debit` = real) increases cash.
+ *
+ * Transfers between two real accounts, or between two `Book` accounts,
+ * leave cash unchanged and are ignored.
+ *
+ * @param nonTransferTxs - Every non-transfer transaction (all time).
+ * @param bookTransfers - Transfer transactions touching a `Book` account.
+ * @param bookIds - Set of `Book` account ids belonging to the user.
+ * @returns The current cash-on-hand figure.
+ */
+function computeCashOnHand(
+  nonTransferTxs: TxRow[],
+  bookTransfers: BookTransfer[],
+  bookIds: Set<string>,
+): number {
+  let cash = 0;
+
+  for (const tx of nonTransferTxs) {
+    const value = tx.value;
+    const debit = tx.debit || "";
+    const credit = tx.credit || "";
+
+    if (tx.type === "debit" || tx.type === "initial") {
+      if (debit && !bookIds.has(debit)) cash += value;
+    } else if (tx.type === "credit") {
+      if (credit && !bookIds.has(credit)) cash -= value;
+    }
+  }
+
+  for (const tx of bookTransfers) {
+    const value = tx.value;
+    if (tx.credit && !bookIds.has(tx.credit)) cash -= value;
+    if (tx.debit && !bookIds.has(tx.debit)) cash += value;
+  }
+
+  return cash;
+}
+
+/* ────────────────────────────────────────────────────────────
  * Handler
  * ──────────────────────────────────────────────────────────── */
+
+/**
+ * GET handler for `/api/analyze`.
+ *
+ * Query params:
+ * - `time` (number): time window. Special values: `-1` (this month),
+ *   `-2` (this year), `36500` (all time), any positive N (last N days).
+ *
+ * @param req - The incoming Next.js request.
+ * @returns A JSON response with `cashflow`, `income`, `expense`, `profit`
+ *          (including `cashOnHand`), and `waterfall` sections.
+ */
 export async function GET(req: NextRequest) {
   const userId = await getCurrentUserId();
   if (!userId) {
@@ -338,7 +492,7 @@ export async function GET(req: NextRequest) {
   const timeParam = timeR.valid ? timeR.value : DEFAULT_TIME_WINDOW;
 
   try {
-    const [txRes, tagRes] = await Promise.all([
+    const [txRes, tagRes, bookRes] = await Promise.all([
       pool.query(
         `SELECT id, time, type, debit, credit, value, tag, name
            FROM transactions
@@ -347,6 +501,10 @@ export async function GET(req: NextRequest) {
         [userId],
       ),
       pool.query(`SELECT id, name FROM tags WHERE user_id = $1`, [userId]),
+      pool.query<{ id: string }>(
+        `SELECT id FROM accounts WHERE user_id = $1 AND type = 'Book'`,
+        [userId],
+      ),
     ]);
 
     const transactions: TxRow[] = txRes.rows.map((row) => ({
@@ -365,6 +523,24 @@ export async function GET(req: NextRequest) {
       tagNames.set(row.id, row.name);
     }
 
+    // ─── Fetch transfers that touch a Book account ─────────────
+    const bookIds = new Set<string>(bookRes.rows.map((r) => r.id));
+    let bookTransfers: BookTransfer[] = [];
+
+    if (bookIds.size > 0) {
+      const tRes = await pool.query(
+        `SELECT debit, credit, value FROM transactions
+          WHERE user_id = $1 AND type = 'transfer'
+            AND (debit = ANY($2) OR credit = ANY($2))`,
+        [userId, Array.from(bookIds)],
+      );
+      bookTransfers = tRes.rows.map((r) => ({
+        debit: (r.debit as string) || "",
+        credit: (r.credit as string) || "",
+        value: Number(r.value),
+      }));
+    }
+
     const cashflow = computeCashflow(transactions, timeParam);
     const income = computeBreakdown(
       transactions,
@@ -378,7 +554,9 @@ export async function GET(req: NextRequest) {
       "expense",
       timeParam,
     );
-    const profit = computeProfit(transactions, timeParam);
+    const profitBase = computeProfit(transactions, timeParam);
+    const cashOnHand = computeCashOnHand(transactions, bookTransfers, bookIds);
+    const profit = { ...profitBase, cashOnHand };
     const waterfall = calculateWaterfallData(
       transactions as unknown as TransactionType[],
     );
