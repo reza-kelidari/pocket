@@ -12,7 +12,7 @@ export const TransactionCategories = {
         { id: 0x02010004, name: "نان و غلات صبحانه", icon: Wallet },
         { id: 0x02010005, name: "لبنیات", icon: Wallet },
         { id: 0x02010006, name: "ادویه‌ها و سس‌ها", icon: Wallet },
-        { id: 0x02010007, name: "نوشابه‌های گازدار و انرژی‌زا", icon: Wallet },
+        { id: 0x02010007, name: "نوشیدنی‌های گازدار و انرژی‌زا", icon: Wallet },
         { id: 0x02010008, name: "آب‌میوه", icon: Wallet },
         { id: 0x02010009, name: "میوه", icon: Wallet },
         { id: 0x0201000a, name: "سبزیجات و صیفیجات", icon: Wallet },
@@ -28,6 +28,7 @@ export const TransactionCategories = {
         { id: 0x02020001, name: "کافه", icon: Wallet },
         { id: 0x02020002, name: "رستوران", icon: Wallet },
         { id: 0x02020003, name: "فست‌فود", icon: Wallet },
+        { id: 0x02020004, name: "وندینگ", icon: Wallet },
       ],
     },
     {
@@ -36,7 +37,6 @@ export const TransactionCategories = {
       sub: [
         { id: 0x02030001, name: "حمل و نقل عمومی", icon: Wallet },
         { id: 0x02030002, name: "تاکسی، اسنپ، تپسی، و...", icon: Wallet },
-        { id: 0x02030003, name: "کامیون، وانت، و ...", icon: Wallet },
       ],
     },
     {
@@ -62,12 +62,17 @@ export const TransactionCategories = {
         { id: 0x02050008, name: "لباس راحتی", icon: Wallet },
         { id: 0x02050009, name: "کیف و کوله", icon: Wallet },
         { id: 0x0205000a, name: "خیاطی", icon: Wallet },
+        { id: 0x0205000b, name: "بافت", icon: Wallet },
+        { id: 0x0205000c, name: "کراوات", icon: Wallet },
       ],
     },
     {
       id: 0x02060000,
       name: "مراقبت از پوشاک",
-      sub: [{ id: 0x02060001, name: "واکس", icon: Wallet }],
+      sub: [
+        { id: 0x02060001, name: "واکس", icon: Wallet },
+        { id: 0x02060002, name: "کفی کفش", icon: Wallet },
+      ],
     },
     {
       id: 0x02070000,
@@ -100,6 +105,7 @@ export const TransactionCategories = {
         { id: 0x02090003, name: "دستبند", icon: Wallet },
         { id: 0x02090004, name: "انگشتر", icon: Wallet },
         { id: 0x02090005, name: "پابند", icon: Wallet },
+        { id: 0x02090006, name: "تعمیر اکسسوری", icon: Wallet },
       ],
     },
     {
@@ -121,7 +127,7 @@ export const TransactionCategories = {
         { id: 0x020b0001, name: "کابل و تبدیل", icon: Wallet },
         { id: 0x020b0002, name: "پاوربانک", icon: Wallet },
         { id: 0x020b0003, name: "محافظ برق", icon: Wallet },
-        { id: 0x020b0004, name: "لوازم جانبی کامپیوتر", icon: Wallet },
+        { id: 0x020b0004, name: "قطعات کامپیوتر", icon: Wallet },
       ],
     },
     {
@@ -133,7 +139,7 @@ export const TransactionCategories = {
           name: "تعمیر و نگهداری وسایل الکترونیکی",
           icon: Wallet,
         },
-        { id: 0x020c0002, name: " لوازم جانبی وسایل الکترونیکی", icon: Wallet },
+        { id: 0x020c0002, name: "لوازم جانبی وسایل الکترونیکی", icon: Wallet },
       ],
     },
     {
@@ -233,7 +239,8 @@ export const TransactionCategories = {
         { id: 0x02160001, name: "کارمزد خدمات بانکی", icon: Wallet },
         { id: 0x02160002, name: "کارمزد خدمات دولتی", icon: Wallet },
         { id: 0x02160003, name: "جرائم مالی", icon: Wallet },
-        { id: 0x02160004, name: "زیان ناشی‌از اصلاح مانده‌ها", icon: Wallet },
+        { id: 0x02160004, name: "کسر از حقوق", icon: Wallet },
+        { id: 0x02160005, name: "زیان ناشی‌از اصلاح مانده‌ها", icon: Wallet },
       ],
     },
     {
@@ -243,6 +250,8 @@ export const TransactionCategories = {
         { id: 0x02170001, name: "قطار", icon: Wallet },
         { id: 0x02170002, name: "اتوبوس", icon: Wallet },
         { id: 0x02170003, name: "هواپیما", icon: Wallet },
+        { id: 0x02170004, name: "کشتی", icon: Wallet },
+        { id: 0x02170005, name: "خودرو دربستی", icon: Wallet },
       ],
     },
     {
@@ -276,7 +285,9 @@ export const TransactionCategories = {
       sub: [
         { id: 0x03010001, name: "حقوق و دستمزد", icon: Wallet },
         { id: 0x03010002, name: "عیدی و سنوات", icon: Wallet },
-        { id: 0x03010003, name: "سایر مزایا", icon: Wallet },
+        { id: 0x03010003, name: "اضافه‌کاری", icon: Wallet },
+        { id: 0x03010004, name: "پاداش، KPI", icon: Wallet },
+        { id: 0x03010005, name: "سایر مزایا", icon: Wallet },
       ],
     },
     {
@@ -292,7 +303,7 @@ export const TransactionCategories = {
         { id: 0x03020007, name: "سود سهام عدالت", icon: Wallet },
         { id: 0x03020008, name: "اجاره دارایی‌ها", icon: Wallet },
         { id: 0x03020009, name: "فروش دارایی‌ها", icon: Wallet },
-        { id: 0x0302000A, name: "سود ناشی‌از اصلاح مانده", icon: Wallet },
+        { id: 0x0302000a, name: "سود ناشی‌از اصلاح مانده‌ها", icon: Wallet },
       ],
     },
   ],

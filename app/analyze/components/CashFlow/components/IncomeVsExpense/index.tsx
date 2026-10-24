@@ -30,23 +30,12 @@ export default function IncomeVsExpense({
     ? "مقایسه با دوره‌ی مشابه قبل"
     : "مقایسه‌ی درآمد و هزینه در دوره‌ی جاری";
 
-  if (isLoading) {
-    return (
-      <AnalyzeIncomeVsExpenseLoading>{title}</AnalyzeIncomeVsExpenseLoading>
-    );
-  }
-
-  if (isPast && metrics.isAllTime) {
-    return (
-      <Box className="gap-5 items-center justify-center py-8">
-        <h3 className="text-secondary text-xs">مقایسه با دوره‌ی مشابه قبل</h3>
-        <p className="text-xs text-secondary text-center">
-          برای بازه‌ی زمانی «از ابتدا»، مقایسه با دوره‌ی مشابه قبل معنا ندارد.
-        </p>
-      </Box>
-    );
-  }
-
+  // ─── All hooks must run before any conditional return ───────────
+  // Previously these useMemo calls were placed *after* the early returns
+  // for `isLoading` and `isAllTime`, which violates the Rules of Hooks:
+  // if `isLoading` flipped between renders, the number of hooks called
+  // would change and React would throw. Moving them above the returns
+  // guarantees a stable hook order regardless of which branch is taken.
   const currentSplit = useMemo(
     () => computeSplit(metrics.currentIncome, metrics.currentExpense),
     [metrics.currentIncome, metrics.currentExpense],
@@ -64,6 +53,25 @@ export default function IncomeVsExpense({
     [metrics.currentExpense, metrics.pastExpense],
   );
 
+  // ─── Early returns (safe now — all hooks have already run) ──────
+  if (isLoading) {
+    return (
+      <AnalyzeIncomeVsExpenseLoading>{title}</AnalyzeIncomeVsExpenseLoading>
+    );
+  }
+
+  if (isPast && metrics.isAllTime) {
+    return (
+      <Box className="gap-5 items-center justify-center py-8">
+        <h3 className="text-secondary text-xs">مقایسه با دوره‌ی مشابه قبل</h3>
+        <p className="text-xs text-secondary text-center">
+          برای بازه‌ی زمانی «از ابتدا»، مقایسه با دوره‌ی مشابه قبل معنا ندارد.
+        </p>
+      </Box>
+    );
+  }
+
+  // ─── Derived display values (no hooks here) ─────────────────────
   const expenseColorClass = expenseDelta.isUp
     ? "text-expense-primary"
     : "text-income-primary";

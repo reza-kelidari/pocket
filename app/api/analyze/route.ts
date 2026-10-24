@@ -32,16 +32,32 @@
  * ### Forecast horizon
  *
  * The forecast horizon mirrors the selected window's length:
- * - `7` / `29` / `89` days → same number of days into the future.
+ * - Any positive `N` (last N days) → now + (N + 1) days into the future.
+ *   The horizon is computed dynamically from `timeParam`, so newly added
+ *   window sizes (e.g. 180 days) are handled correctly without code
+ *   changes.
  * - `-1` (this month) → through the end of next Jalali month.
- * - `-2` (this year) and `36500` (all time) → through the end of the
- *   current Jalali year.
+ * - `-2` (this year) → through the end of the current Jalali year.
+ * - `36500` (all time) → capped at 50% of the actual data span (minimum
+ *   30 days), so the forecast never dominates the chart when the user
+ *   has little historical data. The bucket size is also picked based on
+ *   the actual data span (not since epoch), preventing the historical
+ *   line from collapsing to a single bucket on short histories.
  *
  * ### `cashOnHand`
  *
  * Computed from the entire transaction history, ignoring future-dated
  * transactions and `Book` accounts (receivables / payables / funds-in-
  * transit). It represents the user's present liquid money.
+ *
+ * ### `projectedBalance` (no double-counting)
+ *
+ * The forecast summary's `projectedBalance` is computed as
+ * `balanceAtNow + forecastProfit`, where `balanceAtNow` is the user's
+ * total balance at the current instant (not at the end of the selected
+ * window). This avoids double-counting the `[now, upperBound]` portion
+ * of the forecast horizon, which previously affected the "this month"
+ * and "this year" windows where `upperBound > now`.
  *
  * @module app/api/analyze/route
  */
@@ -163,7 +179,7 @@ type BreakdownData = {
  *
  * `projectedBalance` is the balance the user would have at the end of
  * the horizon if the selected method's predictions hold, i.e.
- * `profit.endBalance + profit`.
+ * `balanceAtNow + profit`.
  */
 type ProfitForecastEntry = {
   income: number;
@@ -306,7 +322,7 @@ function computeBreakdown(
     if (otherAmount > 0) {
       slices.push({
         id: "other",
-        name: kind === "income" ? "سایر درآمد‌ها" : "سایر هزینه‌ها",
+        name: kind === "income" ? "سایر درآمدها" : "سایر هزینه‌ها",
         amount: otherAmount,
         percent: otherAmount / total,
       });
@@ -449,8 +465,8 @@ function computeCashflow(transactions: TxRow[], timeParam: number) {
  * ──────────────────────────────────────────────────────────── */
 
 /**
- * Computes income, expense, net profit, start balance, and end balance
- * for the selected time window.
+ * Computes income, expense, net profit, start balance, end balance, and
+ * balance-at-now for the selected time window.
  *
  * Income/expense only count transactions within
  * `[getCutoffTimestamp(timeParam), getUpperBoundTimestamp(timeParam)]`.
@@ -458,13 +474,19 @@ function computeCashflow(transactions: TxRow[], timeParam: number) {
  * history but are clamped to the same window bounds, so `endBalance`
  * reflects the balance at the end of the selected window.
  *
+ * `balanceAtNow` is the balance at the current instant (`Date.now()`),
+ * used by the caller to compute `projectedBalance` without double-counting
+ * the `[now, upperBound]` portion of the forecast horizon (relevant for
+ * the "this month" / "this year" windows where `upperBound > now`).
+ *
  * @param transactions - All non-transfer transactions for the user.
  * @param timeParam - The selected time window (see module docs).
- * @returns Profit metrics for the window.
+ * @returns Profit metrics for the window, including `balanceAtNow`.
  */
 function computeProfit(transactions: TxRow[], timeParam: number) {
   const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
   const upperBound = getUpperBoundTimestamp(timeParam);
+  const now = Date.now();
 
   let income = 0;
   let expense = 0;
@@ -482,6 +504,7 @@ function computeProfit(transactions: TxRow[], timeParam: number) {
 
   let startBalance = 0;
   let endBalance = 0;
+  let balanceAtNow = 0;
 
   if (totalHistory.length > 0) {
     if (cutoff === 0) {
@@ -502,6 +525,18 @@ function computeProfit(transactions: TxRow[], timeParam: number) {
         break;
       }
     }
+
+    // Balance at "now" — the current instant. Used by the caller to
+    // compute projectedBalance = balanceAtNow + forecastProfit without
+    // double-counting the [now, upperBound] portion of the forecast
+    // horizon (which is already reflected in endBalance for the
+    // "this month" / "this year" windows).
+    for (let i = totalHistory.length - 1; i >= 0; i--) {
+      if (totalHistory[i].time <= now) {
+        balanceAtNow = totalHistory[i].balance;
+        break;
+      }
+    }
   }
 
   return {
@@ -510,6 +545,7 @@ function computeProfit(transactions: TxRow[], timeParam: number) {
     profit,
     startBalance,
     endBalance,
+    balanceAtNow,
     isAllTime: timeParam === ALL_TIME,
   };
 }
@@ -553,12 +589,12 @@ function pickBucketMs(windowDays: number, forecastDays: number): number {
  * given time-window selector.
  *
  * The horizon mirrors the semantics of the selected window:
- * - `7` days (encoded `6`)  → now + 7 days
- * - `30` days (encoded `29`) → now + 30 days
- * - `90` days (encoded `89`) → now + 90 days
- * - `-1` (this month)        → end of next Jalali month
- * - `-2` (this year)         → end of current Jalali year
- * - `36500` (all time)       → end of current Jalali year
+ * - Any positive `N` (last N days) → now + (N + 1) days. The horizon is
+ *   computed dynamically from `timeParam`, so newly added window sizes
+ *   are handled correctly without code changes.
+ * - `-1` (this month) → end of next Jalali month
+ * - `-2` (this year) → end of current Jalali year
+ * - `36500` (all time) → end of current Jalali year
  *
  * @param timeParam - The selected time window (see module docs).
  * @returns The Unix timestamp (ms) marking the end of the forecast.
@@ -567,9 +603,12 @@ function getForecastEnd(timeParam: number): number {
   const now = Date.now();
   const [jy, jm] = toJalaliDateArray(new Date(now));
 
-  if (timeParam === 6 || timeParam === 7) return now + 7 * FORECAST_DAY_MS;
-  if (timeParam === 29 || timeParam === 30) return now + 30 * FORECAST_DAY_MS;
-  if (timeParam === 89 || timeParam === 90) return now + 90 * FORECAST_DAY_MS;
+  // Any positive window: forecast horizon mirrors the window length.
+  // We use (timeParam + 1) because the window selector uses 0-indexed
+  // days (e.g. `6` = last 7 days, `29` = last 30 days).
+  if (timeParam > 0) {
+    return now + (timeParam + 1) * FORECAST_DAY_MS;
+  }
 
   if (timeParam === -1) {
     // End of next Jalali month: start of the month after next, minus 1ms.
@@ -635,9 +674,48 @@ function computeForecast(
 ): ForecastBundle {
   const now = Date.now();
   const cutoff = timeParam === ALL_TIME ? 0 : getCutoffTimestamp(timeParam);
-  const forecastEnd = getForecastEnd(timeParam);
+  const txType = kind === "income" ? "debit" : "credit";
 
-  const windowDays = Math.max(1, Math.ceil((now - cutoff) / FORECAST_DAY_MS));
+  // ─── Determine the effective start of the historical data ─────
+  //
+  // For most windows, this is simply `cutoff` (N days ago).
+  // For "all time" (`cutoff === 0`), we must find the earliest
+  // matching transaction *before* picking a bucket size. If we used
+  // `cutoff = 0` (epoch) to compute `windowDays`, we'd get ~20000
+  // days, which forces monthly buckets — even if the user only has
+  // two weeks of data. With monthly buckets, two weeks of data
+  // collapses to a single bucket, making the historical line
+  // invisible on the chart.
+  let effectiveStart = cutoff;
+  if (cutoff === 0) {
+    let earliest = now;
+    for (const tx of transactions) {
+      if (tx.type !== txType) continue;
+      if (tx.time < earliest) earliest = tx.time;
+    }
+    effectiveStart = Math.min(earliest, now - FORECAST_DAY_MS);
+  }
+
+  // ─── Cap the forecast horizon for "all time" ──────────────────
+  //
+  // For "all time", the default forecast end is the end of the current
+  // Jalali year. If the user has only a few weeks of data, that
+  // 6-month forecast would dominate the chart, shrinking the
+  // historical line to a few pixels. We cap the horizon to at most
+  // 50% of the actual data span (with a 30-day minimum), so the
+  // historical portion always occupies a reasonable share of the chart.
+  let forecastEnd = getForecastEnd(timeParam);
+  if (timeParam === ALL_TIME) {
+    const dataSpan = now - effectiveStart;
+    const maxForecastSpan = Math.max(30 * FORECAST_DAY_MS, dataSpan * 0.5);
+    forecastEnd = Math.min(forecastEnd, now + maxForecastSpan);
+  }
+
+  // ─── Pick bucket size based on actual data span ───────────────
+  const windowDays = Math.max(
+    1,
+    Math.ceil((now - effectiveStart) / FORECAST_DAY_MS),
+  );
   const forecastDays = Math.max(
     1,
     Math.ceil((forecastEnd - now) / FORECAST_DAY_MS),
@@ -650,8 +728,6 @@ function computeForecast(
         ? "week"
         : "month";
 
-  const txType = kind === "income" ? "debit" : "credit";
-
   // ── Step 1: bucket the historical deltas ──────────────────
   const bucketValues = new Map<number, number>();
   for (const tx of transactions) {
@@ -659,18 +735,6 @@ function computeForecast(
     if (tx.time < cutoff || tx.time > now) continue;
     const b = bucketOf(tx.time, bucketMs);
     bucketValues.set(b, (bucketValues.get(b) ?? 0) + tx.value);
-  }
-
-  // For "all time", start from the earliest matching transaction
-  // rather than the epoch, to keep the bucket count sane.
-  let effectiveStart = cutoff;
-  if (cutoff === 0) {
-    let earliest = now;
-    for (const tx of transactions) {
-      if (tx.type !== txType) continue;
-      if (tx.time < earliest) earliest = tx.time;
-    }
-    effectiveStart = Math.min(earliest, now - bucketMs);
   }
 
   // ── Step 2: densify the historical series ─────────────────
@@ -701,17 +765,6 @@ function computeForecast(
     }
     byMethod[method] = series;
   }
-
-  console.log("[forecast debug]", {
-    kind,
-    timeParam,
-    historicalLength: historicalValues.length,
-    historicalSum: historicalValues.reduce((s, v) => s + v, 0),
-    nonzeroCount: historicalValues.filter((v) => v > 0).length,
-    density:
-      historicalValues.filter((v) => v > 0).length / historicalValues.length,
-    forecastSteps,
-  });
 
   return { historical, byMethod, bucketSize };
 }
@@ -922,6 +975,15 @@ export async function GET(req: NextRequest) {
     // We therefore extract per-method totals from the income and
     // expense forecast bundles and combine them into a single
     // per-method entry.
+    //
+    // `projectedBalance` is computed as `balanceAtNow + forecastProfit`
+    // (NOT `endBalance + forecastProfit`) to avoid double-counting the
+    // [now, upperBound] portion of the forecast horizon. For the "this
+    // month" / "this year" windows, `endBalance` already includes
+    // transactions in [now, upperBound], so adding the full forecast
+    // profit (which also covers [now, upperBound]) would count that
+    // interval twice. `balanceAtNow` is the balance at the current
+    // instant, which is the correct baseline for the forecast.
     const incomeTotals = extractForecastTotals(income.forecast);
     const expenseTotals = extractForecastTotals(expense.forecast);
 
@@ -934,7 +996,7 @@ export async function GET(req: NextRequest) {
         income: forecastIncome,
         expense: forecastExpense,
         profit: forecastProfit,
-        projectedBalance: profit.endBalance + forecastProfit,
+        projectedBalance: profit.balanceAtNow + forecastProfit,
       };
     }
 

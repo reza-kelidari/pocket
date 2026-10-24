@@ -17,6 +17,21 @@
  * container's width and the SVG re-renders to fit, matching the
  * behavior of {@link WaterfallChart}.
  *
+ * ### Forecast path continuity
+ *
+ * The forecast series returned by the API starts at the **first future
+ * bucket** (`endBucket + bucketMs`), one bucket after the last
+ * historical point. If the dashed path were drawn starting from that
+ * first forecast point, there would be a visible gap between the solid
+ * historical line and the dashed forecast line — the dashed segment
+ * would appear to "float" with no connection to the line it continues.
+ *
+ * To ensure visual continuity, the last historical point is prepended
+ * to the forecast series **for path rendering only** (the data arrays
+ * are not mutated). This makes the dashed path begin exactly where the
+ * solid path ends, so the two layers read as a single continuous curve
+ * that changes style at the "now" marker.
+ *
  * @module app/analyze/components/ForecastChart
  */
 
@@ -119,13 +134,28 @@ function LineChart({
         .join(" ");
 
     const histPath = toPath(historical);
-    const forePath = toPath(forecast);
+
+    // ─── Forecast path with continuity ────────────────────────
+    //
+    // The forecast series starts at the first future bucket, one bucket
+    // after the last historical point. If we drew the dashed path
+    // starting from that first forecast point, there would be a visible
+    // gap between the solid historical line and the dashed forecast
+    // line. To keep the two layers visually connected, we prepend the
+    // last historical point to the forecast series *for path rendering
+    // only* — the `forecast` data array itself is not mutated, so the
+    // "now" marker, summary footer, and any other consumers of the
+    // raw forecast points are unaffected.
+    const lastHist = historical[historical.length - 1];
+    const forecastForPath =
+      lastHist && forecast.length > 0 ? [lastHist, ...forecast] : forecast;
+    const forePath = toPath(forecastForPath);
 
     const firstHist = historical[0];
-    const lastHist = historical[historical.length - 1];
+    const lastHistForArea = historical[historical.length - 1];
     const areaPath =
-      firstHist && lastHist
-        ? `${histPath} L ${xOf(lastHist.time).toFixed(2)},${CHART_HEIGHT - PAD_BOTTOM} L ${xOf(firstHist.time).toFixed(2)},${CHART_HEIGHT - PAD_BOTTOM} Z`
+      firstHist && lastHistForArea
+        ? `${histPath} L ${xOf(lastHistForArea.time).toFixed(2)},${CHART_HEIGHT - PAD_BOTTOM} L ${xOf(firstHist.time).toFixed(2)},${CHART_HEIGHT - PAD_BOTTOM} Z`
         : "";
 
     return {
