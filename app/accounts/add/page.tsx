@@ -3,7 +3,6 @@ import Capsule from "@/components/Capsule";
 import NavbarTitle from "@/components/NavbarTitle";
 import Left from "@/icons/Left";
 import { AccountColorType, AccountType } from "@/utility/accounts/types";
-import { TransactionType } from "@/utility/shared/transactionTypes";
 import {
   jalaliToTimestamp,
   toEnglishDigits,
@@ -18,9 +17,10 @@ import {
   formatJalaliInput,
 } from "@/utility/shared/formatters";
 import { usePageShowSync } from "@/utility/shared/usePageShowSync";
-import { getAll, putItem } from "@/utility/db/Database";
+import { getAll } from "@/utility/db/Database";
 import { DatabaseStores } from "@/utility/keys/database";
 import AccountForm, { AccountFormValues } from "@/components/AccountForm";
+import { generateUUId } from "@/utility/shared/idGenerationMethods";
 
 export const CREATE_ACCOUNT_KEY = "new-account";
 
@@ -41,7 +41,7 @@ const defaultForm: Omit<NewAccountFormType, "id"> = {
 export default function AddAccount() {
   const router = useRouter();
   const { addBalance } = useBalances();
-  const { accountsStore, transactionsStore } = DatabaseStores;
+  const { accountsStore } = DatabaseStores;
 
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState<NewAccountFormType>(() => {
@@ -68,7 +68,7 @@ export default function AddAccount() {
       }
       setForm((prev) => {
         if (prev.id === "") {
-          const updated = { ...prev, id: crypto.randomUUID() };
+          const updated = { ...prev, id: generateUUId() };
           sessionStorage.setItem(CREATE_ACCOUNT_KEY, JSON.stringify(updated));
           return updated;
         }
